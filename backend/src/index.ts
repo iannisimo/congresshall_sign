@@ -138,7 +138,7 @@ const authJWT = (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-app.post('/register', asyncHandler(async (req: Request, res: Response) => {
+app.post('/api/register', asyncHandler(async (req: Request, res: Response) => {
   const { username, password }: { username: string, password: string } = req.body;
   const hashedPassword = await bcrypt.hash(password, salt_rounds);
   const newUser = new User({ username, password: hashedPassword });
@@ -146,7 +146,7 @@ app.post('/register', asyncHandler(async (req: Request, res: Response) => {
   res.status(201).json({ message: "User registered successfully" });
 }));
 
-app.post('/login', asyncHandler(async (req: Request, res: Response) => {
+app.post('/api/login', asyncHandler(async (req: Request, res: Response) => {
   const { username, password }: { username: string, password: string } = req.body;
   User.findOne({ username })
     .then(user => {
@@ -193,7 +193,7 @@ const LogoSchema = new mongoose.Schema({
 })
 const Logo = mongoose.model('Logo', LogoSchema);
 
-app.post('/logo/:org_id', authJWT, asyncHandler(async (req: Request, res: Response) => {
+app.post('/api/logo/:org_id', authJWT, asyncHandler(async (req: Request, res: Response) => {
   const { org_id } = req.params;
   const files: UploadedFile | UploadedFile[] | undefined = req.files?.file;
   console.log(req.files);
@@ -212,7 +212,7 @@ app.post('/logo/:org_id', authJWT, asyncHandler(async (req: Request, res: Respon
   res.sendStatus(200);
 }));
 
-app.get('/logo/get/:id', asyncHandler(async (req: Request, res: Response) => {
+app.get('/api/logo/get/:id', asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   const logo = await Logo.findById(id);
   if (!logo) {
@@ -228,7 +228,7 @@ app.get('/logo/get/:id', asyncHandler(async (req: Request, res: Response) => {
   // res.sendStatus(200);
 }));
 
-app.get('/logo/byorg/:org_id', asyncHandler(async (req: Request, res: Response) => {
+app.get('/api/logo/byorg/:org_id', asyncHandler(async (req: Request, res: Response) => {
   const { org_id } = req.params;
   const matches = await Logo.aggregate([
     {
@@ -246,7 +246,7 @@ app.get('/logo/byorg/:org_id', asyncHandler(async (req: Request, res: Response) 
   res.status(200).json(ids);
 }));
 
-app.delete('/logo/:id', authJWT, asyncHandler(async (req: Request, res: Response) => {
+app.delete('/api/logo/:id', authJWT, asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   const events = await Event.find({ logo: { $eq: id } });
   if (events.length > 0) {
@@ -274,41 +274,41 @@ const getEvents = async ({ start_time, end_time, limit, get_resolved }: { start_
   return Event.find(db_query, null, { limit: Number(limit) ?? 0, sort: 'start_time' });
 };
 
-app.get('/events', asyncHandler(async (req: Request, res: Response) => {
+app.get('/api/events', asyncHandler(async (req: Request, res: Response) => {
   const { start_time, end_time, limit, get_resolved = false }: { start_time?: string, end_time?: string, limit?: string, get_resolved?: boolean } = req.query;
   const events = await getEvents({ start_time, end_time, limit, get_resolved });
   res.json(events);
 }));
 
-app.post('/events', authJWT, asyncHandler(async (req: Request, res: Response) => {
+app.post('/api/events', authJWT, asyncHandler(async (req: Request, res: Response) => {
   const newEvent = new Event(req.body);
   await newEvent.save();
   checkOccupancies();
   res.sendStatus(200);
 }));
 
-app.post('/events/:id', authJWT, asyncHandler(async (req: Request, res: Response) => {
+app.post('/api/events/:id', authJWT, asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   await Event.findByIdAndUpdate(id, req.body);
   checkOccupancies();
   res.sendStatus(200);
 }));
 
-app.delete('/events/:id', authJWT, asyncHandler(async (req: Request, res: Response) => {
+app.delete('/api/events/:id', authJWT, asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   await Event.findByIdAndDelete(id);
   checkOccupancies();
   res.sendStatus(200);
 }));
 
-app.get('/orgs', asyncHandler(async (_: any, res: Response) => {
+app.get('/api/orgs', asyncHandler(async (_: any, res: Response) => {
   const e_orgs: string[] = await (Event.distinct('org'));
   const l_orgs: string[] = await (Logo.distinct('org'));
   const orgs = [...new Set([...l_orgs, ...e_orgs])];
   res.json(orgs);
 }));
 
-app.get('/logos/:org', asyncHandler(async (req: Request, res: Response) => {
+app.get('/api/logos/:org', asyncHandler(async (req: Request, res: Response) => {
   const { org } = req.params;
   const logos = await (Event.find({ org: org }).distinct('logo'));
   res.json(logos);
@@ -323,7 +323,7 @@ type RoomState = {
   custom_message?: string
 };
 
-app.post('/rooms/:room_id', authJWT, asyncHandler(async (req: Request, res: Response) => {
+app.post('/api/rooms/:room_id', authJWT, asyncHandler(async (req: Request, res: Response) => {
   const { room_id } = req.params;
   const new_state: RoomState = req.body;
   const now = new Date();
