@@ -75,7 +75,7 @@ const WSProvider = ({ children }: any) => {
   const { date, baseDate } = useDate();
   const { token } = useAuth();
 
-  const currentIP = window.location.hostname; // This will get the current hostname
+  const currentIP = window.location.host; // This will get the current hostname
   const socketUrl = `ws://${currentIP}/api/ws`;
 
   useWebSocket(socketUrl, {
