@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "build": "npx tsc --extendedDiagnostics",
+    "build": "npx tsc",
     "start": "node dist/index.js",
     "dev": "nodemon --config nodemon.config.json"
   },

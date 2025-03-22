@@ -21,7 +21,11 @@ const port = process.env.PORT || 5000;
 const jwt_secret: Secret = process.env.JWT_SECRET ?? "change_me";
 const salt_rounds: number = Number(process.env.SALT_ROUNDS) ?? 10;
 
-mongoose.connect('mongodb://127.0.0.1:27017/conferences');
+const mongo_host = process.env.MONGO_HOST || '127.0.0.1'
+const mongo_port = process.env.MONGO_PORT || 27017
+const mongo_db = process.env.MONGO_DB || 'conferences'
+
+mongoose.connect(`mongodb://${mongo_host}:${mongo_port}/${mongo_db}`);
 
 const asyncHandler = (fn: RequestHandler) => {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -118,14 +122,18 @@ const Room = mongoose.model('Room', RoomSchema);
 */
 
 const authJWT = (req: Request, res: Response, next: NextFunction) => {
-  const token = req.header('Authorization')?.split(' ')[1];
-  if (token) {
-    jwt.verify(token, jwt_secret, (err, user) => {
-      if (err)
-        return res.sendStatus(403);
-      next();
-    });
-  } else {
+  try {
+    const token = req.header('Authorization')?.split(' ')[1];
+    if (token) {
+      jwt.verify(token, jwt_secret, (err, user) => {
+        if (err)
+          return res.sendStatus(403);
+        next();
+      });
+    } else {
+      res.sendStatus(401);
+    }
+  } catch (_) {
     res.sendStatus(401);
   }
 };
@@ -185,7 +193,7 @@ const LogoSchema = new mongoose.Schema({
 })
 const Logo = mongoose.model('Logo', LogoSchema);
 
-app.post('/logo/:org_id', asyncHandler(async (req: Request, res: Response) => {
+app.post('/logo/:org_id', authJWT, asyncHandler(async (req: Request, res: Response) => {
   const { org_id } = req.params;
   const files: UploadedFile | UploadedFile[] | undefined = req.files?.file;
   console.log(req.files);
@@ -238,7 +246,7 @@ app.get('/logo/byorg/:org_id', asyncHandler(async (req: Request, res: Response) 
   res.status(200).json(ids);
 }));
 
-app.delete('/logo/:id', asyncHandler(async (req: Request, res: Response) => {
+app.delete('/logo/:id', authJWT, asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   const events = await Event.find({ logo: { $eq: id } });
   if (events.length > 0) {
@@ -272,21 +280,21 @@ app.get('/events', asyncHandler(async (req: Request, res: Response) => {
   res.json(events);
 }));
 
-app.post('/events', asyncHandler(async (req: Request, res: Response) => {
+app.post('/events', authJWT, asyncHandler(async (req: Request, res: Response) => {
   const newEvent = new Event(req.body);
   await newEvent.save();
   checkOccupancies();
   res.sendStatus(200);
 }));
 
-app.post('/events/:id', asyncHandler(async (req: Request, res: Response) => {
+app.post('/events/:id', authJWT, asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   await Event.findByIdAndUpdate(id, req.body);
   checkOccupancies();
   res.sendStatus(200);
 }));
 
-app.delete('/events/:id', asyncHandler(async (req: Request, res: Response) => {
+app.delete('/events/:id', authJWT, asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   await Event.findByIdAndDelete(id);
   checkOccupancies();
@@ -315,7 +323,7 @@ type RoomState = {
   custom_message?: string
 };
 
-app.post('/rooms/:room_id', asyncHandler(async (req: Request, res: Response) => {
+app.post('/rooms/:room_id', authJWT, asyncHandler(async (req: Request, res: Response) => {
   const { room_id } = req.params;
   const new_state: RoomState = req.body;
   const now = new Date();
