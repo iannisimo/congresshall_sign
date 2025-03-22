@@ -75,7 +75,10 @@ const WSProvider = ({ children }: any) => {
   const { date, baseDate } = useDate();
   const { token } = useAuth();
 
-  useWebSocket('ws://127.0.0.1:5000/ws', {
+  const currentIP = window.location.hostname; // This will get the current hostname
+  const socketUrl = `ws://${currentIP}/api/ws`;
+
+  useWebSocket(socketUrl, {
     shouldReconnect: () => true,
     heartbeat: {
       message: "ping",
