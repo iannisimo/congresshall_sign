@@ -41,6 +41,7 @@ export type IEvent = {
   start_time?: Date
   end_time?: Date
   prep_time?: Date
+  enabled?: boolean
   resolved?: boolean
 };
 
@@ -94,6 +95,10 @@ const WSProvider = ({ children }: any) => {
           updateEvents();
           break;
       }
+    },
+    onOpen: () => {
+      updateRooms();
+      updateEvents();
     }
   });
 
@@ -133,7 +138,8 @@ const WSProvider = ({ children }: any) => {
       start_time: startOfDay(date),
       end_time: endOfDay(date),
       limit: 0,
-      get_resolved: true
+      get_resolved: true,
+      get_disabled: true,
     }
 
     axios.get('/api/events', { params: params }).then((res) => {

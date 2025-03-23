@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+tmux new-session -d -s dev_env
+tmux split-window -h
+tmux split-window -v
+tmux send-keys -t dev_env:0.0 'docker compose -f dev-compose.yaml up' C-m
+tmux send-keys -t dev_env:0.1 'cd backend && npm run dev' C-m
+tmux send-keys -t dev_env:0.2 'cd frontend && npm run dev' C-m
+tmux attach-session -t dev_env 
+

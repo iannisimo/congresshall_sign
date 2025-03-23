@@ -15,6 +15,7 @@
           typescript
           nodePackages.vscode-json-languageserver
           tailwindcss-language-server
+          tmux
         ];
       };
     }

@@ -7,7 +7,7 @@ import { pDate, pTime } from "../../../_utils/utils"
 import { useAuth } from "../../../_utils/auth/authProvider"
 import { useState } from "react"
 import Popup from "reactjs-popup"
-import { PencilSquare, Person, XLg, Clock, HourglassBottom, HourglassTop, HourglassSplit, Check2Circle } from "react-bootstrap-icons"
+import { PencilSquare, Person, XLg, Clock, HourglassBottom, HourglassTop, HourglassSplit, Check2Circle, EyeSlash } from "react-bootstrap-icons"
 import NewEvent from "./new/new"
 import { addMilliseconds, closestIndexTo, differenceInMilliseconds } from 'date-fns'
 
@@ -25,6 +25,7 @@ const Event = ({ event, collapsed = false }: { event: IEvent, collapsed?: boolea
 
   const stateIcon = () => {
     const size = "60";
+    if (!event.enabled) return (<EyeSlash size={size} />)
     if (!event.start_time || !event.end_time) return <Clock size={size} />;
     switch (closestIndexTo(date, [
       addMilliseconds(event.start_time, -1),
@@ -34,15 +35,15 @@ const Event = ({ event, collapsed = false }: { event: IEvent, collapsed?: boolea
       addMilliseconds(event.end_time, 1)
     ])) {
       case 0:
-        return (<><Clock size={size} /></>)
+        return (<Clock size={size} />)
       case 1:
-        return (<><HourglassTop size={size} /></>)
+        return (<HourglassTop size={size} />)
       case 2:
-        return (<><HourglassSplit size={size} /></>)
+        return (<HourglassSplit size={size} />)
       case 3:
-        return (<><HourglassBottom size={size} /></>)
+        return (<HourglassBottom size={size} />)
       case 4:
-        return (<><Check2Circle size={size} /></>)
+        return (<Check2Circle size={size} />)
     }
     return (<Clock size={10} />)
   }
@@ -50,7 +51,7 @@ const Event = ({ event, collapsed = false }: { event: IEvent, collapsed?: boolea
   if (!collapsed)
     return (
       <>
-        <div className={`w-full h-40 rounded-lg my-2 bg-gray-300 flex flex-row -order-1 relative group`}>
+        <div className={`w-full h-40 rounded-lg my-2 ${event.enabled ? "border-0" : "border-4"} border-error bg-gray-300 flex flex-row -order-1 relative group`}>
           <div className="w-fit h-full flex flex-row box-border items-center justify-evenly space-x-4 px-4" >
             {stateIcon()}
             {event.logo
@@ -92,7 +93,7 @@ const Event = ({ event, collapsed = false }: { event: IEvent, collapsed?: boolea
     )
   return (
     <>
-      <div className={`w-full h-12 rounded-lg my-2 bg-gray-300 flex flex-row items-center place order-1`}>
+      <div className={`w-full h-12 rounded-lg my-2 ${event.enabled ? "border-0" : "border-4"} border-error bg-gray-300 flex flex-row items-center place order-1`}>
         <div className="w-fit h-full flex flex-row box-border items-center justify-evenly" >
           <img className="p-11 h-28" src={clock_svg} />
         </div>

@@ -41,6 +41,10 @@ const asyncHandler = (fn: RequestHandler) => {
 * ----------------------------- SCHEMAS -----------------------------
 */
 const EventSchema = new mongoose.Schema({
+  enabled: {
+    type: Boolean,
+    required: true
+  },
   org: {
     type: String,
     required: true
@@ -168,7 +172,7 @@ app.post('/api/login', asyncHandler(async (req: Request, res: Response) => {
 /*
 * ----------------------------- ROOMS -----------------------------
 */
-app.get("/rooms", asyncHandler(async (req: Request, res: Response) => {
+app.get("/api/rooms", asyncHandler(async (req: Request, res: Response) => {
   const rooms = await Room.find();
   res.json(rooms);
 }));
@@ -261,10 +265,13 @@ app.delete('/api/logo/:id', authJWT, asyncHandler(async (req: Request, res: Resp
 * ----------------------------- EVENTS -----------------------------
 */
 
-const getEvents = async ({ start_time, end_time, limit, get_resolved }: { start_time?: string, end_time?: string, limit?: string, get_resolved?: boolean }) => {
+const getEvents = async ({ start_time, end_time, limit, get_resolved, get_disabled }:
+  { start_time?: string, end_time?: string, limit?: string, get_resolved?: boolean, get_disabled?: boolean }) => {
   const db_query: { resolved?: {}, start_time?: {}, end_time?: {} } = {};
   if (!get_resolved)
     db_query['resolved'] = { $eq: false };
+  if (!get_disabled)
+    db_query['enabled'] = { $eq: true };
   if (start_time)
     db_query['end_time'] = { ...db_query['end_time'], $gt: start_time };
   else
@@ -275,8 +282,9 @@ const getEvents = async ({ start_time, end_time, limit, get_resolved }: { start_
 };
 
 app.get('/api/events', asyncHandler(async (req: Request, res: Response) => {
-  const { start_time, end_time, limit, get_resolved = false }: { start_time?: string, end_time?: string, limit?: string, get_resolved?: boolean } = req.query;
-  const events = await getEvents({ start_time, end_time, limit, get_resolved });
+  const { start_time, end_time, limit, get_resolved = false, get_disabled = false }:
+    { start_time?: string, end_time?: string, limit?: string, get_resolved?: boolean, get_disabled?: boolean } = req.query;
+  const events = await getEvents({ start_time, end_time, limit, get_resolved, get_disabled });
   res.json(events);
 }));
 
@@ -330,6 +338,7 @@ app.post('/api/rooms/:room_id', authJWT, asyncHandler(async (req: Request, res: 
   if (new_state.cur_status === RoomOccupancy.FREE) {
     await Event.updateMany({
       resolved: { $ne: true },
+      enabled: { $eq: true },
       end_time: { $lt: now },
       room_ids: room_id
     }, {
@@ -365,6 +374,7 @@ const checkOccupancies = async () => {
     {
       $match: {
         resolved: { $ne: true },
+        enabled: { $eq: true },
         prep_time: { $lte: now }
       }
     },
@@ -454,6 +464,7 @@ const findNextEvent = async () => {
       $match: {
         $and: [
           { resolved: { $eq: false } },
+          { enabled: { $eq: true } },
           { end_time: { $lte: addMinutes(now, FORCE_TIMEOUT) } },
           { prep_time: { $lte: addMinutes(now, FORCE_TIMEOUT) } },
           { start_time: { $lte: addMinutes(now, FORCE_TIMEOUT) } }
@@ -523,7 +534,7 @@ const enum WSMessage {
   CHANGED_EVENTS = "1"
 };
 
-wsApp.app.ws('/ws', (ws, _: Request) => {
+wsApp.app.ws('/api/ws', (ws, _: Request) => {
   ws.on('message', (data, _) => {
     if (data.toString() === 'ping') {
       ws.send('pong');

@@ -10,6 +10,8 @@ import { IEvent, useWS } from "../../../../_utils/websocket/websoket";
 import axios from "axios";
 import { addDays, differenceInMilliseconds, format } from "date-fns";
 import { ImageSelectBox } from "./imgSelection";
+import { Checkbox } from "../../../../_utils/checkbox";
+import { EyeFill, EyeSlashFill } from 'react-bootstrap-icons'
 
 type OrgOption = {
   label: string | undefined
@@ -53,9 +55,12 @@ const NewEvent = ({ close, _event }: { close?: Function, _event?: IEvent }): Rea
     return f_orgs;
   };
 
+  useEffect(() => {
+    console.log(event);
+  }, [event]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement> | { target: { name: string, value: string } }) => {
     const { name, value } = e.target;
-    console.log(name, value);
     switch (name) {
       case "eventDate":
         setEventDate(value);
@@ -84,6 +89,12 @@ const NewEvent = ({ close, _event }: { close?: Function, _event?: IEvent }): Rea
           ...prevEvent,
           [name]: valueEvent
         }));
+        break;
+      case "enabled":
+        setEvent((prevEvent: IEvent) => ({
+          ...prevEvent,
+          [name]: value === 'on'
+        }))
         break;
       default:
         if (value) {
@@ -209,26 +220,34 @@ const NewEvent = ({ close, _event }: { close?: Function, _event?: IEvent }): Rea
                 <input disabled={!event.org} type="text" name="title" value={event.title ?? ""} onChange={handleChange} required={true} placeholder="...." className="w-full h-fit text-lg px-2 rounded-sm" />
                 <label className="mt-2">Sottotitolo</label>
                 <input disabled={!event.org} type="text" name="subtitle" value={event.subtitle ?? ""} onChange={handleChange} required={false} placeholder="...." className="w-full h-fit text-lg px-2 rounded-sm" />
-                <div className="w-full h-fit mt-4 flex flex-row justify-around center">
-                  <div className="flex flex-col space-y-2 items-center ">
+                <div className="w-full h-fit mt-4 flex flex-row justify-around">
+                  <div className="w-full flex flex-col space-y-2 items-center ">
                     <label className="w-fit">Data evento: </label>
                     <input onKeyDown={onCalKeyDown(setEventDate)} disabled={!event.org} className="w-fit font-mono border-0 select-none" required={true} type="date" name="eventDate" value={eventDate} onChange={handleChange} ></input>
                   </div>
-                  <div className="flex flex-col space-y-2 items-center justify-start">
+                  <div className="w-full flex flex-col space-y-2 items-center justify-start">
                     <label className="w-fit">Inizio evento: </label>
                     <input disabled={!eventDate} className="w-fit font-mono border-0 select-none" required={true} type='time' step={60} name="start_time" onChange={handleChange} value={event.start_time?.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) ?? ''}></input>
                   </div>
-                  <div className="flex flex-col space-y-2 items-center ">
+                  <div className="w-full flex flex-col space-y-2 items-center ">
                     <label className="w-fit">Fine evento: </label>
                     <input disabled={!eventDate} className="w-fit font-mono border-0 select-none" required={true} type='time' step={60} name="end_time" onChange={handleChange} value={event.end_time?.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) ?? ''}></input>
                   </div>
                 </div>
                 <div className="w-full h-fit mt-4 flex flex-row justify-around">
-                  <div className="flex flex-col space-y-2 items-center ">
+                  <div className="w-full flex flex-col items-center justify-center">
+                    <label className="w-fit">Visibile:</label>
+                    <label className="relative cursor-pointer w-6 h-6">
+                      <Checkbox className="w-full h-full peer appearance-none" name="enabled" default_value={event.enabled === false ? false : true} onChange={handleChange} />
+                      <EyeFill className="w-full h-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-0 peer-checked:opacity-100 " />
+                      <EyeSlashFill className="w-full h-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-100 peer-checked:opacity-0 " />
+                    </label>
+                  </div>
+                  <div className="w-full flex flex-col space-y-2 items-center ">
                     <label className="w-fit">Data preparazione: </label>
                     <input onKeyDown={onCalKeyDown(setPrepDate)} disabled={!event.start_time} className="w-fit font-mono border-0 select-none" required={true} type="date" name="prepDate" value={prepDate} onChange={handleChange} ></input>
                   </div>
-                  <div className="flex flex-col space-y-2 items-center justify-start">
+                  <div className="w-full flex flex-col space-y-2 items-center justify-start">
                     <label className="w-fit">Orario preparazione: </label>
                     <input disabled={!eventDate} className="w-fit font-mono border-0 select-none" required={true} type='time' step={60} name="prep_time" onChange={handleChange} value={event.prep_time?.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) ?? ''}></input>
                   </div>
