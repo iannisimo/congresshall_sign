@@ -1,7 +1,4 @@
 import { useDate } from "../../../_utils/date"
-import clock_svg from "../../../assets/time/clock.svg"
-// import hourglass_start_svg from "../../../assets/time/hourglass_start.svg"
-// import hourglass_end_svg from "../../../assets/time/hourglass_end.svg"
 import { IEvent, useWS } from "../../../_utils/websocket/websoket"
 import { pDate, pTime } from "../../../_utils/utils"
 import { useAuth } from "../../../_utils/auth/authProvider"
@@ -23,8 +20,7 @@ const Event = ({ event, collapsed = false }: { event: IEvent, collapsed?: boolea
   const in_progress = () => ((!event.start_time || !event.end_time) ? false : (date.valueOf() >= event.start_time.valueOf() && date.valueOf() <= event.end_time.valueOf()));
   // const nearing_end = () => ((!event.start_time || !event.end_time) ? false : (date.valueOf() - event.start_time.valueOf()) >= (event.end_time.valueOf() - date.valueOf()));
 
-  const stateIcon = () => {
-    const size = "60";
+  const stateIcon = (size: number) => {
     if (!event.enabled) return (<EyeSlash size={size} />)
     if (!event.start_time || !event.end_time) return <Clock size={size} />;
     switch (closestIndexTo(date, [
@@ -53,7 +49,7 @@ const Event = ({ event, collapsed = false }: { event: IEvent, collapsed?: boolea
       <>
         <div className={`w-full h-40 rounded-lg my-2 ${event.enabled ? "border-0" : "border-4"} border-error bg-gray-300 flex flex-row -order-1 relative group`}>
           <div className="w-fit h-full flex flex-row box-border items-center justify-evenly space-x-4 px-4" >
-            {stateIcon()}
+            {stateIcon(60)}
             {event.logo
               ? <img className="w-32 h-32" src={`/api/logo/get/${event.logo}`} />
               : <div className="bg-gray-400 rounded-full h-32 w-32 bg-clip-content flex justify-center items-center"><Person className="mx-3 mb-5 mt-2 size-28" /></div>
@@ -94,8 +90,8 @@ const Event = ({ event, collapsed = false }: { event: IEvent, collapsed?: boolea
   return (
     <>
       <div className={`w-full h-12 rounded-lg my-2 ${event.enabled ? "border-0" : "border-4"} border-error bg-gray-300 flex flex-row items-center place order-1`}>
-        <div className="w-fit h-full flex flex-row box-border items-center justify-evenly" >
-          <img className="p-11 h-28" src={clock_svg} />
+        <div className="w-fit p-7 h-full flex flex-row box-border items-center justify-evenly" >
+          {stateIcon(30)}
         </div>
         <span className="text-lg py-2 truncate px-5 font-semibold">{event.org}</span>
         <span className="text-lg py-2 truncate px-5">{event.title}</span>
