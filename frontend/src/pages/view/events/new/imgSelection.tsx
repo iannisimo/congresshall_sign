@@ -1,5 +1,5 @@
 import axios, { AxiosError } from "axios";
-import { ChangeEventHandler, useEffect, useRef, useState } from "react";
+import { ChangeEventHandler, ClipboardEventHandler, useEffect, useRef, useState } from "react";
 import { PlusCircle, X } from "react-bootstrap-icons";
 
 export const ImageSelectBox = ({ org, name, disabled = false, defaultValue = '', onChange, className }: { org?: string, name?: string, disabled?: boolean, defaultValue?: string, className?: string, onChange?: ChangeEventHandler<HTMLInputElement> }) => {
@@ -75,9 +75,40 @@ export const ImageSelectBox = ({ org, name, disabled = false, defaultValue = '',
     updateLogos();
   }, [org]);
 
+  const handlePaste = (e: any) => {
+    if (!e.clipboardData) return;
+    if (e.clipboardData.files.length) {
+      const fileObject = e.clipboardData.files[0];
+      if (!fileObject) return;
+      const fileReader: FileReader = new FileReader();
+      fileReader.readAsDataURL(fileObject)
+      fileReader.onload = () => {
+        if (!fileReader.result) throw '';
+        const formData = new FormData();
+        formData.append('file', fileObject);
+        axios.post(`/api/logo/${org}`, formData, {
+          headers: {
+            'Content-Type': "multipart/form-data"
+          }
+        }).then(() => updateLogos());
+      }
+      // const file = {
+      //   getRawFile: () => fileObject,
+      //   name: fileObject.name,
+      //   size: fileObject.size,
+      //   status: 2,
+      //   progress: 0
+      // };
+      // console.log(file)
+    } else {
+      alert('No image data was found in your clipboard. Copy an image first or take a screenshot.');
+    }
+  };
+
+
   return (
     <>
-      <div className={`${className} relative ${is_disabled() && "opacity-40"}`}>
+      <div className={`${className} relative ${is_disabled() && "opacity-40"}`} onPaste={handlePaste} >
         <input onChange={uploadFile} disabled={is_disabled()} hidden type="file" accept="image/*" ref={fileInputRef} />
         <div className={`bg-white flex flex-row overflow-x-scroll w-full h-full p-5 space-x-5 `}>
           <div
