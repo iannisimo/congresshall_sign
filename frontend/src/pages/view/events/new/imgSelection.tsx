@@ -1,6 +1,7 @@
 import axios, { AxiosError } from "axios";
 import { ChangeEventHandler, ClipboardEventHandler, useEffect, useRef, useState } from "react";
 import { PlusCircle, X } from "react-bootstrap-icons";
+import { useDropzone } from "react-dropzone";
 
 export const ImageSelectBox = ({ org, name, disabled = false, defaultValue = '', onChange, className }: { org?: string, name?: string, disabled?: boolean, defaultValue?: string, className?: string, onChange?: ChangeEventHandler<HTMLInputElement> }) => {
 
@@ -75,45 +76,66 @@ export const ImageSelectBox = ({ org, name, disabled = false, defaultValue = '',
     updateLogos();
   }, [org]);
 
-  const handlePaste = (e: any) => {
-    if (!e.clipboardData) return;
-    if (e.clipboardData.files.length) {
-      const fileObject = e.clipboardData.files[0];
-      if (!fileObject) return;
-      const fileReader: FileReader = new FileReader();
-      fileReader.readAsDataURL(fileObject)
-      fileReader.onload = () => {
-        if (!fileReader.result) throw '';
-        const formData = new FormData();
-        formData.append('file', fileObject);
-        axios.post(`/api/logo/${org}`, formData, {
-          headers: {
-            'Content-Type': "multipart/form-data"
-          }
-        }).then(() => updateLogos());
-      }
-      // const file = {
-      //   getRawFile: () => fileObject,
-      //   name: fileObject.name,
-      //   size: fileObject.size,
-      //   status: 2,
-      //   progress: 0
-      // };
-      // console.log(file)
-    } else {
-      alert('No image data was found in your clipboard. Copy an image first or take a screenshot.');
-    }
-  };
+  // const handlePaste = (e: any) => {
+  //   if (!e.clipboardData) return;
+  //   if (e.clipboardData.files.length) {
+  //     const fileObject = e.clipboardData.files[0];
+  //     if (!fileObject) return;
+  //     const fileReader: FileReader = new FileReader();
+  //     fileReader.readAsDataURL(fileObject)
+  //     fileReader.onload = () => {
+  //       if (!fileReader.result) throw '';
+  //       const formData = new FormData();
+  //       formData.append('file', fileObject);
+  //       axios.post(`/api/logo/${org}`, formData, {
+  //         headers: {
+  //           'Content-Type': "multipart/form-data"
+  //         }
+  //       }).then(() => updateLogos());
+  //     }
+  //     // const file = {
+  //     //   getRawFile: () => fileObject,
+  //     //   name: fileObject.name,
+  //     //   size: fileObject.size,
+  //     //   status: 2,
+  //     //   progress: 0
+  //     // };
+  //     // console.log(file)
+  //   } else {
+  //     alert('No image data was found in your clipboard. Copy an image first or take a screenshot.');
+  //   }
+  // };
+  const { getRootProps, getInputProps, open, isDragAccept } = useDropzone({
+    // Note how this callback is never invoked if drop occurs on the inner dropzone
 
+    onDrop: files => {
+      const dataTransfer = new DataTransfer();
+      files.forEach((file) => { dataTransfer.items.add(file) })
+      const _ev = { target: { files: dataTransfer.files } } as React.ChangeEvent<HTMLInputElement>;
+      uploadFile(_ev);
+    },
+    noDrag: is_disabled(),
+    noClick: true,
+    // accept: {
+    //   'image/*': []
+    // }
+
+  });
 
   return (
     <>
-      <div className={`${className} relative ${is_disabled() && "opacity-40"}`} onPaste={handlePaste} >
-        <input onChange={uploadFile} disabled={is_disabled()} hidden type="file" accept="image/*" ref={fileInputRef} />
-        <div className={`bg-white flex flex-row overflow-x-scroll w-full h-full p-5 space-x-5 `}>
+      <div {...getRootProps()} className={`${className} relative ${is_disabled() && "opacity-40"}`} >
+        <input {...getInputProps()} onChange={uploadFile} disabled={is_disabled()} />
+        {isDragAccept && (
+          <div className="h-full w-full flex flex-row justify-center items-center absolute bg-clip-content p-3 z-10 bg-gray-300 opacity-80 border-2">
+            <label className="text-lg">Rilascia qua l'immagine</label>
+          </div>
+        )}
+        <div className={`bg-white flex flex-row overflow-x-scroll w-full h-full p-5 space-x-5`}>
           <div
             className={`h-full aspect-square rounded-lg border-2 p-10 border-gray-300 grid place-items-center ${!is_disabled() && "cursor-pointer"}`}
-            onClick={() => fileInputRef.current?.click()}>
+            onClick={open}
+          >
             <PlusCircle className="w-full h-full" />
           </div>
           {logos.map((logo_id) => (
@@ -125,7 +147,7 @@ export const ImageSelectBox = ({ org, name, disabled = false, defaultValue = '',
             </div>
           ))}
         </div>
-      </div>
+      </div >
     </>
   )
 };
