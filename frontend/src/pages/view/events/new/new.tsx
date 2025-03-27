@@ -4,14 +4,14 @@ import Event from "../event";
 import AsyncCreatable from "react-select/async-creatable";
 import Select, { ActionMeta, MultiValue, SingleValue } from "react-select";
 
-import { debounce } from "../../../../_utils/utils";
+import { debounce, GoogleSearch } from "../../../../_utils/utils";
 
 import { IEvent, useWS } from "../../../../_utils/websocket/websoket";
 import axios from "axios";
 import { addDays, differenceInMilliseconds, format } from "date-fns";
 import { ImageSelectBox } from "./imgSelection";
 import { Checkbox } from "../../../../_utils/checkbox";
-import { EyeFill, EyeSlashFill } from 'react-bootstrap-icons'
+import { EyeFill, EyeSlashFill, Search } from 'react-bootstrap-icons'
 
 type OrgOption = {
   label: string | undefined
@@ -204,7 +204,12 @@ const NewEvent = ({ close, _event }: { close?: Function, _event?: IEvent }): Rea
                   name="org"
                   onChange={handleOrgChange}
                   required={true} />
-                <label className="mt-2">Logo:</label>
+                <div className="flex flex-row w-full justify-between">
+                  <label className="mt-2">Logo:</label>
+                  <a title="Cerca Logo" href={GoogleSearch(event.org ?? '')} target="_blank" rel="noopener noreferrer">
+                    <Search className="py-2 h-full aspect-square cursor-pointer" />
+                  </a>
+                </div>
                 <ImageSelectBox org={event.org} onChange={handleChange} defaultValue={event?.logo ?? ""} name="logo" className="w-full h-40 rounded-lg relative" />
                 <label className="mt-2">Sale</label>
                 <Select

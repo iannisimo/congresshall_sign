@@ -54,3 +54,8 @@ export function useInterval(callback: Function, delay: number) {
     }
   }, [delay]);
 }
+
+export const GoogleSearch = (term: string) => {
+  const _term = term.toLowerCase().replace(/ /g, '+');
+  return 'https://www.google.com/search?as_st=y&hl=en&as_q=logo+' + _term + '&as_epq=&as_oq=&as_eq=&imgar=s&imgc=trans&imgcolor=&imgtype=&cr=&as_sitesearch=&as_filetype=&tbs=&udm=2'
+}
