@@ -1,7 +1,6 @@
 import axios, { AxiosError } from "axios";
-import { ChangeEventHandler, ClipboardEventHandler, useEffect, useRef, useState } from "react";
+import { ChangeEventHandler, useEffect, useRef, useState } from "react";
 import { PlusCircle, X } from "react-bootstrap-icons";
-import { useDropzone } from "react-dropzone";
 
 export const ImageSelectBox = ({ org, name, disabled = false, defaultValue = '', onChange, className }: { org?: string, name?: string, disabled?: boolean, defaultValue?: string, className?: string, onChange?: ChangeEventHandler<HTMLInputElement> }) => {
 
@@ -11,6 +10,7 @@ export const ImageSelectBox = ({ org, name, disabled = false, defaultValue = '',
   const [selected, setSelected] = useState<string>(defaultValue);
 
   const [logos, setLogos] = useState<string[]>([]);
+  const [dragOver, setDragOver] = useState<boolean>(false);
 
   const uploadFile = (ev: React.ChangeEvent<HTMLInputElement>) => {
     const files = ev.target.files;
@@ -18,6 +18,7 @@ export const ImageSelectBox = ({ org, name, disabled = false, defaultValue = '',
     if (files.length <= 0) return;
     const file = files.item(0);
     if (!file) return;
+    if (!file.type.startsWith('image/')) return;
     const fileReader: FileReader = new FileReader();
     fileReader.readAsDataURL(file)
     fileReader.onload = () => {
@@ -38,7 +39,6 @@ export const ImageSelectBox = ({ org, name, disabled = false, defaultValue = '',
       return;
     }
     axios.get(`/api/logo/byorg/${org}`).then((res) => {
-      console.log(res.data);
       setLogos(res.data)
     }).catch((_) => { });
   }
@@ -76,65 +76,50 @@ export const ImageSelectBox = ({ org, name, disabled = false, defaultValue = '',
     updateLogos();
   }, [org]);
 
-  // const handlePaste = (e: any) => {
-  //   if (!e.clipboardData) return;
-  //   if (e.clipboardData.files.length) {
-  //     const fileObject = e.clipboardData.files[0];
-  //     if (!fileObject) return;
-  //     const fileReader: FileReader = new FileReader();
-  //     fileReader.readAsDataURL(fileObject)
-  //     fileReader.onload = () => {
-  //       if (!fileReader.result) throw '';
-  //       const formData = new FormData();
-  //       formData.append('file', fileObject);
-  //       axios.post(`/api/logo/${org}`, formData, {
-  //         headers: {
-  //           'Content-Type': "multipart/form-data"
-  //         }
-  //       }).then(() => updateLogos());
-  //     }
-  //     // const file = {
-  //     //   getRawFile: () => fileObject,
-  //     //   name: fileObject.name,
-  //     //   size: fileObject.size,
-  //     //   status: 2,
-  //     //   progress: 0
-  //     // };
-  //     // console.log(file)
-  //   } else {
-  //     alert('No image data was found in your clipboard. Copy an image first or take a screenshot.');
-  //   }
-  // };
-  const { getRootProps, getInputProps, open, isDragAccept } = useDropzone({
-    // Note how this callback is never invoked if drop occurs on the inner dropzone
-
-    onDrop: files => {
-      const dataTransfer = new DataTransfer();
-      files.forEach((file) => { dataTransfer.items.add(file) })
-      const _ev = { target: { files: dataTransfer.files } } as React.ChangeEvent<HTMLInputElement>;
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    setDragOver(false);
+    event.preventDefault();
+    if (!event.dataTransfer) return;
+    const url = event.dataTransfer.getData("URL");
+    if (url) {
+      const r = await fetch(`https://corsproxy.io/?url=${url}`);
+      const b = await r.blob();
+      if (b.type.startsWith('image/')) {
+        const f = new File([b], 'image', { type: b.type });
+        const d = new DataTransfer();
+        d.items.add(f);
+        const _ev = { target: { files: d.files } } as React.ChangeEvent<HTMLInputElement>;
+        uploadFile(_ev);
+        return;
+      }
+    }
+    if (event.dataTransfer.files.length > 0) {
+      const _ev = { target: { files: event.dataTransfer.files } } as React.ChangeEvent<HTMLInputElement>;
       uploadFile(_ev);
-    },
-    noDrag: is_disabled(),
-    noClick: true,
-    // accept: {
-    //   'image/*': []
-    // }
-
-  });
+      return;
+    }
+  };
 
   return (
     <>
-      <div {...getRootProps()} className={`${className} relative ${is_disabled() && "opacity-40"}`} >
-        <input {...getInputProps()} onChange={uploadFile} disabled={is_disabled()} />
-        {isDragAccept && (
+      <div className={`${className} relative ${is_disabled() && "opacity-40"}`}
+        onDrop={handleDrop}
+        onDragOver={(event) => {
+          event.preventDefault();
+        }}
+        onDragEnter={() => { setDragOver(true) }}
+        onDragExit={() => { setDragOver(false) }}
+      >
+        {dragOver && (
           <div className="h-full w-full flex flex-row justify-center items-center absolute bg-clip-content p-3 z-10 bg-gray-300 opacity-80 border-2">
             <label className="text-lg">Rilascia qua l'immagine</label>
           </div>
         )}
+        <input ref={fileInputRef} hidden onChange={uploadFile} disabled={is_disabled()} />
         <div className={`bg-white flex flex-row overflow-x-scroll w-full h-full p-5 space-x-5`}>
           <div
             className={`h-full aspect-square rounded-lg border-2 p-10 border-gray-300 grid place-items-center ${!is_disabled() && "cursor-pointer"}`}
-            onClick={open}
+            onClick={() => { if (fileInputRef.current) fileInputRef.current.click(); }}
           >
             <PlusCircle className="w-full h-full" />
           </div>

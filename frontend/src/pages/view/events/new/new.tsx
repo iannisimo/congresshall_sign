@@ -36,6 +36,7 @@ const NewEvent = ({ close, _event }: { close?: Function, _event?: IEvent }): Rea
   const popupRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const [previewStyle, setPreviewStyle] = useState({});
+  const [search, setSearch] = useState<string | undefined>(undefined);
 
   const [eventDate, setEventDate] = useState<string>("");
   const [prepDate, setPrepDate] = useState<string>("");
@@ -206,9 +207,13 @@ const NewEvent = ({ close, _event }: { close?: Function, _event?: IEvent }): Rea
                   required={true} />
                 <div className="flex flex-row w-full justify-between">
                   <label className="mt-2">Logo:</label>
-                  <a title="Cerca Logo" href={GoogleSearch(event.org ?? '')} target="_blank" rel="noopener noreferrer">
-                    <Search className="py-2 h-full aspect-square cursor-pointer" />
-                  </a>
+                  <div className={`flex flex-row space-x-4 ${event.org && "group"}`}>
+                    <input className="ease-in-out duration-200 scale-x-0 w-0 group-hover:w-fit group-hover:scale-x-100 origin-right overflow-scroll" defaultValue={event.org ?? ""} onChange={(ev) => setSearch(ev.target.value)} />
+                    <a className={`${!event.org && "pointer-events-none"}`} title="Cerca Logo" href={GoogleSearch(search ?? event.org ?? '')} target="_blank" rel="noopener noreferrer">
+                      <Search className="py-2 h-full aspect-square cursor-pointer" />
+                    </a>
+                    {/* <Search className="py-2 h-full aspect-square cursor-pointer" /> */}
+                  </div>
                 </div>
                 <ImageSelectBox org={event.org} onChange={handleChange} defaultValue={event?.logo ?? ""} name="logo" className="w-full h-40 rounded-lg relative" />
                 <label className="mt-2">Sale</label>
