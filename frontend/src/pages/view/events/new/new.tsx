@@ -66,9 +66,19 @@ const NewEvent = ({ close, _event }: { close?: Function, _event?: IEvent }): Rea
       case "eventDate":
         setEventDate(value);
         setPrepDate(value);
+        setEvent((prevEvent: IEvent) => ({
+          ...prevEvent,
+          "start_time": undefined,
+          "end_time": undefined,
+          "prep_time": undefined
+        }));
         break;
       case "prepDate":
         setPrepDate(value);
+        setEvent((prevEvent: IEvent) => ({
+          ...prevEvent,
+          "prep_time": undefined
+        }));
         break;
       case "prep_time":
         const valuePrep = new Date(`${prepDate}T${value}`);
