@@ -254,7 +254,7 @@ app.delete('/api/logo/:id', authJWT, asyncHandler(async (req: Request, res: Resp
   const { id } = req.params;
   const events = await Event.find({ logo: { $eq: id } });
   if (events.length > 0) {
-    res.status(409).json('Questo logo e\' in uso');
+    res.status(409).json('Questo logo e\' in uso da un altro evento, non cancellabile');
     return;
   }
   await Logo.findByIdAndDelete(id);
