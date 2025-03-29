@@ -22,7 +22,12 @@ const AuthProvider = ({ children }: any) => {
   useEffect(() => {
     if (token) {
       axios.defaults.headers.common["Authorization"] = "Bearer " + token;
-      localStorage.setItem('token',token);
+      localStorage.setItem('token', token);
+      axios.get('/api/testauth').catch(() => {
+        console.log('a');
+        setToken(null);
+        window.location.assign('/login');
+      });
     } else {
       delete axios.defaults.headers.common["Authorization"];
       localStorage.removeItem('token')

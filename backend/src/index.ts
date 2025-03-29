@@ -36,7 +36,6 @@ const asyncHandler = (fn: RequestHandler) => {
   };
 };
 
-
 /*
 * ----------------------------- SCHEMAS -----------------------------
 */
@@ -141,6 +140,10 @@ const authJWT = (req: Request, res: Response, next: NextFunction) => {
     res.sendStatus(401);
   }
 };
+
+app.get('/api/testauth', authJWT, async (_: Request, res: Response) => {
+  res.sendStatus(200);
+})
 
 app.post('/api/register', asyncHandler(async (req: Request, res: Response) => {
   const { username, password }: { username: string, password: string } = req.body;
