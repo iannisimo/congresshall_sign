@@ -44,6 +44,16 @@ export const ImageSelectBox = ({ org, name, disabled = false, defaultValue = '',
   }
 
   const deleteLogo = (logo_id: string) => {
+    if (logo_id === selected) {
+      if (!onChange) return;
+      const _ev = {
+        target: {
+          name: name,
+          value: ''
+        }
+      } as React.ChangeEvent<HTMLInputElement>;
+      onChange(_ev);
+    }
     axios.delete(`/api/logo/${logo_id}`).then(() => {
       if (logo_id === selected) setSelected('');
       updateLogos();
@@ -115,7 +125,7 @@ export const ImageSelectBox = ({ org, name, disabled = false, defaultValue = '',
             <label className="text-lg">Rilascia qua l'immagine</label>
           </div>
         )}
-        <input ref={fileInputRef} hidden onChange={uploadFile} disabled={is_disabled()} />
+        <input ref={fileInputRef} type="file" hidden onChange={uploadFile} disabled={is_disabled()} />
         <div className={`bg-white flex flex-row overflow-x-scroll w-full h-full p-5 space-x-5`}>
           <div
             className={`h-full aspect-square rounded-lg border-2 p-10 border-gray-300 grid place-items-center ${!is_disabled() && "cursor-pointer"}`}
