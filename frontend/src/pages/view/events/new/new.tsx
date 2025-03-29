@@ -4,14 +4,14 @@ import Event from "../event";
 import AsyncCreatable from "react-select/async-creatable";
 import Select, { ActionMeta, MultiValue, SingleValue } from "react-select";
 
-import { debounce } from "../../../../_utils/utils";
+import { debounce, GoogleSearch } from "../../../../_utils/utils";
 
 import { IEvent, useWS } from "../../../../_utils/websocket/websoket";
 import axios from "axios";
 import { addDays, differenceInMilliseconds, format } from "date-fns";
 import { ImageSelectBox } from "./imgSelection";
 import { Checkbox } from "../../../../_utils/checkbox";
-import { EyeFill, EyeSlashFill } from 'react-bootstrap-icons'
+import { EyeFill, EyeSlashFill, Search } from 'react-bootstrap-icons'
 
 type OrgOption = {
   label: string | undefined
@@ -35,7 +35,9 @@ const NewEvent = ({ close, _event }: { close?: Function, _event?: IEvent }): Rea
 
   const popupRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLAnchorElement>(null);
   const [previewStyle, setPreviewStyle] = useState({});
+  const [search, setSearch] = useState<string | undefined>(undefined);
 
   const [eventDate, setEventDate] = useState<string>("");
   const [prepDate, setPrepDate] = useState<string>("");
@@ -65,9 +67,19 @@ const NewEvent = ({ close, _event }: { close?: Function, _event?: IEvent }): Rea
       case "eventDate":
         setEventDate(value);
         setPrepDate(value);
+        setEvent((prevEvent: IEvent) => ({
+          ...prevEvent,
+          "start_time": undefined,
+          "end_time": undefined,
+          "prep_time": undefined
+        }));
         break;
       case "prepDate":
         setPrepDate(value);
+        setEvent((prevEvent: IEvent) => ({
+          ...prevEvent,
+          "prep_time": undefined
+        }));
         break;
       case "prep_time":
         const valuePrep = new Date(`${prepDate}T${value}`);
@@ -204,7 +216,25 @@ const NewEvent = ({ close, _event }: { close?: Function, _event?: IEvent }): Rea
                   name="org"
                   onChange={handleOrgChange}
                   required={true} />
-                <label className="mt-2">Logo:</label>
+                <div className="flex flex-row w-full justify-between">
+                  <label className="mt-2">Logo:</label>
+                  <div className={`flex flex-row space-x-4 ${event.org && "group"}`}>
+                    <input
+                      className="ease-in-out duration-200 scale-x-0 w-0 focus:w-fit focus:scale-x-100 group-hover:w-fit group-hover:scale-x-100 origin-right overflow-scroll"
+                      defaultValue={event.org ?? ""}
+                      onChange={(ev) => setSearch(ev.target.value)}
+                      onKeyDown={(ev) => {
+                        if (ev.key === 'Enter' && searchRef.current) {
+                          ev.preventDefault();
+                          searchRef.current.click();
+                        }
+                      }}
+                    />
+                    <a ref={searchRef} className={`${!event.org && "pointer-events-none"}`} title="Cerca Logo" href={GoogleSearch(search ?? event.org ?? '')} target="_blank" rel="noopener noreferrer">
+                      <Search className="py-2 h-full aspect-square cursor-pointer" />
+                    </a>
+                  </div>
+                </div>
                 <ImageSelectBox org={event.org} onChange={handleChange} defaultValue={event?.logo ?? ""} name="logo" className="w-full h-40 rounded-lg relative" />
                 <label className="mt-2">Sale</label>
                 <Select

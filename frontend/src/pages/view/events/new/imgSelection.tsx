@@ -10,6 +10,7 @@ export const ImageSelectBox = ({ org, name, disabled = false, defaultValue = '',
   const [selected, setSelected] = useState<string>(defaultValue);
 
   const [logos, setLogos] = useState<string[]>([]);
+  const [dragOver, setDragOver] = useState<boolean>(false);
 
   const uploadFile = (ev: React.ChangeEvent<HTMLInputElement>) => {
     const files = ev.target.files;
@@ -17,6 +18,7 @@ export const ImageSelectBox = ({ org, name, disabled = false, defaultValue = '',
     if (files.length <= 0) return;
     const file = files.item(0);
     if (!file) return;
+    if (!file.type.startsWith('image/')) return;
     const fileReader: FileReader = new FileReader();
     fileReader.readAsDataURL(file)
     fileReader.onload = () => {
@@ -37,12 +39,21 @@ export const ImageSelectBox = ({ org, name, disabled = false, defaultValue = '',
       return;
     }
     axios.get(`/api/logo/byorg/${org}`).then((res) => {
-      console.log(res.data);
       setLogos(res.data)
     }).catch((_) => { });
   }
 
   const deleteLogo = (logo_id: string) => {
+    if (logo_id === selected) {
+      if (!onChange) return;
+      const _ev = {
+        target: {
+          name: name,
+          value: ''
+        }
+      } as React.ChangeEvent<HTMLInputElement>;
+      onChange(_ev);
+    }
     axios.delete(`/api/logo/${logo_id}`).then(() => {
       if (logo_id === selected) setSelected('');
       updateLogos();
@@ -75,14 +86,51 @@ export const ImageSelectBox = ({ org, name, disabled = false, defaultValue = '',
     updateLogos();
   }, [org]);
 
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    setDragOver(false);
+    event.preventDefault();
+    if (!event.dataTransfer) return;
+    const url = event.dataTransfer.getData("URL");
+    if (url) {
+      const r = await fetch(`https://corsproxy.io/?url=${url}`);
+      const b = await r.blob();
+      if (b.type.startsWith('image/')) {
+        const f = new File([b], 'image', { type: b.type });
+        const d = new DataTransfer();
+        d.items.add(f);
+        const _ev = { target: { files: d.files } } as React.ChangeEvent<HTMLInputElement>;
+        uploadFile(_ev);
+        return;
+      }
+    }
+    if (event.dataTransfer.files.length > 0) {
+      const _ev = { target: { files: event.dataTransfer.files } } as React.ChangeEvent<HTMLInputElement>;
+      uploadFile(_ev);
+      return;
+    }
+  };
+
   return (
     <>
-      <div className={`${className} relative ${is_disabled() && "opacity-40"}`}>
-        <input onChange={uploadFile} disabled={is_disabled()} hidden type="file" accept="image/*" ref={fileInputRef} />
-        <div className={`bg-white flex flex-row overflow-x-scroll w-full h-full p-5 space-x-5 `}>
+      <div className={`${className} relative ${is_disabled() && "opacity-40"}`}
+        onDrop={handleDrop}
+        onDragOver={(event) => {
+          event.preventDefault();
+        }}
+        onDragEnter={() => { setDragOver(true) }}
+        onDragExit={() => { setDragOver(false) }}
+      >
+        {dragOver && (
+          <div className="h-full w-full flex flex-row justify-center items-center absolute bg-clip-content p-3 z-10 bg-gray-300 opacity-80 border-2">
+            <label className="text-lg">Rilascia qua l'immagine</label>
+          </div>
+        )}
+        <input ref={fileInputRef} type="file" hidden onChange={uploadFile} disabled={is_disabled()} />
+        <div className={`bg-white flex flex-row overflow-x-scroll w-full h-full p-5 space-x-5`}>
           <div
             className={`h-full aspect-square rounded-lg border-2 p-10 border-gray-300 grid place-items-center ${!is_disabled() && "cursor-pointer"}`}
-            onClick={() => fileInputRef.current?.click()}>
+            onClick={() => { if (fileInputRef.current) fileInputRef.current.click(); }}
+          >
             <PlusCircle className="w-full h-full" />
           </div>
           {logos.map((logo_id) => (
@@ -94,7 +142,7 @@ export const ImageSelectBox = ({ org, name, disabled = false, defaultValue = '',
             </div>
           ))}
         </div>
-      </div>
+      </div >
     </>
   )
 };
