@@ -203,7 +203,6 @@ const Logo = mongoose.model('Logo', LogoSchema);
 app.post('/api/logo/:org_id', authJWT, asyncHandler(async (req: Request, res: Response) => {
   const { org_id } = req.params;
   const files: UploadedFile | UploadedFile[] | undefined = req.files?.file;
-  console.log(req.files);
   if (!files) {
     res.sendStatus(500);
     return;
@@ -300,7 +299,9 @@ app.post('/api/events', authJWT, asyncHandler(async (req: Request, res: Response
 
 app.post('/api/events/:id', authJWT, asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  await Event.findByIdAndUpdate(id, req.body);
+  await Event.findByIdAndDelete(id);
+  const newEvent = new Event(req.body);
+  await newEvent.save();
   checkOccupancies();
   res.sendStatus(200);
 }));
@@ -523,7 +524,7 @@ const nextRoomTimeout: NodeJS.Timeout | undefined = undefined;
 const resetTimeout = async () => {
   clearTimeout(nextRoomTimeout);
   const next = await findNextEvent();
-  console.log(`Next auto-wakeup in ${millisecondsToMinutes(next)} minutes.`);
+  console.log(`[${new Date().toLocaleString()}] Next auto-wakeup in ${millisecondsToMinutes(next)} minutes.`);
   setTimeout(checkOccupancies, next);
 };
 
