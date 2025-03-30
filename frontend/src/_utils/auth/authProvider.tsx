@@ -24,7 +24,6 @@ const AuthProvider = ({ children }: any) => {
       axios.defaults.headers.common["Authorization"] = "Bearer " + token;
       localStorage.setItem('token', token);
       axios.get('/api/testauth').catch(() => {
-        console.log('a');
         setToken(null);
         window.location.assign('/login');
       });

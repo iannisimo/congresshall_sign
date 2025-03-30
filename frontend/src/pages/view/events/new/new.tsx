@@ -57,10 +57,6 @@ const NewEvent = ({ close, _event }: { close?: Function, _event?: IEvent }): Rea
     return f_orgs;
   };
 
-  useEffect(() => {
-    console.log(event);
-  }, [event]);
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement> | { target: { name: string, value: string } }) => {
     const { name, value } = e.target;
     switch (name) {
@@ -126,11 +122,6 @@ const NewEvent = ({ close, _event }: { close?: Function, _event?: IEvent }): Rea
   const handleOrgChange = (option: SingleValue<OrgOption> | null, action: ActionMeta<OrgOption>) => {
     const ev = { target: { name: action.name ?? "", value: option?.value } } as React.ChangeEvent<HTMLInputElement>;
     handleChange(ev);
-    // console.log(option, a);
-    // setEvent((prevEvent: IEvent) => ({
-    //   ...prevEvent,
-    //   org: option?.value
-    // }));
   }
 
   const handleRoomsChange = (option: MultiValue<RoomOption>, _: any) => {
@@ -148,7 +139,7 @@ const NewEvent = ({ close, _event }: { close?: Function, _event?: IEvent }): Rea
       headers: {
         'Content-Type': 'application/json'
       }
-    }).then((res) => { console.log(res) });
+    });
     if (close) close();
   }
 
