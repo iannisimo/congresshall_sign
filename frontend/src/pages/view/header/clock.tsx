@@ -4,7 +4,6 @@ import Popup from 'reactjs-popup';
 import Calendar from 'react-calendar';
 import './Calendar.css';
 import { format, startOfDay } from 'date-fns'
-import { useEffect } from "react";
 
 const Clock = ({ className }: { className?: string | null }) => {
   const { date, setBaseDate } = useDate();
