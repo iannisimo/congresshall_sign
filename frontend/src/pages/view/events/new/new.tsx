@@ -8,7 +8,7 @@ import { debounce, GoogleSearch } from "../../../../_utils/utils";
 
 import { IEvent, useWS } from "../../../../_utils/websocket/websoket";
 import axios from "axios";
-import { addDays, differenceInMilliseconds, format } from "date-fns";
+import { addDays, differenceInMilliseconds, getHours, getMinutes, format, parseISO, set } from "date-fns";
 import { ImageSelectBox } from "./imgSelection";
 import { Checkbox } from "../../../../_utils/checkbox";
 import { EyeFill, EyeSlashFill, Search } from 'react-bootstrap-icons'
@@ -25,6 +25,10 @@ type RoomOption = {
 
 const NewEvent = ({ close, _event }: { close?: Function, _event?: IEvent }): ReactNode => {
 
+  const [eventDate, setEventDate] = useState<string>("");
+  const [prepDate, setPrepDate] = useState<string>("");
+  const [event, setEvent] = useState<IEvent>({});
+
   useEffect(() => {
     if (_event) {
       setEvent(_event);
@@ -39,9 +43,6 @@ const NewEvent = ({ close, _event }: { close?: Function, _event?: IEvent }): Rea
   const [previewStyle, setPreviewStyle] = useState({});
   const [search, setSearch] = useState<string | undefined>(undefined);
 
-  const [eventDate, setEventDate] = useState<string>("");
-  const [prepDate, setPrepDate] = useState<string>("");
-  const [event, setEvent] = useState<IEvent>({});
 
   const { main_rooms, getOrgs, getRooms } = useWS();
   const roomOptions: RoomOption[] = main_rooms().map((room) => ({
@@ -57,6 +58,15 @@ const NewEvent = ({ close, _event }: { close?: Function, _event?: IEvent }): Rea
     return f_orgs;
   };
 
+  const resetTime = (oldDateTime: Date | undefined, newDate: string | undefined) => {
+    if (!oldDateTime || !newDate) return undefined;
+    const hour = getHours(oldDateTime);
+    const minute = getMinutes(oldDateTime);
+    const newDateTime = parseISO(newDate);
+    const value = set(newDateTime, { hours: hour, minutes: minute });
+    return value;
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement> | { target: { name: string, value: string } }) => {
     const { name, value } = e.target;
     switch (name) {
@@ -65,16 +75,16 @@ const NewEvent = ({ close, _event }: { close?: Function, _event?: IEvent }): Rea
         setPrepDate(value);
         setEvent((prevEvent: IEvent) => ({
           ...prevEvent,
-          "start_time": undefined,
-          "end_time": undefined,
-          "prep_time": undefined
+          "start_time": resetTime(prevEvent.start_time, value),
+          "end_time": resetTime(prevEvent.end_time, value),
+          "prep_time": resetTime(prevEvent.prep_time, value)
         }));
         break;
       case "prepDate":
         setPrepDate(value);
         setEvent((prevEvent: IEvent) => ({
           ...prevEvent,
-          "prep_time": undefined
+          "prep_time": resetTime(prevEvent.prep_time, value)
         }));
         break;
       case "prep_time":
