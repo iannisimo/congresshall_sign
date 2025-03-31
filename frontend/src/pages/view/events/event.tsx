@@ -4,7 +4,7 @@ import { pDate, pTime } from "../../../_utils/utils"
 import { useAuth } from "../../../_utils/auth/authProvider"
 import { useState } from "react"
 import Popup from "reactjs-popup"
-import { PencilSquare, Person, XLg, Clock, HourglassBottom, HourglassTop, HourglassSplit, Check2Circle, EyeSlash } from "react-bootstrap-icons"
+import { PencilSquare, Person, XLg, Clock, HourglassBottom, HourglassTop, HourglassSplit, Check2Circle, EyeSlash, Copy } from "react-bootstrap-icons"
 import NewEvent from "./new/new"
 import { addMilliseconds, closestIndexTo, differenceInMilliseconds } from 'date-fns'
 
@@ -12,7 +12,8 @@ const Event = ({ event, collapsed = false }: { event: IEvent, collapsed?: boolea
 
   const { getRooms, deleteEvent } = useWS();
   const room_names = getRooms(event.room_ids)?.map((room) => (room.name)).join(', ')
-  const [popup, setPopup] = useState<boolean>(false);
+  const [newPopup, setNewPopup] = useState<boolean>(false);
+  const [clonePopup, setClonePopup] = useState<boolean>(false);
 
   const { date } = useDate();
   const { token } = useAuth()
@@ -75,9 +76,13 @@ const Event = ({ event, collapsed = false }: { event: IEvent, collapsed?: boolea
           {
             token
               ? <div className="absolute top-2 right-2 flex flex-row justify-center items-center space-x-2 h-fit w-fit collapse group-hover:visible">
-                <button onClick={() => setPopup(true)} title="Modifica"><PencilSquare size={20} /></button>
-                <Popup repositionOnResize={false} closeOnEscape={false} modal open={popup}>
-                  <NewEvent _event={event} close={() => setPopup(false)} />
+                <button onClick={() => setClonePopup(true)} title="Modifica"><Copy size={20} /></button>
+                <Popup repositionOnResize={false} closeOnEscape={false} modal open={clonePopup}>
+                  <NewEvent _event={{ ...event, _id: undefined }} close={() => setClonePopup(false)} />
+                </Popup>
+                <button onClick={() => setNewPopup(true)} title="Modifica"><PencilSquare size={20} /></button>
+                <Popup repositionOnResize={false} closeOnEscape={false} modal open={newPopup}>
+                  <NewEvent _event={event} close={() => setNewPopup(false)} />
                 </Popup>
                 <button onClick={() => deleteEvent(event._id ?? "")} title="Cancella"><XLg size={20} /></button>
               </div>

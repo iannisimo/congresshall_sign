@@ -18,10 +18,8 @@ export const Checkbox: React.FC<CheckboxProps> = ({ default_value, onChange, ...
       }
     } as React.ChangeEvent<HTMLInputElement>;
     onChange(_ev);
-    console.log(cb_ref.current.checked);
   }, [cb_ref.current]);
   const handleChange = (() => {
-    console.log('handleChange')
     if (!cb_ref.current || !onChange) return;
     const _ev = {
       target: {
