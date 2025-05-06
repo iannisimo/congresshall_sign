@@ -530,7 +530,7 @@ const resetTimeout = async () => {
 
 resetTimeout();
 
-setInterval(resetTimeout, hoursToMilliseconds(1));
+// setInterval(resetTimeout, hoursToMilliseconds(1));
 
 
 const enum WSMessage {
