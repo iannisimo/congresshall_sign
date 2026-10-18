@@ -56,7 +56,8 @@ become a smart-TV browser. **One person** does the admin work.
 ### Admin
 
 - **ADMIN-1** Separate admin area at `/admin`, usable on desktop, tablet and phone.
-- **ADMIN-2** Day timeline for each room, showing preparation, event and clean-up.
+- **ADMIN-2** Weekly programme (Monday to Sunday): for each day, a timeline of the rooms showing
+  preparation, event and clean-up, and the list of that day's events.
 - **ADMIN-3** Event form with defaults for the two usual set-ups: the room is reserved from the changeover
   time (14:00, set by the superadmin) of the day before until the next changeover after the end (the same
   day if it ends earlier), or there is no preparation and clean-up at all. Custom times are still possible. With the first set-up, the days of a

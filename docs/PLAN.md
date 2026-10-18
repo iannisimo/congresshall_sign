@@ -106,6 +106,9 @@ Progress tracker for the rewrite. Requirement IDs refer to the README; design is
       the day's list shows only events running that day
 - [x] The old-data import uses the same clean-up rule
 
+## Changes after the third review
+- [x] Programme page shows a week (Monday to Sunday): timeline and event list for each day, one under the other
+
 ## Log
 - 2026-10-17: requirements agreed, plan written; shared core, server, sign, admin, offline support,
   container setup, import and docs done; old code removed.

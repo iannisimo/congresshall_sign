@@ -151,7 +151,8 @@ reserved). The server answers 409 with the list of conflicts unless
 ## Web app
 
 - `/`: the sign. Lightweight bundle. The admin code is split into its own lazily loaded chunk.
-- `/admin/*`: the admin area. Italian wording, like the old app. It uses TanStack Query against the API.
+- `/admin/*`: the admin area. The programme page shows a week, one day under the other (timeline and
+  event list per day), and scrolls to the selected day (`?d=`), so the editor returns where it started. Italian wording, like the old app. It uses TanStack Query against the API.
 - The sign's sizes are in `rem`, with the root font size tied to the viewport height, so a 16:9 screen
   of any resolution looks the same (SIGN-3).
 - The sign's wording lives in one file, `src/web/sign/strings.ts` (SIGN-4).
