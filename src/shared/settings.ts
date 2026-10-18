@@ -2,6 +2,7 @@ import type { Settings } from './model.ts';
 
 export const DEFAULT_SETTINGS: Settings = {
   marqueeSpeed: 80,
+  marqueeVerticalSpeed: 15,
   marqueePause: 3,
   prepTime: '14:00',
   cleanupTime: '14:00',

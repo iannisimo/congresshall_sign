@@ -101,7 +101,7 @@ export function FitText({ text, lines, size, minSize, leading, className = '' }:
   leading: number;
   className?: string;
 }) {
-  const { marqueeSpeed, marqueePause } = useContext(MarqueeSettings);
+  const { marqueeVerticalSpeed, marqueePause } = useContext(MarqueeSettings);
   const reportCycle = useContext(MarqueeCycle);
   const box = useRef<HTMLSpanElement>(null);
   const track = useRef<HTMLSpanElement>(null);
@@ -138,7 +138,7 @@ export function FitText({ text, lines, size, minSize, leading, className = '' }:
     if (!fit.overflow || !trackElement) return;
     const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
     const distance = fit.overflow + leading * minSize * rem;
-    const speed = (marqueeSpeed * rem) / REFERENCE_REM_PX;
+    const speed = (marqueeVerticalSpeed * rem) / REFERENCE_REM_PX;
     const waiting = marqueePause * 1000;
     const duration = waiting + (distance / speed) * 1000;
     const animation = trackElement.animate(
@@ -151,7 +151,7 @@ export function FitText({ text, lines, size, minSize, leading, className = '' }:
     );
     reportCycle?.(duration);
     return () => animation.cancel();
-  }, [fit, leading, minSize, marqueeSpeed, marqueePause, reportCycle]);
+  }, [fit, leading, minSize, marqueeVerticalSpeed, marqueePause, reportCycle]);
 
   return (
     <span

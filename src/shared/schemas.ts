@@ -131,6 +131,11 @@ export const settingsSchema = z.object({
     .int({ error: 'Usa un numero intero' })
     .min(10, { error: 'Minimo 10 pixel al secondo' })
     .max(400, { error: 'Massimo 400 pixel al secondo' }),
+  marqueeVerticalSpeed: z
+    .number()
+    .int({ error: 'Usa un numero intero' })
+    .min(2, { error: 'Minimo 2 pixel al secondo' })
+    .max(200, { error: 'Massimo 200 pixel al secondo' }),
   marqueePause: z.number().min(0, { error: 'Non può essere negativa' }).max(30, { error: 'Massimo 30 secondi' }),
   prepTime: clockTime,
   cleanupTime: clockTime,

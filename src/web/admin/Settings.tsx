@@ -190,6 +190,20 @@ function SettingsForm({ saved }: { saved: Settings }) {
             unit="px/s"
           />
         </Field>
+        <Field
+          label="Velocità in verticale"
+          error={errors.get('marqueeVerticalSpeed')}
+          hint="Per i titoli lunghi delle schede grandi, che scorrono verso l’alto: più lenta, così si leggono riga per riga."
+        >
+          <NumberWithSlider
+            value={draft.marqueeVerticalSpeed}
+            onChange={(marqueeVerticalSpeed) => setDraft({ ...draft, marqueeVerticalSpeed })}
+            min={2}
+            max={200}
+            step={1}
+            unit="px/s"
+          />
+        </Field>
         <Field label="Pausa all’inizio" error={errors.get('marqueePause')}>
           <NumberWithSlider
             value={draft.marqueePause}

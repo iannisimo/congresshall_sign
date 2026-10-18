@@ -77,6 +77,8 @@ export interface SessionUser {
 export interface Settings {
   /** Speed of text too long for its space on the sign, in pixels per second on a 1080p screen. */
   marqueeSpeed: number;
+  /** Same, for titles that scroll upwards when they don't fit their lines: slower, so they can be read. */
+  marqueeVerticalSpeed: number;
   /** Seconds that text waits at its start before scrolling. */
   marqueePause: number;
   /** "HH:MM" when the default preparation starts, on the day before the event. */
