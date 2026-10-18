@@ -420,7 +420,13 @@ function EditorForm({
               <OrganizerPicker
                 organizers={organizers}
                 value={draft.organizerId}
-                onChange={(id) => update({ organizerId: id, logoId: id === draft.organizerId ? draft.logoId : null })}
+                onChange={(id) =>
+                  update({
+                    organizerId: id,
+                    // A newly chosen organizer starts with its first logo, if it has any.
+                    logoId: id === draft.organizerId ? draft.logoId : (organizers.find((o) => o.id === id)?.logoIds[0] ?? null),
+                  })
+                }
               />
             </Field>
             {organizer && (
