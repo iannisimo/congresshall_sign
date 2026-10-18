@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { MINUTE } from '../../shared/time.ts';
+import type { Settings } from '../../shared/model.ts';
+import { inDailyRange, MINUTE } from '../../shared/time.ts';
 import { checkForUpdate, hasServiceWorker, installUpdate, onUpdateWaiting } from '../lib/pwa.ts';
 import { readStored, writeStored } from '../lib/storage.ts';
 
@@ -17,6 +18,27 @@ export function useNow(offset: number): number {
     return () => clearTimeout(timer);
   }, [offset]);
   return now;
+}
+
+/**
+ * Light or dark sign: `?mode=dark|light` in the URL wins (one screen), then the superadmin's choice,
+ * then the time of day. Sets the class the dark palette hangs on.
+ */
+export function useSignTheme(settings: Settings, now: number): 'light' | 'dark' {
+  const forced = new URLSearchParams(location.search).get('mode');
+  const theme =
+    forced === 'dark' || forced === 'light'
+      ? forced
+      : settings.signTheme !== 'auto'
+        ? settings.signTheme
+        : inDailyRange(now, settings.darkFrom, settings.darkUntil)
+          ? 'dark'
+          : 'light';
+  useEffect(() => {
+    document.documentElement.classList.toggle('sign-dark', theme === 'dark');
+    return () => document.documentElement.classList.remove('sign-dark');
+  }, [theme]);
+  return theme;
 }
 
 /** Height of an element in rem, kept up to date as the screen or layout changes. */

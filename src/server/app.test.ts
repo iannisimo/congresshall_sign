@@ -354,21 +354,21 @@ describe('settings', () => {
     const t = setup();
     const admin = t.client();
     await admin.login();
-    expect(await json(await admin.req('GET', '/api/settings'))).toEqual({ marqueeSpeed: 80, marqueePause: 3, changeoverTime: '14:00' });
-    expect((await admin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 2, changeoverTime: '14:00' })).status).toBe(403);
+    expect(await json(await admin.req('GET', '/api/settings'))).toEqual({ marqueeSpeed: 80, marqueePause: 3, changeoverTime: '14:00', signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00' });
+    expect((await admin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 2, changeoverTime: '14:00', signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00' })).status).toBe(403);
 
     const superadmin = t.client();
     await superadmin.login('superadmin');
-    expect((await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 5, marqueePause: 2, changeoverTime: '14:00' })).status).toBe(400);
-    expect((await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 2, changeoverTime: '25:00' })).status).toBe(400);
+    expect((await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 5, marqueePause: 2, changeoverTime: '14:00', signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00' })).status).toBe(400);
+    expect((await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 2, changeoverTime: '25:00', signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00' })).status).toBe(400);
     const before = await t.app.request('/api/display');
-    const saved = await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 1.5, changeoverTime: '13:30' });
-    expect(await json(saved)).toEqual({ marqueeSpeed: 50, marqueePause: 1.5, changeoverTime: '13:30' });
+    const saved = await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 1.5, changeoverTime: '13:30', signTheme: 'dark', darkFrom: '20:00', darkUntil: '07:00' });
+    expect(await json(saved)).toEqual({ marqueeSpeed: 50, marqueePause: 1.5, changeoverTime: '13:30', signTheme: 'dark', darkFrom: '20:00', darkUntil: '07:00' });
 
     // The snapshot changes, so the sign fetches the new settings at its next poll.
     const after = await t.app.request('/api/display', { headers: { 'if-none-match': before.headers.get('etag')! } });
     expect(after.status).toBe(200);
-    expect((await json<DisplaySnapshot>(after)).settings).toEqual({ marqueeSpeed: 50, marqueePause: 1.5, changeoverTime: '13:30' });
+    expect((await json<DisplaySnapshot>(after)).settings).toEqual({ marqueeSpeed: 50, marqueePause: 1.5, changeoverTime: '13:30', signTheme: 'dark', darkFrom: '20:00', darkUntil: '07:00' });
   });
 });
 

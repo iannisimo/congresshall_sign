@@ -126,6 +126,46 @@ function SettingsForm({ saved }: { saved: Settings }) {
         </div>
       </Card>
 
+      <Card className="space-y-5 p-5">
+        <div>
+          <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Cartello: tema</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Di notte il cartello passa ai colori scuri, meno abbaglianti. Un singolo schermo può forzare il tema aggiungendo{' '}
+            <code className="rounded bg-slate-100 px-1">?mode=dark</code> o <code className="rounded bg-slate-100 px-1">?mode=light</code> al suo
+            indirizzo.
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {(
+            [
+              ['auto', 'Automatico', 'Scuro nelle ore indicate sotto'],
+              ['light', 'Sempre chiaro', 'Anche di notte'],
+              ['dark', 'Sempre scuro', 'Anche di giorno'],
+            ] as const
+          ).map(([value, title, description]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setDraft({ ...draft, signTheme: value })}
+              className={`rounded-lg px-4 py-3 text-left ring-1 ${draft.signTheme === value ? 'bg-brand-50 ring-2 ring-brand-600' : 'bg-white ring-slate-300 hover:bg-slate-50'}`}
+            >
+              <span className="block text-sm font-semibold text-slate-900">{title}</span>
+              <span className="mt-0.5 block text-xs text-slate-600">{description}</span>
+            </button>
+          ))}
+        </div>
+        {draft.signTheme === 'auto' && (
+          <Field label="Colori scuri" error={errors.get('darkFrom') ?? errors.get('darkUntil')}>
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              dalle
+              <input type="time" className={`${inputClass} w-32!`} value={draft.darkFrom} onChange={(e) => setDraft({ ...draft, darkFrom: e.target.value })} />
+              alle
+              <input type="time" className={`${inputClass} w-32!`} value={draft.darkUntil} onChange={(e) => setDraft({ ...draft, darkUntil: e.target.value })} />
+            </div>
+          </Field>
+        )}
+      </Card>
+
       <Card className="space-y-6 p-5">
         <div>
           <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Programma: cambio sala</h2>

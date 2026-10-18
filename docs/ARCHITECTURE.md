@@ -158,6 +158,10 @@ reserved). The server answers 409 with the list of conflicts unless
   event list per day), and scrolls to the selected day (`?d=`), so the editor returns where it started. Italian wording, like the old app. It uses TanStack Query against the API.
 - The sign's sizes are in `rem`, with the root font size tied to the viewport height, so a 16:9 screen
   of any resolution looks the same (SIGN-3).
+- Dark mode (SIGN-9): `html.sign-dark` redefines the colour variables the Tailwind utilities read
+  (`src/web/styles.css`), so components need no dark-specific classes. `useSignTheme` picks the theme:
+  `?mode=` in the URL, then the `signTheme` setting, then `darkFrom`–`darkUntil` on the corrected clock.
+  Organizer logos keep a white tile; the single-colour venue logo is turned white.
 - The sign's wording lives in one file, `src/web/sign/strings.ts` (SIGN-4).
 - What goes where on the sign is a pure function, `buildSignView` in `src/web/sign/schedule.ts`: big cards
   for today's running and upcoming events (or the next day with events), and a compact list of the

@@ -8,7 +8,7 @@ import { formatDay } from '../lib/format.ts';
 import { ComingUp } from './ComingUp.tsx';
 import { CARD_HEIGHT, EventCard } from './EventCard.tsx';
 import { Header } from './Header.tsx';
-import { useKiosk, useNow, useRemHeight, useSelfUpdate } from './hooks.ts';
+import { useKiosk, useNow, useRemHeight, useSelfUpdate, useSignTheme } from './hooks.ts';
 import { MarqueeCycle, MarqueeSettings } from './Marquee.tsx';
 import { SectionTitle, Time } from './parts.tsx';
 import { RecoveringBoundary } from './RecoveringBoundary.tsx';
@@ -94,6 +94,9 @@ function SignScreen() {
   const { snapshot, lastContactAt, clockOffset } = useSnapshot();
   useSelfUpdate(snapshot?.version, lastContactAt);
   const now = useNow(clockOffset);
+  // Snapshots saved by older versions may lack some settings.
+  const settings = useMemo(() => ({ ...DEFAULT_SETTINGS, ...snapshot?.settings }), [snapshot]);
+  useSignTheme(settings, now);
 
   const rooms = useMemo(() => snapshot?.rooms ?? [], [snapshot]);
   const roomNames = useMemo(() => {
@@ -122,8 +125,7 @@ function SignScreen() {
   const featuredIsToday = view.featuredDay === null || view.featuredDay <= now;
 
   return (
-    // Snapshots saved by older versions have no settings.
-    <MarqueeSettings.Provider value={snapshot.settings ?? DEFAULT_SETTINGS}>
+    <MarqueeSettings.Provider value={settings}>
       <div className="flex h-screen w-screen flex-col overflow-hidden bg-canvas">
         <Header venueName={venueName} now={now} staleSince={offlineFor > STALE_AFTER ? lastContactAt : null} />
 

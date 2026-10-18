@@ -14,7 +14,7 @@ export function Header({ venueName, now, staleSince }: { venueName: string; now:
   return (
     <header className="relative flex h-[7.75rem] shrink-0 items-center bg-white px-[2.5rem] shadow-[0_0.15rem_0.6rem_rgb(16_80_140/0.06)]">
       <div className="flex-1 truncate text-[2.3rem] font-semibold tracking-tight text-brand-900">{venueName}</div>
-      <img src={logo} alt="" className="h-[6.5rem]" onClick={toggleFullscreen} />
+      <img src={logo} alt="" className="venue-logo h-[6.5rem]" onClick={toggleFullscreen} />
       <div className="flex flex-1 items-center justify-end gap-[1.5rem]">
         {staleSince !== null && (
           <span className="flex items-center gap-[0.5rem] rounded-full bg-reserved/15 px-[0.9rem] py-[0.3rem] text-[1.1rem] font-semibold text-reserved-deep">

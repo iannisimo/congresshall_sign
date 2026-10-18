@@ -51,3 +51,40 @@ html.sign-mode * {
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+
+/*
+ * Dark sign (night, or forced): the palette is swapped by redefining the colour variables the
+ * utilities use, so the components need no dark-specific classes. Only the sign sets this class.
+ */
+html.sign-dark {
+  color-scheme: dark;
+  --color-canvas: #0a111d;
+  --color-white: #121b2b;
+
+  --color-slate-50: #172030;
+  --color-slate-100: #1e2838;
+  --color-slate-200: #2a3546;
+  --color-slate-300: #3b475a;
+  --color-slate-400: #6b778a;
+  --color-slate-500: #8a96a8;
+  --color-slate-600: #a7b2c1;
+  --color-slate-700: #c3ccd8;
+  --color-slate-900: #e6ebf2;
+
+  --color-brand-50: #16294a;
+  --color-brand-100: #1c3355;
+  --color-brand-200: #24426b;
+  --color-brand-700: #4f9cff;
+  --color-brand-800: #7cb8ff;
+  --color-brand-900: #9cc9ff;
+  --color-brand-950: #e8f1ff;
+
+  --color-free-deep: #4ade80;
+  --color-occupied-deep: #f87171;
+  --color-reserved-deep: #fbbf24;
+}
+
+/* The venue logo is single-colour navy: white on the dark header. */
+html.sign-dark .venue-logo {
+  filter: brightness(0) invert(1);
+}

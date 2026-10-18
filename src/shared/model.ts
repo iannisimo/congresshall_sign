@@ -81,6 +81,10 @@ export interface Settings {
   marqueePause: number;
   /** "HH:MM" when rooms change hands: default preparation starts and clean-up ends then. */
   changeoverTime: string;
+  /** Sign colours: dark between darkFrom and darkUntil ("auto"), or always one of the two. */
+  signTheme: 'auto' | 'light' | 'dark';
+  darkFrom: string;
+  darkUntil: string;
 }
 
 /** Everything the sign needs, from GET /api/display. */

@@ -4,6 +4,9 @@ export const DEFAULT_SETTINGS: Settings = {
   marqueeSpeed: 80,
   marqueePause: 3,
   changeoverTime: '14:00',
+  signTheme: 'auto',
+  darkFrom: '20:00',
+  darkUntil: '07:00',
 };
 
 /**

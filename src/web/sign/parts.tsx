@@ -28,7 +28,8 @@ export function Logo({ logoId, name, className = '' }: { logoId: number | null; 
     );
   }
   return (
-    <div className={`grid shrink-0 place-items-center rounded-[1rem] bg-white p-[0.5rem] ${className}`}>
+    // Always a white tile (not the theme's card colour), so dark logos stay readable at night.
+    <div className={`grid shrink-0 place-items-center rounded-[1rem] bg-[#fff] p-[0.5rem] ${className}`}>
       <img src={`/api/logos/${logoId}`} alt="" className="max-h-full max-w-full object-contain" onError={() => setFailed(true)} />
     </div>
   );

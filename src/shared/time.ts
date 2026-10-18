@@ -21,6 +21,19 @@ export function changeoverMargins(startAt: number, endAt: number, changeoverTime
   return { prepAt, releaseAt };
 }
 
+/** Whether the time of day of `t` is in [from, until), two "HH:MM" times; the range may span midnight. */
+export function inDailyRange(t: number, from: string, until: string): boolean {
+  const minutes = (time: string) => {
+    const [h = 0, m = 0] = time.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const date = new Date(t);
+  const now = date.getHours() * 60 + date.getMinutes();
+  const start = minutes(from);
+  const end = minutes(until);
+  return start <= end ? now >= start && now < end : now >= start || now < end;
+}
+
 /** How far ahead the sign gets events: enough to keep working through a long outage. */
 export const DISPLAY_WINDOW_DAYS = 8;
 

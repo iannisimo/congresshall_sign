@@ -116,6 +116,9 @@ Progress tracker for the rewrite. Requirement IDs refer to the README; design is
 ## Changes after the fifth review
 - [x] Breaks inside events, with presets and custom names; live cards show the current or next break
 
+## Changes after the sixth review
+- [x] Dark mode on the sign: automatic at night, forced by the superadmin, or per screen with `?mode=`
+
 ## Log
 - 2026-10-17: requirements agreed, plan written; shared core, server, sign, admin, offline support,
   container setup, import and docs done; old code removed.

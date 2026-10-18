@@ -24,6 +24,8 @@ become a smart-TV browser. **One person** does the admin work.
 - **SIGN-5** Runs unattended: no mouse cursor, no interaction needed, recovers from errors by itself.
 - **SIGN-6** Updates and reloads itself when a new version is deployed.
 - **SIGN-7** The clock is corrected using the server's time.
+- **SIGN-9** Dark colours at night (20:00–07:00 by default). The superadmin can change the hours or force
+  light or dark; a single screen can force its own with `?mode=dark` or `?mode=light` in its URL.
 - **SIGN-8** Text too long for its space scrolls instead of being cut: titles and subtitles of the event
   cards, and the title and "organizer · rooms" line in the "Coming up" list. It waits at its start, then
   scrolls until it starts again. The superadmin sets the speed and the pause. A page of cards stays up

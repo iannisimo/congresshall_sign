@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Override, Room, ScheduledEvent } from './model.ts';
 import { computeRoomStatuses, eventPhase } from './status.ts';
-import { changeoverMargins, HOUR, MINUTE } from './time.ts';
+import { changeoverMargins, HOUR, inDailyRange, MINUTE } from './time.ts';
 
 const T0 = Date.UTC(2026, 9, 17, 8, 0); // reference "now"; offsets below are relative to it
 
@@ -195,5 +195,23 @@ describe('changeover margins', () => {
   it('follow local time across the daylight saving change', () => {
     // Clocks go back on 25 October 2026 in Italy.
     expect(changeoverMargins(local('2026-10-26T09:00'), local('2026-10-26T18:00'), '14:00').prepAt).toBe(local('2026-10-25T14:00'));
+  });
+});
+
+describe('inDailyRange', () => {
+  const local = (iso: string) => new Date(iso).getTime();
+  it.each([
+    ['2026-10-18T20:00', true],
+    ['2026-10-18T23:59', true],
+    ['2026-10-19T03:00', true],
+    ['2026-10-19T07:00', false],
+    ['2026-10-19T12:00', false],
+    ['2026-10-18T19:59', false],
+  ])('20:00–07:00 at %s is %s', (iso, expected) => {
+    expect(inDailyRange(local(iso), '20:00', '07:00')).toBe(expected);
+  });
+  it('handles ranges within a day', () => {
+    expect(inDailyRange(local('2026-10-18T13:00'), '12:00', '14:00')).toBe(true);
+    expect(inDailyRange(local('2026-10-18T14:00'), '12:00', '14:00')).toBe(false);
   });
 });

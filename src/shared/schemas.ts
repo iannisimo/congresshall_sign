@@ -111,6 +111,8 @@ export const overrideInputSchema = z.object({
 });
 export type OverrideInput = z.input<typeof overrideInputSchema>;
 
+const clockTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, { error: 'Orario non valido' });
+
 export const settingsSchema = z.object({
   marqueeSpeed: z
     .number()
@@ -118,7 +120,10 @@ export const settingsSchema = z.object({
     .min(10, { error: 'Minimo 10 pixel al secondo' })
     .max(400, { error: 'Massimo 400 pixel al secondo' }),
   marqueePause: z.number().min(0, { error: 'Non può essere negativa' }).max(30, { error: 'Massimo 30 secondi' }),
-  changeoverTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, { error: 'Orario non valido' }),
+  changeoverTime: clockTime,
+  signTheme: z.enum(['auto', 'light', 'dark']),
+  darkFrom: clockTime,
+  darkUntil: clockTime,
 });
 
 export const loginSchema = z.object({
