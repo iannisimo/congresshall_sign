@@ -1,6 +1,0 @@
-{
-  "watch": ["src"],
-  "ext": "ts",
-  "ignore": ["src/scripts", "src/templates", "node_modules"],
-  "exec": "esr src/index.ts"
-}
