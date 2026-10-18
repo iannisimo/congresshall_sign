@@ -90,7 +90,6 @@ export interface Settings {
 /** Everything the sign needs, from GET /api/display. */
 export interface DisplaySnapshot {
   version: string;
-  venueName: string;
   settings: Settings;
   rooms: Room[];
   events: ScheduledEvent[];

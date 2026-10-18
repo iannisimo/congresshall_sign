@@ -8,8 +8,6 @@ const schema = z.object({
   DATA_DIR: z.string().min(1).default('./data'),
   /** The built web app (vite build output). */
   WEB_DIR: z.string().min(1).default('./dist/web'),
-  /** Shown in the sign's header. */
-  VENUE_NAME: z.string().trim().min(1).default('Centro Congressi'),
   SESSION_DAYS: z.coerce.number().int().min(1).max(365).default(30),
   /** Trust X-Forwarded-* headers from a reverse proxy. */
   TRUST_PROXY: z.stringbool().default(false),
@@ -22,7 +20,6 @@ export interface Config {
   host: string;
   dataDir: string;
   webDir: string;
-  venueName: string;
   sessionDays: number;
   trustProxy: boolean;
   cookieSecure: 'auto' | 'true' | 'false';
@@ -44,7 +41,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     host: c.HOST,
     dataDir: c.DATA_DIR,
     webDir: c.WEB_DIR,
-    venueName: c.VENUE_NAME,
     sessionDays: c.SESSION_DAYS,
     trustProxy: c.TRUST_PROXY,
     cookieSecure: c.COOKIE_SECURE,

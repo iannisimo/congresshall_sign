@@ -308,7 +308,7 @@ describe('display', () => {
     const res = await t.app.request('/api/display');
     expect(res.status).toBe(200);
     const snapshot = await json<DisplaySnapshot>(res);
-    expect(snapshot).toMatchObject({ version: 'test', venueName: 'Centro Congressi' });
+    expect(snapshot).toMatchObject({ version: 'test' });
     expect(snapshot.rooms.map((r) => r.name)).toEqual(['Sala A', 'Sala B', 'Sala A1']);
     expect(snapshot.events.map((e) => e.roomIds)).toEqual([[rooms.a.id]]); // hidden event left out
 

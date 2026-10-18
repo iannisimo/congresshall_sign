@@ -118,6 +118,7 @@ Progress tracker for the rewrite. Requirement IDs refer to the README; design is
 
 ## Changes after the sixth review
 - [x] Dark mode on the sign: automatic at night, forced by the superadmin, or per screen with `?mode=`
+- [x] No "Centro Congressi" text in the sign's header: the logo takes its place (VENUE_NAME removed)
 
 ## Log
 - 2026-10-17: requirements agreed, plan written; shared core, server, sign, admin, offline support,

@@ -137,7 +137,6 @@ reaches the sign by itself within a minute.
 
 | Variable | Default | |
 |---|---|---|
-| `VENUE_NAME` | `Centro Congressi` | Shown in the sign's header |
 | `TRUST_PROXY` | `false` | Set to `true` behind a reverse proxy (HTTPS) |
 | `COOKIE_SECURE` | `auto` | `auto` uses secure cookies when the request came over HTTPS |
 | `SESSION_DAYS` | `30` | Admin sessions end after this many days without use |

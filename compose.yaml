@@ -5,7 +5,6 @@ services:
     ports:
       - "8080:3000"
     environment:
-      VENUE_NAME: Centro Congressi
       # Behind an HTTPS reverse proxy, set to "true" so secure cookies and origin checks see the real URL.
       TRUST_PROXY: "false"
     volumes:

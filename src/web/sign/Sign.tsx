@@ -111,12 +111,11 @@ function SignScreen() {
   const view = useMemo(() => buildSignView(snapshot?.events ?? [], now), [snapshot, Math.floor(now / MINUTE)]);
 
   const offlineFor = lastContactAt === null ? 0 : now - lastContactAt;
-  const venueName = snapshot?.venueName ?? '';
 
   if (!snapshot) {
     return (
       <div className="flex h-screen flex-col bg-canvas">
-        <Header venueName={venueName} now={now} staleSince={null} />
+        <Header now={now} staleSince={null} />
         <div className="grid flex-1 place-items-center text-[2rem] font-semibold text-slate-400">{strings.connecting}</div>
       </div>
     );
@@ -127,7 +126,7 @@ function SignScreen() {
   return (
     <MarqueeSettings.Provider value={settings}>
       <div className="flex h-screen w-screen flex-col overflow-hidden bg-canvas">
-        <Header venueName={venueName} now={now} staleSince={offlineFor > STALE_AFTER ? lastContactAt : null} />
+        <Header now={now} staleSince={offlineFor > STALE_AFTER ? lastContactAt : null} />
 
         <main className="relative flex min-h-0 flex-1 gap-[2.5rem] px-[2.5rem] pt-[1.75rem] pb-[1.5rem]">
           {view.featured.length === 0 ? (

@@ -19,7 +19,6 @@ export function displayRoutes(deps: AppDeps) {
     const now = deps.clock();
     const snapshot: DisplaySnapshot = {
       version: deps.version,
-      venueName: deps.config.venueName,
       settings: getSettings(deps.db),
       rooms: listRooms(deps.db),
       events: listEvents(deps.db, { ...displayWindow(now), visibleOnly: true }),
