@@ -71,7 +71,7 @@ export function EventCard({
         )}
         <div className="mt-[0.35rem] flex min-w-0 items-center gap-[0.4rem] text-[1.25rem] font-medium text-slate-600">
           <MapPin className="size-[1.25rem] shrink-0 text-brand-700" strokeWidth={2.25} />
-          <span className="truncate">{roomNames.join(' · ')}</span>
+          <Marquee text={roomNames.join(' · ')} className="min-w-0 flex-1" />
         </div>
       </div>
 
@@ -173,7 +173,7 @@ export function HeroCard({
         )}
         <div className={`flex min-w-0 items-center gap-[0.5rem] font-medium text-slate-600 ${pair ? 'mt-[0.5rem] text-[1.4rem]' : 'mt-[0.9rem] text-[1.6rem]'}`}>
           <MapPin className="size-[1.1em] shrink-0 text-brand-700" strokeWidth={2.25} />
-          <span className="truncate">{roomNames.join(' · ')}</span>
+          <Marquee text={roomNames.join(' · ')} className="min-w-0 flex-1" />
         </div>
         {!pair && <div className="mt-[1.25rem] flex flex-wrap items-baseline gap-x-[1rem] gap-y-[0.4rem]">{times}</div>}
       </div>
