@@ -6,6 +6,7 @@ import { installUpdate, onUpdateWaiting } from '../lib/pwa.ts';
 import { DEFAULT_SETTINGS } from '../../shared/settings.ts';
 import { useThemeColors } from '../sign/hooks.ts';
 import { VenueLogo } from '../sign/parts.tsx';
+import type { Role } from '../../shared/model.ts';
 import { api, keys, queryClient, useDisplay, useMe } from './api.ts';
 import EventEditor from './EventEditor.tsx';
 import Login from './Login.tsx';
@@ -47,7 +48,7 @@ function UpdateBanner() {
   );
 }
 
-function Shell({ superadmin, username, children }: { superadmin: boolean; username: string; children: ReactNode }) {
+function Shell({ role, username, children }: { role: Role; username: string; children: ReactNode }) {
   const display = useDisplay();
   const navigate = useNavigate();
   const logout = useMutation({
@@ -68,27 +69,33 @@ function Shell({ superadmin, username, children }: { superadmin: boolean; userna
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-2.5 sm:px-6">
           <VenueLogo version={display.data?.venueLogo ?? null} className="hidden h-9 sm:block" />
           <nav className="-mx-1 flex flex-1 gap-1 overflow-x-auto px-1">
-            <NavItem to="/admin" icon={<CalendarDays className="size-4" />}>
-              Programma
-            </NavItem>
-            <NavItem to="/admin/month" icon={<CalendarRange className="size-4" />}>
-              Calendario
-            </NavItem>
-            <NavItem to="/admin/organizers" icon={<Users className="size-4" />}>
-              Organizzatori
-            </NavItem>
-            {superadmin && (
+            {role !== 'media' && (
               <>
-                <NavItem to="/admin/rooms" icon={<DoorOpen className="size-4" />}>
-                  Sale
+                <NavItem to="/admin" icon={<CalendarDays className="size-4" />}>
+                  Programma
                 </NavItem>
-                <NavItem to="/admin/media" icon={<Images className="size-4" />}>
-                  Media
+                <NavItem to="/admin/month" icon={<CalendarRange className="size-4" />}>
+                  Calendario
                 </NavItem>
-                <NavItem to="/admin/settings" icon={<SettingsIcon className="size-4" />}>
-                  Impostazioni
+                <NavItem to="/admin/organizers" icon={<Users className="size-4" />}>
+                  Organizzatori
                 </NavItem>
               </>
+            )}
+            {role === 'superadmin' && (
+              <NavItem to="/admin/rooms" icon={<DoorOpen className="size-4" />}>
+                Sale
+              </NavItem>
+            )}
+            {role !== 'admin' && (
+              <NavItem to="/admin/media" icon={<Images className="size-4" />}>
+                Media
+              </NavItem>
+            )}
+            {role === 'superadmin' && (
+              <NavItem to="/admin/settings" icon={<SettingsIcon className="size-4" />}>
+                Impostazioni
+              </NavItem>
             )}
           </nav>
           <a
@@ -118,9 +125,20 @@ function Gate() {
   if (me.isPending) return <PageLoading />;
   if (!me.data) return <Login />;
 
-  const superadmin = me.data.role === 'superadmin';
+  const { role, username } = me.data;
+  const superadmin = role === 'superadmin';
+  if (role === 'media') {
+    return (
+      <Shell role={role} username={username}>
+        <Routes>
+          <Route path="media" element={<Media />} />
+          <Route path="*" element={<Navigate to="/admin/media" replace />} />
+        </Routes>
+      </Shell>
+    );
+  }
   return (
-    <Shell superadmin={superadmin} username={me.data.username}>
+    <Shell role={role} username={username}>
       <Routes>
         <Route index element={<WeekView />} />
         <Route path="events/new" element={<EventEditor mode="new" />} />

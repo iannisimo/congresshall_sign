@@ -27,7 +27,7 @@ function checkParents(db: Db, input: RoomInput, id?: number): void {
 export function roomRoutes(deps: AppDeps) {
   const app = new Hono<AppEnv>();
   const { db } = deps;
-  app.use('*', requireRole('admin'));
+  app.use('*', requireRole('admin', 'superadmin'));
 
   app.get('/', (c) => c.json(listRooms(db)));
 

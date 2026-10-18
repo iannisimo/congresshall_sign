@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { settingsSchema } from '../../shared/schemas.ts';
+import { carouselSettingsSchema, settingsSchema } from '../../shared/schemas.ts';
 import { requireRole } from '../auth/session.ts';
 import sharp from 'sharp';
 import { bodyLimit } from 'hono/body-limit';
@@ -62,15 +62,23 @@ export function venueLogoRoutes(deps: AppDeps) {
   return app;
 }
 
-/** Sign settings: both accounts can read them (the admin preview uses them), only the superadmin changes them. */
+/**
+ * Sign settings: every account can read them (the admin preview uses them), only the superadmin changes
+ * them, except the carousel's, which the media account changes too.
+ */
 export function settingsRoutes(deps: AppDeps) {
   const app = new Hono<AppEnv>();
-  app.use('*', requireRole('admin'));
+  app.use('*', requireRole('admin', 'superadmin', 'media'));
 
   app.get('/', (c) => c.json(getSettings(deps.db)));
 
   app.put('/', requireRole('superadmin'), async (c) => {
     saveSettings(deps.db, await readJson(c, settingsSchema));
+    return c.json(getSettings(deps.db));
+  });
+
+  app.put('/carousel', requireRole('superadmin', 'media'), async (c) => {
+    saveSettings(deps.db, { ...getSettings(deps.db), ...(await readJson(c, carouselSettingsSchema)) });
     return c.json(getSettings(deps.db));
   });
 

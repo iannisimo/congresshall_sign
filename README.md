@@ -27,9 +27,12 @@ become a smart-TV browser. **One person** does the admin work.
 - **SIGN-10** The logo in the header is the venue's own SVG, uploaded by the superadmin (the built-in logo
   otherwise).
 - **SIGN-11** When no event is planned, the sign shows a full-screen carousel of images and videos (no
-  header; the room strip stays visible). The superadmin uploads them, orders them by drag and drop,
-  switches them on and off, and sets how long images stay up and how items fit the screen (fit, stretch,
-  zoom), globally or per item. At night, a setting replaces the carousel with a dim clock.
+  header; the room strip stays visible). The superadmin or the media account uploads them, orders them by
+  drag and drop, switches them on and off, and sets how long images stay up and how items fit the screen
+  (fit, stretch, zoom), globally or per item. At night, a setting replaces the carousel with a dim clock.
+  `/carousel` shows the carousel whatever the events and the hour, to preview it.
+- **SIGN-13** `/big` is the sign without the "Coming up" list: the featured day's events (today's, or
+  those of the next day with events) take the whole screen.
 - **SIGN-9** Dark colours at night (20:00–07:00 by default). The superadmin can change the hours or force
   light or dark; a single screen can force its own with `?mode=dark` or `?mode=light` in its URL.
 - **SIGN-8** Text too long for its space scrolls instead of being cut: titles and subtitles of the event
@@ -100,8 +103,9 @@ become a smart-TV browser. **One person** does the admin work.
 
 ### Accounts
 
-- **AUTH-1** Two predefined accounts: `admin` (events, organizers, logos, overrides) and `superadmin`
-  (everything, plus rooms and settings). There is no sign-up.
+- **AUTH-1** Three predefined accounts: `admin` (events, organizers, logos, overrides), `media` (only the
+  carousel: its images and videos, and its settings) and `superadmin` (everything, plus rooms and
+  settings). There is no sign-up.
 - **AUTH-2** Passwords are set and changed from the command line. Changing a password logs that account
   out everywhere.
 - **AUTH-3** Long sessions, renewed silently while in use.
@@ -125,7 +129,7 @@ Needs Node.js 22.18 or later (the server runs its TypeScript directly). `nix dev
 
 ```sh
 npm install
-npm run passwd -- superadmin   # and: npm run passwd -- admin
+npm run passwd -- superadmin   # and: npm run passwd -- admin, npm run passwd -- media
 npm run dev                    # API on :3000, web app on http://localhost:5173
 ```
 
@@ -147,6 +151,7 @@ Deployment
 docker compose up -d --build
 docker compose exec app node src/server/cli.ts passwd superadmin
 docker compose exec app node src/server/cli.ts passwd admin
+docker compose exec app node src/server/cli.ts passwd media
 ```
 
 The sign is at `http://<server>:8080/` and the admin area at `http://<server>:8080/admin`. A redeploy

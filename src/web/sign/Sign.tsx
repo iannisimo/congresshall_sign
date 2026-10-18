@@ -107,7 +107,13 @@ function OutdatedWarning({ since }: { since: number }) {
   );
 }
 
-function SignScreen() {
+/**
+ * standard: today's events and the next days; big: only the featured day's events, across the whole
+ * screen; carousel: the carousel whatever the events and the hour, to preview it.
+ */
+export type SignLayout = 'standard' | 'big' | 'carousel';
+
+function SignScreen({ layout }: { layout: SignLayout }) {
   useKiosk();
   const { snapshot, lastContactAt, clockOffset } = useSnapshot();
   useSelfUpdate(snapshot?.version, lastContactAt);
@@ -149,7 +155,16 @@ function SignScreen() {
   const staleSince = offlineFor > settings.staleAfterMinutes * MINUTE ? lastContactAt : null;
 
   // Nothing planned and media to show: the carousel takes the whole screen above the rooms.
-  if (nothingPlanned && media.length > 0 && !(theme === 'dark' && settings.nightClock)) {
+  // The carousel layout shows it anyway, day or night.
+  const forceCarousel = layout === 'carousel';
+  if (forceCarousel && media.length === 0) {
+    return (
+      <div className="grid h-screen place-items-center bg-canvas text-center text-[2rem] font-semibold text-slate-400">
+        Nessun media attivo: attivane almeno uno nella pagina Media.
+      </div>
+    );
+  }
+  if (media.length > 0 && (forceCarousel || (nothingPlanned && !(theme === 'dark' && settings.nightClock)))) {
     return (
       <div className="flex h-screen w-screen flex-col overflow-hidden bg-canvas">
         <main className="relative flex min-h-0 flex-1">
@@ -193,7 +208,7 @@ function SignScreen() {
             </section>
           )}
 
-          {view.comingUp.length > 0 && (
+          {layout !== 'big' && view.comingUp.length > 0 && (
             <section className="flex min-w-0 flex-1 flex-col">
               <SectionTitle>{strings.comingUp}</SectionTitle>
               <div className="mt-[1rem] flex min-h-0 flex-1 flex-col rounded-[1.25rem] bg-white px-[1.5rem] pb-[0.75rem] shadow-[0_0.15rem_0.6rem_rgb(16_80_140/0.08)] ring-1 ring-slate-900/5">
@@ -211,10 +226,10 @@ function SignScreen() {
   );
 }
 
-export default function Sign() {
+export default function Sign({ layout = 'standard' }: { layout?: SignLayout }) {
   return (
     <RecoveringBoundary>
-      <SignScreen />
+      <SignScreen layout={layout} />
     </RecoveringBoundary>
   );
 }

@@ -59,12 +59,12 @@ export function loadSession(deps: AppDeps) {
   });
 }
 
-/** `admin` lets both accounts in; `superadmin` only the superadmin. */
-export function requireRole(role: Role) {
+/** Lets in only the accounts with one of these roles. */
+export function requireRole(...roles: Role[]) {
   return createMiddleware<AppEnv>(async (c, next) => {
     const user = c.get('user');
     if (!user) throw new ApiError(401, 'Accesso richiesto');
-    if (role === 'superadmin' && user.role !== 'superadmin') throw new ApiError(403, 'Solo il superadmin può farlo');
+    if (!roles.includes(user.role)) throw new ApiError(403, 'Questo account non può farlo');
     await next();
   });
 }

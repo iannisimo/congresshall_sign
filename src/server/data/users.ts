@@ -1,7 +1,7 @@
 import type { Role, SessionUser } from '../../shared/model.ts';
 import { get, run, transaction, type Db } from '../db/database.ts';
 
-export const USERNAMES = ['admin', 'superadmin'] as const;
+export const USERNAMES = ['admin', 'superadmin', 'media'] as const;
 
 export interface UserRecord extends SessionUser {
   passwordHash: string | null;

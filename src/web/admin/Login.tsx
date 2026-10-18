@@ -29,6 +29,7 @@ export default function Login() {
             <select className={inputClass} value={username} onChange={(e) => setUsername(e.target.value)}>
               <option value="admin">admin</option>
               <option value="superadmin">superadmin</option>
+              <option value="media">media</option>
             </select>
           </Field>
           <Field label="Password">

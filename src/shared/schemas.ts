@@ -156,6 +156,9 @@ export const settingsSchema = z.object({
   reservedColor: hexColor,
 });
 
+/** The part of the settings the media account can change. */
+export const carouselSettingsSchema = settingsSchema.pick({ carouselImageSeconds: true, carouselFit: true });
+
 export const mediaPatchSchema = z.object({
   enabled: z.boolean().optional(),
   fit: z.enum(['contain', 'fill', 'cover']).nullable().optional(),

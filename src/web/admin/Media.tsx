@@ -1,10 +1,10 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Film, GripVertical, Image as ImageIcon, Trash2, Upload } from 'lucide-react';
+import { ExternalLink, Film, GripVertical, Image as ImageIcon, Trash2, Upload } from 'lucide-react';
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import type { MediaFit, MediaItem, Settings } from '../../shared/model.ts';
 import { api, errorMessage, HttpError, keys, queryClient, useSettings } from './api.ts';
 import { NumberWithSlider } from './Settings.tsx';
-import { Badge, Button, Card, ErrorNote, Field, inputClass, PageLoading, useFeedback } from './ui.tsx';
+import { Badge, Button, buttonClass, Card, ErrorNote, Field, inputClass, PageLoading, useFeedback } from './ui.tsx';
 
 const mediaKey = ['media'] as const;
 
@@ -59,7 +59,7 @@ function CarouselSettings({ settings }: { settings: Settings }) {
   const valid = Number.isInteger(seconds) && seconds >= 2 && seconds <= 600;
   const changed = seconds !== settings.carouselImageSeconds || fit !== settings.carouselFit;
   const save = useMutation({
-    mutationFn: () => api<Settings>('/settings', { method: 'PUT', json: { ...settings, carouselImageSeconds: seconds, carouselFit: fit } }),
+    mutationFn: () => api<Settings>('/settings/carousel', { method: 'PUT', json: { carouselImageSeconds: seconds, carouselFit: fit } }),
     onSuccess: (saved) => {
       queryClient.setQueryData(keys.settings, saved);
       void queryClient.invalidateQueries({ queryKey: keys.display });
@@ -114,7 +114,7 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: (che
   );
 }
 
-/** Carousel images and videos, shown by the sign when no event is planned (superadmin). */
+/** Carousel images and videos, shown by the sign when no event is planned (superadmin and media). */
 export default function Media() {
   const { confirm, toast } = useFeedback();
   const media = useQuery({ queryKey: mediaKey, queryFn: () => api<MediaItem[]>('/media') });
@@ -214,10 +214,16 @@ export default function Media() {
             sempre visibili in basso. Trascina dalla maniglia per cambiare l’ordine.
           </p>
         </div>
-        <Button variant="primary" disabled={uploading !== null} onClick={() => fileInput.current?.click()}>
-          <Upload className="size-4" />
-          Carica
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <a href="/carousel" target="_blank" rel="noreferrer" className={buttonClass()} title="Il cartello con il solo carosello, anche se ci sono eventi">
+            <ExternalLink className="size-4" />
+            Anteprima
+          </a>
+          <Button variant="primary" disabled={uploading !== null} onClick={() => fileInput.current?.click()}>
+            <Upload className="size-4" />
+            Carica
+          </Button>
+        </div>
         <input
           ref={fileInput}
           type="file"

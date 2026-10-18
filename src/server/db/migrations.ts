@@ -133,4 +133,21 @@ export const migrations: string[] = [
   ALTER TABLE events ADD COLUMN reception_notes TEXT;
   ALTER TABLE events ADD COLUMN housekeeping_notes TEXT;
   `,
+  `
+  -- The media account, which only manages the carousel. SQLite can't change a CHECK, so the table is
+  -- rebuilt; dropping it would delete the sessions, which are put back so nobody is logged out.
+  CREATE TABLE users_new (
+    username TEXT PRIMARY KEY,
+    role TEXT NOT NULL CHECK (role IN ('admin', 'superadmin', 'media')),
+    password_hash TEXT,
+    password_changed_at INTEGER
+  );
+  INSERT INTO users_new SELECT username, role, password_hash, password_changed_at FROM users;
+  INSERT INTO users_new (username, role) VALUES ('media', 'media');
+  CREATE TEMP TABLE sessions_kept AS SELECT * FROM sessions;
+  DROP TABLE users;
+  ALTER TABLE users_new RENAME TO users;
+  INSERT INTO sessions SELECT * FROM sessions_kept;
+  DROP TABLE sessions_kept;
+  `,
 ];

@@ -44,7 +44,7 @@ function rejectConflicts(db: Db, items: { id?: number; input: EventInput }[]): v
 export function eventRoutes(deps: AppDeps) {
   const app = new Hono<AppEnv>();
   const { db } = deps;
-  app.use('*', requireRole('admin'));
+  app.use('*', requireRole('admin', 'superadmin'));
 
   app.get('/', (c) => {
     const range = parse(eventRangeSchema, c.req.query());

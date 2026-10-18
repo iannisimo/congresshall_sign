@@ -78,7 +78,8 @@ export interface Organizer {
   eventCount: number;
 }
 
-export type Role = 'admin' | 'superadmin';
+/** admin: the programme; media: only the carousel; superadmin: everything. */
+export type Role = 'admin' | 'superadmin' | 'media';
 
 export interface SessionUser {
   username: string;

@@ -14,6 +14,8 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Sign />} />
+        <Route path="/carousel" element={<Sign layout="carousel" />} />
+        <Route path="/big" element={<Sign layout="big" />} />
         <Route
           path="/admin/*"
           element={

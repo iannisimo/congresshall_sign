@@ -55,7 +55,7 @@ export function mediaRoutes(deps: AppDeps) {
   const { db } = deps;
   const dir = join(deps.config.dataDir, 'media');
 
-  app.get('/', requireRole('admin'), (c) => c.json(listMedia(db).map(({ file: _file, ...item }) => item)));
+  app.get('/', requireRole('superadmin', 'media'), (c) => c.json(listMedia(db).map(({ file: _file, ...item }) => item)));
 
   // Public: the sign plays these. Supports Range requests, which video players rely on.
   app.get('/:id', async (c) => {
@@ -87,7 +87,7 @@ export function mediaRoutes(deps: AppDeps) {
   });
 
   /** The raw file as the body, its type in Content-Type and its name in X-File-Name (URI-encoded). */
-  app.post('/', requireRole('superadmin'), async (c) => {
+  app.post('/', requireRole('superadmin', 'media'), async (c) => {
     const type = (c.req.header('content-type') ?? '').split(';')[0]!.trim().toLowerCase();
     const kind: MediaKind | null = type.startsWith('image/') ? 'image' : VIDEO_TYPES[type] ? 'video' : null;
     if (!kind) throw new ApiError(400, 'Formato non supportato: immagini, o video MP4 (H.264) e WebM');
@@ -142,7 +142,7 @@ export function mediaRoutes(deps: AppDeps) {
     }
   });
 
-  app.put('/order', requireRole('superadmin'), async (c) => {
+  app.put('/order', requireRole('superadmin', 'media'), async (c) => {
     const { ids } = await readJson(c, mediaOrderSchema);
     const existing = listMedia(db).map((m) => m.id);
     if (ids.length !== existing.length || !existing.every((id) => ids.includes(id))) {
@@ -153,7 +153,7 @@ export function mediaRoutes(deps: AppDeps) {
   });
 
   /** Switch an item on or off, or set its own fit (null: the global one). */
-  app.patch('/:id', requireRole('superadmin'), async (c) => {
+  app.patch('/:id', requireRole('superadmin', 'media'), async (c) => {
     const id = idParam(c);
     const patch = await readJson(c, mediaPatchSchema);
     if (!getMedia(db, id)) throw notFound();
@@ -162,7 +162,7 @@ export function mediaRoutes(deps: AppDeps) {
     return c.json(item);
   });
 
-  app.delete('/:id', requireRole('superadmin'), async (c) => {
+  app.delete('/:id', requireRole('superadmin', 'media'), async (c) => {
     const media = getMedia(db, idParam(c));
     if (!media) throw notFound();
     deleteMedia(db, media.id);

@@ -44,7 +44,7 @@ export function authRoutes(deps: AppDeps) {
     return c.body(null, 204);
   });
 
-  app.get('/me', requireRole('admin'), (c) => c.json(c.get('user')));
+  app.get('/me', requireRole('admin', 'superadmin', 'media'), (c) => c.json(c.get('user')));
 
   return app;
 }

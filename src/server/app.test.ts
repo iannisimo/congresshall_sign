@@ -23,6 +23,7 @@ function setup() {
   const db = openDatabase(':memory:');
   setPassword(db, 'admin', passwordHash, clock.now);
   setPassword(db, 'superadmin', passwordHash, clock.now);
+  setPassword(db, 'media', passwordHash, clock.now);
   // Uploaded media go to a throwaway folder.
   const dataDir = mkdtempSync(join(tmpdir(), 'sign-test-'));
   const app = createApp({ db, config: loadConfig({ DATA_DIR: dataDir }), version: 'test', clock: () => clock.now });
@@ -507,9 +508,30 @@ describe('media', () => {
     expect((await superadmin.req('PATCH', `/api/media/${videoId}`, { fit: 'zoom' })).status).toBe(400);
     await superadmin.req('PATCH', `/api/media/${imageId}`, { enabled: true });
     await superadmin.req('PUT', '/api/media/order', { ids: [videoId, imageId] });
-    expect((await json<{ id: number }[]>(await admin.req('GET', '/api/media'))).map((m) => m.id)).toEqual([videoId, imageId]);
+    expect((await json<{ id: number }[]>(await superadmin.req('GET', '/api/media'))).map((m) => m.id)).toEqual([videoId, imageId]);
 
     expect((await superadmin.req('DELETE', `/api/media/${imageId}`)).status).toBe(204);
     expect((await t.app.request(`/api/media/${imageId}`)).status).toBe(404);
+  });
+});
+
+describe('media account', () => {
+  it('manages the carousel and nothing else', async () => {
+    const t = setup();
+    const media = t.client();
+    await media.login('media');
+    expect(await json(await media.req('GET', '/api/auth/me'))).toMatchObject({ username: 'media', role: 'media' });
+    expect((await media.req('GET', '/api/media')).status).toBe(200);
+    const saved = await media.req('PUT', '/api/settings/carousel', { carouselImageSeconds: 20, carouselFit: 'cover' });
+    expect(await json(saved)).toMatchObject({ carouselImageSeconds: 20, carouselFit: 'cover' });
+
+    expect((await media.req('GET', '/api/events?from=0&to=1')).status).toBe(403);
+    expect((await media.req('GET', '/api/organizers')).status).toBe(403);
+    expect((await media.req('GET', '/api/rooms')).status).toBe(403);
+    expect((await media.req('PUT', '/api/settings', {})).status).toBe(403);
+
+    const admin = t.client();
+    await admin.login();
+    expect((await admin.req('GET', '/api/media')).status).toBe(403);
   });
 });

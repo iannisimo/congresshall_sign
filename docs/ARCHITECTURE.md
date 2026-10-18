@@ -57,7 +57,7 @@ server's time zone (`TZ`, `Europe/Rome` in the container).
   (scrolling, theme, offline warnings, carousel, colours, and `prepTime`, `cleanupTime`,
   `cleanupMinGapHours` for the default margins). A missing or invalid value uses its default; a value
   saved under the old `changeoverTime` key is used for both `prepTime` and `cleanupTime`.
-- **users**: `username` (`admin` | `superadmin`), `password_hash?`, `password_changed_at`.
+- **users**: `username` (`admin` | `superadmin` | `media`), `password_hash?`, `password_changed_at`.
 - **sessions**: `token_hash`, `username`, `created_at`, `expires_at`.
 
 Migrations are a list of SQL scripts applied in order, tracked with `PRAGMA user_version`.
@@ -111,7 +111,7 @@ statuses at the right times while offline (SYNC-3), and the server needs no time
 
 ## API
 
-All under `/api`, JSON unless stated otherwise. 🔓 public · 🔑 admin or superadmin · 👑 superadmin.
+All under `/api`, JSON unless stated otherwise. 🔓 public · 🔑 admin or superadmin · 🖼️ media or superadmin · 👤 any account · 👑 superadmin.
 
 | Method & path | | Purpose |
 |---|---|---|
@@ -119,8 +119,8 @@ All under `/api`, JSON unless stated otherwise. 🔓 public · 🔑 admin or sup
 | `GET /display` | 🔓 | Sign snapshot (see above) |
 | `GET /logos/:id` | 🔓 | Logo image, cached forever (logos never change) |
 | `POST /auth/login` | 🔓 | `{username, password}`, sets the session cookie |
-| `POST /auth/logout` | 🔑 | Ends the session |
-| `GET /auth/me` | 🔑 | `{username, role}` |
+| `POST /auth/logout` | 👤 | Ends the session |
+| `GET /auth/me` | 👤 | `{username, role}` |
 | `GET /events?from=&to=` | 🔑 | All events, hidden ones included, overlapping the range |
 | `GET /events/:id` | 🔑 | One event |
 | `POST /events` | 🔑 | `{events: EventInput[], allowConflicts?}`. Creates one or more events in one transaction (ADMIN-8) |
@@ -140,13 +140,14 @@ All under `/api`, JSON unless stated otherwise. 🔓 public · 🔑 admin or sup
 | `DELETE /rooms/:id/override` | 🔑 | Back to the calculated status |
 | `GET /venue-logo` | 🔓 | The uploaded venue logo (SVG, strict CSP); `?v=` versions are cached forever |
 | `PUT /venue-logo`, `DELETE /venue-logo` | 👑 | Upload an SVG (multipart `file`, max 1 MB, no scripts), or go back to the built-in logo |
-| `GET /media` | 🔑 | Carousel items, in order |
+| `GET /media` | 🖼️ | Carousel items, in order |
 | `GET /media/:id` | 🔓 | The file, with Range support (video playback) |
-| `POST /media` | 👑 | Raw file as the body, `Content-Type` and `X-File-Name`; streamed to disk. Images (max 30 MB) shrunk to Full HD; MP4/WebM videos (max 500 MB) kept as they are |
-| `PATCH /media/:id` | 👑 | `{enabled?, fit?}` |
-| `PUT /media/order`, `DELETE /media/:id` | 👑 | Reorder, delete |
-| `GET /settings` | 🔑 | Sign settings (the admin preview uses them too) |
+| `POST /media` | 🖼️ | Raw file as the body, `Content-Type` and `X-File-Name`; streamed to disk. Images (max 30 MB) shrunk to Full HD; MP4/WebM videos (max 500 MB) kept as they are |
+| `PATCH /media/:id` | 🖼️ | `{enabled?, fit?}` |
+| `PUT /media/order`, `DELETE /media/:id` | 🖼️ | Reorder, delete |
+| `GET /settings` | 👤 | Sign settings (the admin preview uses them too) |
 | `PUT /settings` | 👑 | Every key of `Settings` (`src/shared/model.ts`) |
+| `PUT /settings/carousel` | 🖼️ | `{carouselImageSeconds, carouselFit}` only |
 
 Saving events checks for **conflicts**: another event running in the same room at the same time
 (overlapping `[start_at, end_at)`). Preparation and clean-up don't count: the default ones span about a
@@ -156,7 +157,7 @@ reserved). The server answers 409 with the list of conflicts unless
 
 ## Auth (AUTH-1 … AUTH-3)
 
-- The `admin` and `superadmin` users always exist. A user without a password can't log in.
+- The `admin`, `superadmin` and `media` users always exist; `media` only sees the Media page. A user without a password can't log in.
 - `npm run passwd -- <user>` (or `node src/server/cli.ts passwd <user>` in the container) sets the
   password and deletes that user's sessions.
 - Passwords are hashed with Node's built-in `scrypt`.

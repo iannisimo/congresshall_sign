@@ -20,7 +20,7 @@ import { fetchImage, GENERIC_LOGOS, MAX_UPLOAD_BYTES, normalizeLogo, readGeneric
 export function organizerRoutes(deps: AppDeps) {
   const app = new Hono<AppEnv>();
   const { db } = deps;
-  app.use('*', requireRole('admin'));
+  app.use('*', requireRole('admin', 'superadmin'));
 
   app.get('/', (c) => c.json(listOrganizers(db)));
 
@@ -110,7 +110,7 @@ export function organizerRoutes(deps: AppDeps) {
 /** The generic emblems: listed for the logo picker, and served as SVG for its previews. */
 export function genericLogoRoutes() {
   const app = new Hono<AppEnv>();
-  app.use('*', requireRole('admin'));
+  app.use('*', requireRole('admin', 'superadmin'));
   app.get('/', (c) => c.json(GENERIC_LOGOS));
   app.get('/:id', (c) => {
     const svg = readGenericLogo(c.req.param('id'));
@@ -134,7 +134,7 @@ export function logoRoutes(deps: AppDeps) {
     });
   });
 
-  app.delete('/:id', requireRole('admin'), (c) => {
+  app.delete('/:id', requireRole('admin', 'superadmin'), (c) => {
     const id = idParam(c);
     const uses = countLogoUses(db, id);
     if (uses > 0) throw new ApiError(409, `Non eliminabile: usato da ${uses} eventi`);
