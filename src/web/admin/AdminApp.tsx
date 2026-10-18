@@ -1,5 +1,5 @@
 import { QueryClientProvider, useMutation } from '@tanstack/react-query';
-import { CalendarDays, DoorOpen, ExternalLink, Images, LogOut, Settings as SettingsIcon, Users } from 'lucide-react';
+import { CalendarDays, CalendarRange, DoorOpen, ExternalLink, Images, LogOut, Settings as SettingsIcon, Users } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router';
 import { installUpdate, onUpdateWaiting } from '../lib/pwa.ts';
@@ -10,6 +10,7 @@ import { api, keys, queryClient, useDisplay, useMe } from './api.ts';
 import EventEditor from './EventEditor.tsx';
 import Login from './Login.tsx';
 import Media from './Media.tsx';
+import MonthView from './MonthView.tsx';
 import Organizers from './Organizers.tsx';
 import Rooms from './Rooms.tsx';
 import Settings from './Settings.tsx';
@@ -70,6 +71,9 @@ function Shell({ superadmin, username, children }: { superadmin: boolean; userna
             <NavItem to="/admin" icon={<CalendarDays className="size-4" />}>
               Programma
             </NavItem>
+            <NavItem to="/admin/month" icon={<CalendarRange className="size-4" />}>
+              Calendario
+            </NavItem>
             <NavItem to="/admin/organizers" icon={<Users className="size-4" />}>
               Organizzatori
             </NavItem>
@@ -122,6 +126,7 @@ function Gate() {
         <Route path="events/new" element={<EventEditor mode="new" />} />
         <Route path="events/:id" element={<EventEditor mode="edit" />} />
         <Route path="events/:id/clone" element={<EventEditor mode="clone" />} />
+        <Route path="month" element={<MonthView />} />
         <Route path="organizers" element={<Organizers />} />
         {superadmin && <Route path="rooms" element={<Rooms />} />}
         {superadmin && <Route path="settings" element={<Settings />} />}
