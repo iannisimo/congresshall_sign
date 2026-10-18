@@ -57,14 +57,16 @@ become a smart-TV browser. **One person** does the admin work.
 
 - **ADMIN-1** Separate admin area at `/admin`, usable on desktop, tablet and phone.
 - **ADMIN-2** Day timeline for each room, showing preparation, event and clean-up.
-- **ADMIN-3** Event form with sensible defaults (preparation 30 minutes before, 1 hour long, clean-up
-  30 minutes after).
+- **ADMIN-3** Event form with defaults for the two usual set-ups: the room is reserved from the changeover
+  time (14:00, set by the superadmin) of the day before until the next changeover after the end (the same
+  day if it ends earlier), or there is no preparation and clean-up at all. Custom times are still possible. With the first set-up, the days of a
+  congress keep the room reserved in between.
 - **ADMIN-4** Live preview of how the event will look on the sign.
 - **ADMIN-5** Keyboard shortcuts in date fields: `o` for today (*oggi*), `d` for tomorrow (*domani*).
 - **ADMIN-6** Times are checked (preparation ≤ start < end ≤ free again) in both the browser and the
   server.
-- **ADMIN-7** Warning when an event overlaps another one in the same room. Saving anyway needs
-  confirmation.
+- **ADMIN-7** Warning when two events run in the same room at the same time. Saving anyway needs
+  confirmation. Overlapping preparation and clean-up are normal and don't warn.
 - **ADMIN-8** Multi-day congresses: create the same event on several days at once, and clone existing
   events.
 - **ADMIN-9** Events are edited in place and keep their identity.
@@ -76,7 +78,7 @@ become a smart-TV browser. **One person** does the admin work.
 ### Accounts
 
 - **AUTH-1** Two predefined accounts: `admin` (events, organizers, logos, overrides) and `superadmin`
-  (everything, plus rooms and sign settings). There is no sign-up.
+  (everything, plus rooms and settings). There is no sign-up.
 - **AUTH-2** Passwords are set and changed from the command line. Changing a password logs that account
   out everywhere.
 - **AUTH-3** Long sessions, renewed silently while in use.

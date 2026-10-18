@@ -96,7 +96,18 @@ Progress tracker for the rewrite. Requirement IDs refer to the README; design is
       the new "Impostazioni" page (SIGN-8); pages of cards wait for their texts to scroll through
 - [x] Bigger logo in the sign's header
 
+## Changes after the second review
+- [x] Default preparation and clean-up: from the changeover time (superadmin setting, default 14:00) of the
+      day before to the next changeover after the end;
+      "none" as the other highlighted option; custom times on request. Multi-day congresses keep the
+      room reserved between days.
+- [x] Conflicts only when events run at the same time; margins may overlap
+- [x] Timeline: events as blocks, preparation and clean-up as stripes (also from neighbouring days);
+      the day's list shows only events running that day
+- [x] The old-data import uses the same clean-up rule
+
 ## Log
 - 2026-10-17: requirements agreed, plan written; shared core, server, sign, admin, offline support,
   container setup, import and docs done; old code removed.
 - 2026-10-17: first review: scrolling long texts with superadmin settings, bigger logo, no live bar.
+- 2026-10-18: logout fix; commits; changeover margins for congresses, changeover time as a setting.

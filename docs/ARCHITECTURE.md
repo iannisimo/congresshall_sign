@@ -44,7 +44,8 @@ server's time zone (`TZ`, `Europe/Rome` in the container).
 - **event_rooms**: `event_id`, `room_id`, `position`.
 - **overrides**: `room_id` (one per room), `status`, `message?`, `created_at`, `expires_at?`,
   `until_next_change`.
-- **settings**: `key`, `value` (JSON). Sign settings (`marqueeSpeed`, `marqueePause`); a missing or
+- **settings**: `key`, `value` (JSON). `marqueeSpeed`, `marqueePause` (sign) and `changeoverTime` (default
+  margins); a missing or
   invalid value uses its default from `src/shared/settings.ts`.
 - **users**: `username` (`admin` | `superadmin`), `password_hash?`, `password_changed_at`.
 - **sessions**: `token_hash`, `username`, `created_at`, `expires_at`.
@@ -127,10 +128,12 @@ All under `/api`, JSON unless stated otherwise. 🔓 public · 🔑 admin or sup
 | `PUT /rooms/:id/override` | 🔑 | `{status, message?, until}`. `until` is `next-change`, `{at}` or `manual` |
 | `DELETE /rooms/:id/override` | 🔑 | Back to the calculated status |
 | `GET /settings` | 🔑 | Sign settings (the admin preview uses them too) |
-| `PUT /settings` | 👑 | `{marqueeSpeed, marqueePause}` |
+| `PUT /settings` | 👑 | `{marqueeSpeed, marqueePause, changeoverTime}` |
 
-Saving events checks for **conflicts**: another event booking the same room with an overlapping
-`[prep_at, release_at)` interval. The server answers 409 with the list of conflicts unless
+Saving events checks for **conflicts**: another event running in the same room at the same time
+(overlapping `[start_at, end_at)`). Preparation and clean-up don't count: the default ones span about a
+day and routinely overlap neighbouring events, and the status rules already resolve that (occupied beats
+reserved). The server answers 409 with the list of conflicts unless
 `allowConflicts` is true (ADMIN-7). The admin area runs the same shared check while the form is edited.
 
 ## Auth (AUTH-1 … AUTH-3)
@@ -174,8 +177,10 @@ These are assumptions. Each one is easy to change.
    from overrides, as in the old app.
 2. **Hidden events are drafts.** They don't appear on the sign and don't affect room status, as in the
    old app. They still count for conflict warnings in the admin area.
-3. **Preparation and clean-up** are stored as absolute times. The form offers "minutes before or after"
-   presets and also allows typing an exact time, for example to prepare the evening before.
+3. **Preparation and clean-up** are stored as absolute times. The form offers the two usual congress
+   set-ups (from the changeover time of the day before to the next changeover after the end, see
+   `changeoverMargins` in `src/shared/time.ts`; or none), plus custom times. The changeover time is a
+   superadmin setting (default 14:00); changing it only affects events saved afterwards.
 4. **Sign wording:** English words that most Italians know or that look alike in Italian ("Free",
    "Occupied", "Reserved", "Now", "Next"), dates like `Sat 17 Oct`, the 12-hour clock, and symbols where
    possible (`→ 4:30 PM`).
