@@ -1,0 +1,53 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+
+  /* Brand blue, from the venue logo */
+  --color-brand-50: #f0f8ff;
+  --color-brand-100: #e5f3ff;
+  --color-brand-200: #d1e9ff;
+  --color-brand-300: #b3daff;
+  --color-brand-400: #85c4ff;
+  --color-brand-500: #47a6ff;
+  --color-brand-600: #0d83f2;
+  --color-brand-700: #0871d4;
+  --color-brand-800: #0b5ead;
+  --color-brand-900: #10508c;
+  --color-brand-950: #02274a;
+
+  /* Room status: the bright tone for dots and bars, the deep one for text */
+  --color-free: #14ae5c;
+  --color-free-deep: #0b7a3e;
+  --color-occupied: #e5322d;
+  --color-occupied-deep: #b4211d;
+  --color-reserved: #e8b931;
+  --color-reserved-deep: #8a6400;
+
+  --color-canvas: #eef2f7;
+}
+
+@layer base {
+  body {
+    @apply bg-canvas text-slate-900 antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+}
+
+/*
+ * The sign is sized in rem, and 1rem is 1/54 of the screen height (20px on a 1080p screen),
+ * capped by the width for screens narrower than 16:9. Every resolution then looks the same.
+ */
+html.sign-mode {
+  font-size: min(100vh / 54, 100vw / 96);
+  overflow: hidden;
+  cursor: none;
+  user-select: none;
+}
+html.sign-mode * {
+  cursor: none !important;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
