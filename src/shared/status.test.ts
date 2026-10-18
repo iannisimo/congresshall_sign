@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Override, Room, ScheduledEvent } from './model.ts';
+import type { Override, Room, SignEvent } from './model.ts';
 import { computeRoomStatuses, eventPhase } from './status.ts';
 import { changeoverMargins, HOUR, inDailyRange, MINUTE } from './time.ts';
 
@@ -10,7 +10,7 @@ function room(id: number, extra: Partial<Room> = {}): Room {
 }
 
 /** Event with prep 30 min before start and clean-up 30 min after end. Times are hours from T0. */
-function event(id: number, roomIds: number[], startH: number, endH: number, extra: Partial<ScheduledEvent> = {}): ScheduledEvent {
+function event(id: number, roomIds: number[], startH: number, endH: number, extra: Partial<SignEvent> = {}): SignEvent {
   const startAt = T0 + startH * HOUR;
   const endAt = T0 + endH * HOUR;
   return {
@@ -35,7 +35,7 @@ function override(roomId: number, extra: Partial<Override> = {}): Override {
   return { roomId, status: 'reserved', message: 'Lavori', createdAt: T0, expiresAt: null, untilNextChange: false, ...extra };
 }
 
-function statusAt(now: number, rooms: Room[], events: ScheduledEvent[], overrides: Override[] = []) {
+function statusAt(now: number, rooms: Room[], events: SignEvent[], overrides: Override[] = []) {
   return computeRoomStatuses({ rooms, events, overrides, now });
 }
 

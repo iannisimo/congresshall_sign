@@ -14,6 +14,8 @@ interface EventRow {
   end_at: number;
   release_at: number;
   visible: number;
+  reception_notes: string | null;
+  housekeeping_notes: string | null;
   room_ids: string;
   breaks: string;
 }
@@ -40,6 +42,8 @@ function toEvent(row: EventRow): ScheduledEvent {
     releaseAt: row.release_at,
     breaks: JSON.parse(row.breaks) as EventBreak[],
     visible: row.visible === 1,
+    receptionNotes: row.reception_notes,
+    housekeepingNotes: row.housekeeping_notes,
   };
 }
 
@@ -69,6 +73,8 @@ function columns(input: EventInput) {
     endAt: input.endAt,
     releaseAt: input.releaseAt,
     visible: input.visible ? 1 : 0,
+    receptionNotes: input.receptionNotes,
+    housekeepingNotes: input.housekeepingNotes,
   };
 }
 
@@ -99,8 +105,10 @@ function setBreaks(db: Db, eventId: number, breaks: EventBreak[]): void {
 export function insertEvent(db: Db, input: EventInput, now: number): number {
   const { lastInsertRowid: id } = run(
     db,
-    `INSERT INTO events (organizer_id, logo_id, title, subtitle, prep_at, start_at, end_at, release_at, visible, created_at, updated_at)
-     VALUES (:organizerId, :logoId, :title, :subtitle, :prepAt, :startAt, :endAt, :releaseAt, :visible, :now, :now)`,
+    `INSERT INTO events (organizer_id, logo_id, title, subtitle, prep_at, start_at, end_at, release_at, visible,
+       reception_notes, housekeeping_notes, created_at, updated_at)
+     VALUES (:organizerId, :logoId, :title, :subtitle, :prepAt, :startAt, :endAt, :releaseAt, :visible,
+       :receptionNotes, :housekeepingNotes, :now, :now)`,
     { ...columns(input), now },
   );
   setRooms(db, id, input.roomIds);
@@ -114,7 +122,7 @@ export function updateEvent(db: Db, id: number, input: EventInput, now: number):
     db,
     `UPDATE events SET organizer_id = :organizerId, logo_id = :logoId, title = :title, subtitle = :subtitle,
        prep_at = :prepAt, start_at = :startAt, end_at = :endAt, release_at = :releaseAt, visible = :visible,
-       updated_at = :now
+       reception_notes = :receptionNotes, housekeeping_notes = :housekeepingNotes, updated_at = :now
      WHERE id = :id`,
     { ...columns(input), id, now },
   );

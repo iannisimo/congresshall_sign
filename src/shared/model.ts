@@ -25,7 +25,8 @@ export interface EventBreak {
 /** Labels offered as defaults; any other label is allowed. */
 export const BREAK_PRESETS = ['Break', 'Coffee break', 'Lunch break'] as const;
 
-export interface ScheduledEvent {
+/** An event as the sign gets it: only what can be shown in public. */
+export interface SignEvent {
   id: number;
   organizerId: number;
   organizerName: string;
@@ -45,6 +46,17 @@ export interface ScheduledEvent {
   /** Hidden events are drafts: not on the sign and no effect on room status. */
   visible: boolean;
 }
+
+/** An event as the admin area gets it, with the venue staff's internal notes. */
+export interface ScheduledEvent extends SignEvent {
+  /** For the front desk: never on the sign. */
+  receptionNotes: string | null;
+  /** For the cleaning staff: never on the sign. */
+  housekeepingNotes: string | null;
+}
+
+/** Fields of ScheduledEvent left out of the sign's snapshot. */
+export const INTERNAL_EVENT_FIELDS = ['receptionNotes', 'housekeepingNotes'] as const satisfies readonly (keyof ScheduledEvent)[];
 
 export type RoomStatusKind = 'free' | 'occupied' | 'reserved';
 
@@ -135,7 +147,7 @@ export interface DisplaySnapshot {
   /** The carousel, in order (GET /api/media/:id). */
   media: { id: number; kind: MediaKind; fit: MediaFit | null }[];
   rooms: Room[];
-  events: ScheduledEvent[];
+  events: SignEvent[];
   overrides: Override[];
 }
 

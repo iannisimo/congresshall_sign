@@ -1,5 +1,5 @@
 import { Coffee, MapPin, Pause, UtensilsCrossed } from 'lucide-react';
-import type { EventBreak, ScheduledEvent } from '../../shared/model.ts';
+import type { EventBreak, SignEvent } from '../../shared/model.ts';
 import { eventPhase } from '../../shared/status.ts';
 import { formatDay } from '../lib/format.ts';
 import { FitText, Marquee } from './Marquee.tsx';
@@ -42,7 +42,7 @@ export function EventCard({
   now,
   showDay = false,
 }: {
-  event: ScheduledEvent;
+  event: SignEvent;
   roomNames: string[];
   now: number;
   showDay?: boolean;
@@ -121,7 +121,7 @@ export function HeroCard({
   showDay = false,
   pair = false,
 }: {
-  event: ScheduledEvent;
+  event: SignEvent;
   roomNames: string[];
   now: number;
   showDay?: boolean;

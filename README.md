@@ -88,6 +88,8 @@ become a smart-TV browser. **One person** does the admin work.
 - **ADMIN-9** Events are edited in place and keep their identity.
 - **ADMIN-12** Breaks inside an event (presets: Break, Coffee break, Lunch break, or any name). While the
   event is live, its card on the sign shows the break under way, or else the next one.
+- **ADMIN-13** Staff notes on each event, one for the reception and one for housekeeping. They are never
+  shown on the sign or sent to it.
 - **ADMIN-10** Logo library for each organizer: upload (file, drag and drop, paste), preview and
   delete. Before uploading, a dialog picks the square to keep (drag, zoom; the logo's edges snap to the
   centre and the sides of the frame); what the frame shows is exactly the logo on the cards, where square

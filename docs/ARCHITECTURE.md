@@ -39,7 +39,8 @@ server's time zone (`TZ`, `Europe/Rome` in the container).
 - **organizers**: `id`, `name` (unique, case-insensitive).
 - **logos**: `id`, `organizer_id`, `mime`, `data` (normalized PNG), `width`, `height`, `created_at`.
 - **events**: `id`, `organizer_id`, `logo_id?`, `title`, `subtitle?`, `prep_at`, `start_at`, `end_at`,
-  `release_at`, `visible`, `created_at`, `updated_at`.
+  `release_at`, `visible`, `reception_notes?`, `housekeeping_notes?`, `created_at`, `updated_at`.
+  The notes are for the venue staff: `/api/display` leaves them out (`INTERNAL_EVENT_FIELDS`).
   Rule: `prep_at ≤ start_at < end_at ≤ release_at`.
 - **event_rooms**: `event_id`, `room_id`, `position`.
 - **event_breaks**: `event_id`, `label`, `start_at`, `end_at`. Pauses inside `[start_at, end_at)`, not

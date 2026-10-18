@@ -108,3 +108,19 @@ html.sign-dark .venue-logo {
     opacity: 1;
   }
 }
+
+/* Printing a day's sheet from the programme: only the sheet goes on paper. */
+.print-sheet {
+  display: none;
+}
+@media print {
+  body:has(.print-sheet) > :not(.print-sheet) {
+    display: none !important;
+  }
+  .print-sheet {
+    display: block;
+  }
+  @page {
+    margin: 15mm;
+  }
+}

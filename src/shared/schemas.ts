@@ -41,6 +41,8 @@ export const eventInputSchema = z
       .max(20)
       .default([]),
     visible: z.boolean(),
+    receptionNotes: optionalText(4000).default(null),
+    housekeepingNotes: optionalText(4000).default(null),
   })
   .refine((e) => e.prepAt <= e.startAt, {
     path: ['prepAt'],

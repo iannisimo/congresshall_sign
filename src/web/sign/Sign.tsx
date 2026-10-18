@@ -1,6 +1,6 @@
 import { CalendarDays, WifiOff } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ScheduledEvent } from '../../shared/model.ts';
+import type { SignEvent } from '../../shared/model.ts';
 import { computeRoomStatuses } from '../../shared/status.ts';
 import { DEFAULT_SETTINGS } from '../../shared/settings.ts';
 import { HOUR, MINUTE } from '../../shared/time.ts';
@@ -25,7 +25,7 @@ const PAGE_INTERVAL = 12_000;
 const HERO_MAX = 2;
 
 type FeaturedProps = {
-  events: ScheduledEvent[];
+  events: SignEvent[];
   now: number;
   showDay: boolean;
   roomNames: (ids: number[]) => string[];

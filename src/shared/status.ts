@@ -1,4 +1,4 @@
-import type { Override, Room, RoomStatusKind, ScheduledEvent } from './model.ts';
+import type { Override, Room, RoomStatusKind, SignEvent } from './model.ts';
 
 // Room status is never stored: it is calculated from the schedule, the overrides and the clock.
 // The sign runs this every second, so it stays right while offline; the server needs no timers.
@@ -18,7 +18,7 @@ export interface RoomState {
 
 export type EventPhase = 'upcoming' | 'prep' | 'live' | 'cleanup' | 'over';
 
-export function eventPhase(event: ScheduledEvent, now: number): EventPhase {
+export function eventPhase(event: SignEvent, now: number): EventPhase {
   if (now < event.prepAt) return 'upcoming';
   if (now < event.startAt) return 'prep';
   if (now < event.endAt) return 'live';
@@ -34,14 +34,14 @@ const STRENGTH: Record<RoomStatusKind, number> = { free: 0, reserved: 1, occupie
 interface RoomSchedule {
   room: Room;
   /** Visible events booking this room, by start time. */
-  own: ScheduledEvent[];
+  own: SignEvent[];
   /** Visible events booking one of its parent rooms. */
-  parent: ScheduledEvent[];
+  parent: SignEvent[];
   /** Every time the calculated status may change, ascending. */
   boundaries: number[];
 }
 
-function ownState(event: ScheduledEvent, t: number): Calculated | null {
+function ownState(event: SignEvent, t: number): Calculated | null {
   const phase = eventPhase(event, t);
   switch (phase) {
     case 'prep':
@@ -55,7 +55,7 @@ function ownState(event: ScheduledEvent, t: number): Calculated | null {
   }
 }
 
-function parentState(room: Room, event: ScheduledEvent, t: number): Calculated | null {
+function parentState(room: Room, event: SignEvent, t: number): Calculated | null {
   if (t < event.startAt || t >= event.endAt) return null;
   return { status: 'reserved', reason: 'parent', message: room.blockedMessage, eventId: event.id };
 }
@@ -99,8 +99,8 @@ function overrideEnd(schedule: RoomSchedule, override: Override): number | null 
   return end;
 }
 
-function buildSchedules(rooms: Room[], events: ScheduledEvent[]): RoomSchedule[] {
-  const byRoom = new Map<number, ScheduledEvent[]>();
+function buildSchedules(rooms: Room[], events: SignEvent[]): RoomSchedule[] {
+  const byRoom = new Map<number, SignEvent[]>();
   const visible = events.filter((e) => e.visible).sort((a, b) => a.startAt - b.startAt || a.id - b.id);
   for (const event of visible) {
     for (const roomId of event.roomIds) {
@@ -111,7 +111,7 @@ function buildSchedules(rooms: Room[], events: ScheduledEvent[]): RoomSchedule[]
   }
   return rooms.map((room) => {
     const own = byRoom.get(room.id) ?? [];
-    const parentById = new Map<number, ScheduledEvent>();
+    const parentById = new Map<number, SignEvent>();
     for (const parentId of room.parentIds) {
       for (const event of byRoom.get(parentId) ?? []) parentById.set(event.id, event);
     }
@@ -125,7 +125,7 @@ function buildSchedules(rooms: Room[], events: ScheduledEvent[]): RoomSchedule[]
 
 export function computeRoomStatuses(input: {
   rooms: Room[];
-  events: ScheduledEvent[];
+  events: SignEvent[];
   overrides: Override[];
   now: number;
 }): Map<number, RoomState> {

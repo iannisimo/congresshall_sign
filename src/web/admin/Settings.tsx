@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { startOfDay } from 'date-fns';
 import { useRef, useState } from 'react';
-import type { ScheduledEvent, Settings } from '../../shared/model.ts';
+import type { SignEvent, Settings } from '../../shared/model.ts';
 import { settingsSchema } from '../../shared/schemas.ts';
 import { BRAND_PRESETS, DEFAULT_SETTINGS } from '../../shared/settings.ts';
 import { HOUR, MINUTE } from '../../shared/time.ts';
@@ -11,7 +11,7 @@ import { SignCardPreview } from './SignPreview.tsx';
 import { Button, Card, ErrorNote, Field, inputClass, PageLoading, useFeedback } from './ui.tsx';
 
 /** A card with texts long enough to scroll, to try the settings on. */
-function sampleEvent(): ScheduledEvent {
+function sampleEvent(): SignEvent {
   const startAt = startOfDay(Date.now()).getTime() + 14 * HOUR;
   return {
     id: 0,

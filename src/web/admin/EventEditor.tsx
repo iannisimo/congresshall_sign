@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowLeft, Eye, EyeOff, Plus, Trash2, X } from 'lucide-r
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { findConflicts } from '../../shared/conflicts.ts';
-import { BREAK_PRESETS, type Conflict, type Organizer, type Room, type ScheduledEvent } from '../../shared/model.ts';
+import { BREAK_PRESETS, type Conflict, type Organizer, type Room, type ScheduledEvent, type SignEvent } from '../../shared/model.ts';
 import { eventInputSchema, type EventInput } from '../../shared/schemas.ts';
 import { changeoverMargins, type ChangeoverSettings as Changeover, DAY, DEFAULT_DURATION_MINUTES, MINUTE } from '../../shared/time.ts';
 import { formatAdminShortDay, formatAdminTime } from '../lib/format.ts';
@@ -34,6 +34,8 @@ interface Draft {
   /** Pauses as times of day, repeated on every date. */
   breaks: DraftBreak[];
   visible: boolean;
+  receptionNotes: string;
+  housekeepingNotes: string;
 }
 
 interface DraftBreak {
@@ -59,7 +61,18 @@ function margins(draft: Draft, startAt: number, endAt: number, changeover: Chang
   }
 }
 
-type FieldKey = 'organizer' | 'title' | 'subtitle' | 'rooms' | 'dates' | 'times' | 'prep' | 'cleanup' | 'breaks';
+type FieldKey =
+  | 'organizer'
+  | 'title'
+  | 'subtitle'
+  | 'rooms'
+  | 'dates'
+  | 'times'
+  | 'prep'
+  | 'cleanup'
+  | 'breaks'
+  | 'receptionNotes'
+  | 'housekeepingNotes';
 
 const FIELD_OF: Record<string, FieldKey> = {
   organizerId: 'organizer',
@@ -71,6 +84,8 @@ const FIELD_OF: Record<string, FieldKey> = {
   prepAt: 'prep',
   releaseAt: 'cleanup',
   breaks: 'breaks',
+  receptionNotes: 'receptionNotes',
+  housekeepingNotes: 'housekeepingNotes',
 };
 
 function shiftTime(time: string, minutes: number): string {
@@ -98,6 +113,8 @@ function newDraft(search: URLSearchParams): Draft {
     cleanupMinutes: 30,
     breaks: [],
     visible: true,
+    receptionNotes: '',
+    housekeepingNotes: '',
   };
 }
 
@@ -123,6 +140,8 @@ function draftFrom(event: ScheduledEvent, changeover: Changeover): Draft {
     cleanupMinutes: Math.round((event.releaseAt - event.endAt) / MINUTE),
     breaks: event.breaks.map((b) => ({ label: b.label, start: toTimeValue(b.startAt), end: toTimeValue(b.endAt) })),
     visible: event.visible,
+    receptionNotes: event.receptionNotes ?? '',
+    housekeepingNotes: event.housekeepingNotes ?? '',
   };
 }
 
@@ -156,6 +175,8 @@ function buildInputs(draft: Draft, changeover: Changeover): (EventInput | null)[
       releaseAt,
       breaks,
       visible: draft.visible,
+      receptionNotes: draft.receptionNotes,
+      housekeepingNotes: draft.housekeepingNotes,
     };
   });
 }
@@ -347,7 +368,7 @@ function MarginField({
 }
 
 /** The event as it will look on the sign (ADMIN-4), scaled to the available width. */
-function Preview({ event, roomNames }: { event: ScheduledEvent; roomNames: string[] }) {
+function Preview({ event, roomNames }: { event: SignEvent; roomNames: string[] }) {
   const [live, setLive] = useState(false);
   const settings = useSettings().data ?? DEFAULT_SETTINGS;
   const now = live ? (event.startAt + event.endAt) / 2 : event.startAt - DAY;
@@ -495,7 +516,7 @@ function EditorForm({
   }
 
   const shown = (key: FieldKey) => (showErrors ? errors[key] : undefined);
-  const previewEvent: ScheduledEvent = {
+  const previewEvent: SignEvent = {
     id: eventId ?? 0,
     organizerId: draft.organizerId ?? 0,
     organizerName: organizer?.name ?? 'Organizzatore',
@@ -723,6 +744,26 @@ function EditorForm({
                 </button>
               </>
             )}
+          </Section>
+
+          <Section title="Note per lo staff">
+            <p className="-mt-2 text-sm text-slate-500">Non appaiono sul cartello.</p>
+            <Field label="Reception" error={shown('receptionNotes')} hint="Facoltativo">
+              <textarea
+                className={`${inputClass} min-h-24`}
+                value={draft.receptionNotes}
+                maxLength={4000}
+                onChange={(e) => update({ receptionNotes: e.target.value })}
+              />
+            </Field>
+            <Field label="Housekeeping" error={shown('housekeepingNotes')} hint="Facoltativo">
+              <textarea
+                className={`${inputClass} min-h-24`}
+                value={draft.housekeepingNotes}
+                maxLength={4000}
+                onChange={(e) => update({ housekeepingNotes: e.target.value })}
+              />
+            </Field>
           </Section>
         </div>
 

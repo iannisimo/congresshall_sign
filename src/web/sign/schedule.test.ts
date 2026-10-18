@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { ScheduledEvent } from '../../shared/model.ts';
+import type { SignEvent } from '../../shared/model.ts';
 import { HOUR } from '../../shared/time.ts';
 import { buildSignView } from './schedule.ts';
 
 const NOW = new Date('2026-10-17T10:00:00').getTime();
 const at = (iso: string) => new Date(iso).getTime();
 
-function event(id: number, start: string, end: string, visible = true): ScheduledEvent {
+function event(id: number, start: string, end: string, visible = true): SignEvent {
   return {
     id,
     organizerId: 1,

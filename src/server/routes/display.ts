@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Hono } from 'hono';
-import type { DisplaySnapshot } from '../../shared/model.ts';
+import { INTERNAL_EVENT_FIELDS, type DisplaySnapshot, type ScheduledEvent, type SignEvent } from '../../shared/model.ts';
 import { displayWindow } from '../../shared/time.ts';
 import { listEvents } from '../data/events.ts';
 import { listMedia } from '../data/media.ts';
@@ -8,6 +8,13 @@ import { activeOverrides } from '../data/overrides.ts';
 import { listRooms } from '../data/rooms.ts';
 import { getSettings, getVenueLogo } from '../data/settings.ts';
 import type { AppDeps, AppEnv } from '../http.ts';
+
+/** The sign is public: staff notes stay in the admin area. */
+function forSign(event: ScheduledEvent): SignEvent {
+  const copy: Partial<ScheduledEvent> = { ...event };
+  for (const field of INTERNAL_EVENT_FIELDS) delete copy[field];
+  return copy as SignEvent;
+}
 
 /**
  * The sign polls this every minute. The body only depends on the data and the current day, so its
@@ -26,7 +33,7 @@ export function displayRoutes(deps: AppDeps) {
         .filter((m) => m.enabled)
         .map((m) => ({ id: m.id, kind: m.kind, fit: m.fit })),
       rooms: listRooms(deps.db),
-      events: listEvents(deps.db, { ...displayWindow(now), visibleOnly: true }),
+      events: listEvents(deps.db, { ...displayWindow(now), visibleOnly: true }).map(forSign),
       overrides: activeOverrides(deps.db, now),
     };
     const body = JSON.stringify(snapshot);

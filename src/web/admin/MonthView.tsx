@@ -11,7 +11,7 @@ const ROOM_COLORS = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#9333ea', '#08
 const monthFormat = new Intl.DateTimeFormat('it-IT', { month: 'long', year: 'numeric' });
 const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 
-/** A month at a glance: for each day, a dot per main room booked that day. */
+/** A month at a glance: for each day, a dot per main room booked that day (an empty one for drafts only). */
 export default function MonthView() {
   const [params, setParams] = useSearchParams();
   const selected = startOfDay(fromDateValue(params.get('d') ?? '') ?? Date.now()).getTime();
@@ -29,15 +29,18 @@ export default function MonthView() {
   );
   const colors = useMemo(() => new Map(mainRooms.map((r, i) => [r.id, ROOM_COLORS[i % ROOM_COLORS.length]!])), [mainRooms]);
 
-  /** Room ids booked on each day (keyed by date value); events spanning days count on each. */
+  /**
+   * Rooms used on each day (keyed by date value), true when a visible event books them and false when
+   * only drafts do; events spanning days count on each.
+   */
   const booked = useMemo(() => {
-    const map = new Map<string, Set<number>>();
+    const map = new Map<string, Map<number, boolean>>();
     for (const event of events.data ?? []) {
       for (let d = startOfDay(event.startAt).getTime(); d < event.endAt; d = addDays(d, 1).getTime()) {
         const key = toDateValue(d);
-        const set = map.get(key) ?? new Set<number>();
-        event.roomIds.forEach((id) => set.add(id));
-        map.set(key, set);
+        const rooms = map.get(key) ?? new Map<number, boolean>();
+        event.roomIds.forEach((id) => rooms.set(id, rooms.get(id) || event.visible));
+        map.set(key, rooms);
       }
     }
     return map;
@@ -93,9 +96,18 @@ export default function MonthView() {
                   <span className="mt-auto flex flex-wrap gap-1">
                     {mainRooms
                       .filter((r) => ids?.has(r.id))
-                      .map((r) => (
-                        <span key={r.id} title={r.name} className={`size-2.5 rounded-full ${inMonth ? '' : 'opacity-40'}`} style={{ background: colors.get(r.id) }} />
-                      ))}
+                      .map((r) => {
+                        const color = colors.get(r.id);
+                        const draft = !ids?.get(r.id);
+                        return (
+                          <span
+                            key={r.id}
+                            title={draft ? `${r.name} (bozza)` : r.name}
+                            className={`size-2.5 rounded-full ${draft ? 'border-2' : ''} ${inMonth ? '' : 'opacity-40'}`}
+                            style={draft ? { borderColor: color } : { background: color }}
+                          />
+                        );
+                      })}
                   </span>
                 </Link>
               );
@@ -108,6 +120,10 @@ export default function MonthView() {
                 {r.name}
               </span>
             ))}
+            <span className="flex items-center gap-2 text-slate-500">
+              <span className="size-3 rounded-full border-2 border-slate-400" />
+              Solo bozze
+            </span>
           </div>
         </Card>
       )}

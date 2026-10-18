@@ -128,4 +128,9 @@ export const migrations: string[] = [
     UPDATE id_sequences SET next = max(next, NEW.id + 1) WHERE name = 'media';
   END;
   `,
+  `
+  -- Internal notes for the venue staff, never sent to the sign.
+  ALTER TABLE events ADD COLUMN reception_notes TEXT;
+  ALTER TABLE events ADD COLUMN housekeeping_notes TEXT;
+  `,
 ];

@@ -193,6 +193,20 @@ describe('events', () => {
     expect((await admin.req('GET', `/api/events/${id}`)).status).toBe(404);
   });
 
+  it('keeps the staff notes off the sign', async () => {
+    const t = setup();
+    const { admin, rooms, org } = await seed(t);
+    const input = { ...eventInput(t, org.id, [rooms.a.id], 0), receptionNotes: ' Badge al banco 2 ', housekeepingNotes: '' };
+    const [id] = (await json<{ ids: number[] }>(await admin.req('POST', '/api/events', { events: [input] }))).ids;
+
+    const saved = await json<ScheduledEvent>(await admin.req('GET', `/api/events/${id}`));
+    expect(saved).toMatchObject({ receptionNotes: 'Badge al banco 2', housekeepingNotes: null });
+
+    const snapshot = await json<DisplaySnapshot>(await t.app.request('/api/display'));
+    expect(snapshot.events.map((e) => e.id)).toContain(id);
+    expect(JSON.stringify(snapshot)).not.toContain('Badge');
+  });
+
   it('keeps breaks with the event', async () => {
     const t = setup();
     const { admin, rooms, org } = await seed(t);

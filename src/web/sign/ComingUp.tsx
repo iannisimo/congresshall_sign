@@ -1,4 +1,4 @@
-import type { ScheduledEvent } from '../../shared/model.ts';
+import type { SignEvent } from '../../shared/model.ts';
 import { formatDay } from '../lib/format.ts';
 import { useRemHeight } from './hooks.ts';
 import { Marquee } from './Marquee.tsx';
@@ -11,7 +11,7 @@ const DAY_HEIGHT = 2.75;
 const ROW_HEIGHT = 4.25;
 const MORE_HEIGHT = 2.25;
 
-type Line = { kind: 'day'; day: number } | { kind: 'event'; event: ScheduledEvent };
+type Line = { kind: 'day'; day: number } | { kind: 'event'; event: SignEvent };
 
 /** Fills the space top-down, keeping room for a "+N more" line when something doesn't fit. */
 function fit(groups: DayGroup[], height: number): { lines: Line[]; hidden: number } {

@@ -150,6 +150,8 @@ export async function importMongo(db: Db, dir: string, now: number): Promise<Imp
           releaseAt: changeoverMargins(startAt, endAt, settings).releaseAt,
           breaks: [],
           visible: doc['enabled'] !== false,
+          receptionNotes: null,
+          housekeepingNotes: null,
         },
         now,
       );

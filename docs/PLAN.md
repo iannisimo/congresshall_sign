@@ -152,3 +152,4 @@ Progress tracker for the rewrite. Requirement IDs refer to the README; design is
 - 2026-10-18: logout fix; commits; changeover margins for congresses, changeover time as a setting.
 - 2026-10-18: big cards for one or two events; month calendar; separate prep and clean-up times with a
   same-day gap; logo crop dialog; ids never reused; vertical scroll speed.
+- 2026-10-18: scheduling focus begins: reception and housekeeping notes on events, kept off the sign.

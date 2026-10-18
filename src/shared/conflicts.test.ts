@@ -18,6 +18,8 @@ function event(id: number, roomIds: number[], startAt: number, endAt: number, vi
     releaseAt: endAt + 1000,
     breaks: [],
     visible,
+    receptionNotes: null,
+    housekeepingNotes: null,
   };
 }
 

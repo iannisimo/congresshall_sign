@@ -113,17 +113,21 @@ export function Timeline({
                 {hours.map((h) => (
                   <span key={h} className="absolute inset-y-0 w-px bg-slate-100" style={{ left: x(day + h * HOUR) }} />
                 ))}
+                {/* Drafts don't hold the room, so they have no preparation or clean-up to show. */}
                 {roomEvents.flatMap((event) =>
-                  [
-                    [event.prepAt, event.startAt],
-                    [event.endAt, event.releaseAt],
-                  ]
+                  (event.visible
+                    ? [
+                        [event.prepAt, event.startAt],
+                        [event.endAt, event.releaseAt],
+                      ]
+                    : []
+                  )
                     .filter(([from, to]) => clip(to!) > clip(from!))
                     .map(([from, to]) => (
                       <span
                         key={`${event.id}-${from}`}
                         title={heldText(event)}
-                        className={`absolute inset-y-1.5 ${stripes} ${event.visible ? '' : 'opacity-50'}`}
+                        className={`absolute inset-y-1.5 ${stripes}`}
                         style={{ left: x(from!), width: width(from!, to!) }}
                       />
                     )),
@@ -138,11 +142,11 @@ export function Timeline({
                           e.stopPropagation();
                           onOpen(event);
                         }}
-                        title={`${event.title} · ${formatAdminTime(event.startAt)}–${formatAdminTime(event.endAt)}`}
-                        className={`absolute inset-y-0.5 flex cursor-pointer items-center overflow-hidden rounded-md bg-brand-100 px-2 text-left ring-1 transition-shadow hover:shadow-md ${conflict ? 'ring-2 ring-red-400' : 'ring-brand-300'} ${event.visible ? '' : 'opacity-50'}`}
+                        title={`${event.visible ? '' : 'Bozza: '}${event.title} · ${formatAdminTime(event.startAt)}–${formatAdminTime(event.endAt)}`}
+                        className={`absolute inset-y-0.5 flex cursor-pointer items-center overflow-hidden rounded-md px-2 text-left ring-1 transition-shadow hover:shadow-md ${event.visible ? 'bg-brand-100' : 'border border-dashed border-amber-500 bg-amber-50'} ${conflict ? 'ring-2 ring-red-400' : event.visible ? 'ring-brand-300' : 'ring-transparent'}`}
                         style={{ left: x(event.startAt), width: width(event.startAt, event.endAt) }}
                       >
-                        <span className="truncate text-xs font-medium text-slate-900">{event.title}</span>
+                        <span className={`truncate text-xs font-medium ${event.visible ? 'text-slate-900' : 'text-amber-900 italic'}`}>{event.title}</span>
                       </button>
                     ))}
                   </div>
@@ -155,6 +159,9 @@ export function Timeline({
         <div className="mt-3 flex items-center gap-4 pl-32 text-xs text-slate-500">
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-3 w-5 rounded-sm bg-brand-100 ring-1 ring-brand-300" /> Evento
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-3 w-5 rounded-sm border border-dashed border-amber-500 bg-amber-50" /> Bozza
           </span>
           <span className="flex items-center gap-1.5">
             <span className={`inline-block h-3 w-5 rounded-sm ${stripes}`} /> Preparazione e riordino
