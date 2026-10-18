@@ -85,12 +85,18 @@ export interface Settings {
   signTheme: 'auto' | 'light' | 'dark';
   darkFrom: string;
   darkUntil: string;
+  /** Minutes without contact before the sign shows the small "last update" pill. */
+  staleAfterMinutes: number;
+  /** Hours without contact before the sign shows the big "Offline" warning. */
+  offlineAfterHours: number;
 }
 
 /** Everything the sign needs, from GET /api/display. */
 export interface DisplaySnapshot {
   version: string;
   settings: Settings;
+  /** Version of the uploaded venue logo (GET /api/venue-logo?v=…), or null for the built-in one. */
+  venueLogo: string | null;
   rooms: Room[];
   events: ScheduledEvent[];
   overrides: Override[];

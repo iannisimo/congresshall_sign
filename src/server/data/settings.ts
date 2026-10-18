@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { Settings } from '../../shared/model.ts';
 import { settingsSchema } from '../../shared/schemas.ts';
 import { DEFAULT_SETTINGS } from '../../shared/settings.ts';
@@ -20,6 +21,21 @@ export function getSettings(db: Db): Settings {
     if (parsed.success) settings[key] = parsed.data;
   }
   return settings as unknown as Settings;
+}
+
+const VENUE_LOGO_KEY = 'venue_logo';
+
+/** The venue logo uploaded by the superadmin (SVG text), with a short hash that changes with it. */
+export function getVenueLogo(db: Db): { svg: string; version: string } | null {
+  const row = all<{ value: string }>(db, 'SELECT value FROM settings WHERE key = :key', { key: VENUE_LOGO_KEY })[0];
+  const svg = row ? parseJson(row.value) : null;
+  if (typeof svg !== 'string') return null;
+  return { svg, version: createHash('sha1').update(svg).digest('base64url').slice(0, 12) };
+}
+
+export function setVenueLogo(db: Db, svg: string | null): void {
+  if (svg === null) run(db, 'DELETE FROM settings WHERE key = :key', { key: VENUE_LOGO_KEY });
+  else run(db, 'INSERT OR REPLACE INTO settings (key, value) VALUES (:key, :value)', { key: VENUE_LOGO_KEY, value: JSON.stringify(svg) });
 }
 
 export function saveSettings(db: Db, settings: Settings): void {

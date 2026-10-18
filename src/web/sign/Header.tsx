@@ -1,8 +1,7 @@
 import { isSameDay } from 'date-fns';
 import { WifiOff } from 'lucide-react';
-import logo from '../assets/logo-small.svg';
 import { formatDay } from '../lib/format.ts';
-import { Time } from './parts.tsx';
+import { Time, VenueLogo } from './parts.tsx';
 import { strings } from './strings.ts';
 
 function toggleFullscreen() {
@@ -10,17 +9,18 @@ function toggleFullscreen() {
   else void document.documentElement.requestFullscreen?.();
 }
 
-export function Header({ now, staleSince }: { now: number; staleSince: number | null }) {
+export function Header({ now, staleSince, logo }: { now: number; staleSince: number | null; logo: string | null }) {
   return (
     <header className="relative flex h-[7.75rem] shrink-0 items-center bg-white px-[2.5rem] shadow-[0_0.15rem_0.6rem_rgb(16_80_140/0.06)]">
-      <img src={logo} alt="" className="venue-logo h-[6.5rem]" onClick={toggleFullscreen} />
+      <VenueLogo version={logo} className="venue-logo h-[6.5rem]" onClick={toggleFullscreen} />
+      {staleSince !== null && (
+        // Small, in the top-right corner above the clock: noticeable for staff, not alarming for guests.
+        <span className="absolute top-[0.45rem] right-[2.5rem] flex items-center gap-[0.35rem] rounded-full bg-reserved/15 px-[0.6rem] py-[0.1rem] text-[0.85rem] font-semibold text-reserved-deep">
+          <WifiOff className="size-[0.9rem]" strokeWidth={2.5} />
+          {strings.lastUpdate} {!isSameDay(staleSince, now) && `${formatDay(staleSince)},`} <Time at={staleSince} />
+        </span>
+      )}
       <div className="flex flex-1 items-center justify-end gap-[1.5rem]">
-        {staleSince !== null && (
-          <span className="flex items-center gap-[0.5rem] rounded-full bg-reserved/15 px-[0.9rem] py-[0.3rem] text-[1.1rem] font-semibold text-reserved-deep">
-            <WifiOff className="size-[1.2rem]" strokeWidth={2.5} />
-            {strings.lastUpdate} {!isSameDay(staleSince, now) && `${formatDay(staleSince)},`} <Time at={staleSince} />
-          </span>
-        )}
         <span className="text-[1.6rem] font-medium text-slate-500">{formatDay(now)}</span>
         <Time at={now} className="text-[3.3rem] leading-none font-semibold tracking-tight text-brand-950" periodClassName="text-slate-500" />
       </div>

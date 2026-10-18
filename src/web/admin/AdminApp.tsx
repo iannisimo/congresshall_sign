@@ -2,9 +2,9 @@ import { QueryClientProvider, useMutation } from '@tanstack/react-query';
 import { CalendarDays, DoorOpen, ExternalLink, LogOut, Settings as SettingsIcon, Users } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router';
-import logo from '../assets/logo-small.svg';
 import { installUpdate, onUpdateWaiting } from '../lib/pwa.ts';
-import { api, keys, queryClient, useMe } from './api.ts';
+import { VenueLogo } from '../sign/parts.tsx';
+import { api, keys, queryClient, useDisplay, useMe } from './api.ts';
 import EventEditor from './EventEditor.tsx';
 import Login from './Login.tsx';
 import Organizers from './Organizers.tsx';
@@ -44,6 +44,7 @@ function UpdateBanner() {
 }
 
 function Shell({ superadmin, username, children }: { superadmin: boolean; username: string; children: ReactNode }) {
+  const display = useDisplay();
   const navigate = useNavigate();
   const logout = useMutation({
     mutationFn: () => api('/auth/logout', { method: 'POST' }),
@@ -61,7 +62,7 @@ function Shell({ superadmin, username, children }: { superadmin: boolean; userna
       <UpdateBanner />
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-2.5 sm:px-6">
-          <img src={logo} alt="" className="hidden h-9 sm:block" />
+          <VenueLogo version={display.data?.venueLogo ?? null} className="hidden h-9 sm:block" />
           <nav className="-mx-1 flex flex-1 gap-1 overflow-x-auto px-1">
             <NavItem to="/admin" icon={<CalendarDays className="size-4" />}>
               Programma

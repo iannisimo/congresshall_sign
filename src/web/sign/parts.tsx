@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import builtInLogo from '../assets/logo-small.svg';
 import { clockParts } from '../lib/format.ts';
 
 /** "2:00" with a smaller "PM". */
@@ -39,4 +40,11 @@ export function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <h2 className="flex items-center gap-3 text-[1.25rem] font-bold uppercase tracking-[0.18em] text-slate-500">{children}</h2>
   );
+}
+
+/** The venue logo: the one uploaded by the superadmin (by version), or the built-in one. */
+export function VenueLogo({ version, className = '', onClick }: { version: string | null; className?: string; onClick?: () => void }) {
+  const [failed, setFailed] = useState<string | null>(null);
+  const src = version && failed !== version ? `/api/venue-logo?v=${version}` : builtInLogo;
+  return <img src={src} alt="" className={className} onClick={onClick} onError={() => setFailed(version)} />;
 }

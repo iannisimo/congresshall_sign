@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ScheduledEvent } from '../../shared/model.ts';
 import { computeRoomStatuses } from '../../shared/status.ts';
 import { DEFAULT_SETTINGS } from '../../shared/settings.ts';
-import { DAY, MINUTE } from '../../shared/time.ts';
+import { HOUR, MINUTE } from '../../shared/time.ts';
 import { formatDay } from '../lib/format.ts';
 import { ComingUp } from './ComingUp.tsx';
 import { CARD_HEIGHT, EventCard } from './EventCard.tsx';
@@ -15,15 +15,11 @@ import { RecoveringBoundary } from './RecoveringBoundary.tsx';
 import { RoomStrip } from './RoomStrip.tsx';
 import { buildSignView } from './schedule.ts';
 import { strings } from './strings.ts';
-import { POLL_INTERVAL, useSnapshot } from './useSnapshot.ts';
+import { useSnapshot } from './useSnapshot.ts';
 
 const CARD_GAP = 1;
 /** Shortest time a page of cards stays up; longer while a text on it is still scrolling. */
 const PAGE_INTERVAL = 12_000;
-/** Show the "last update" note after this many missed polls. */
-const STALE_AFTER = 3 * POLL_INTERVAL;
-/** Show the big warning after this long without contact (SYNC-4). */
-const OUTDATED_AFTER = 3 * DAY;
 
 function Featured({ events, now, showDay, roomNames }: {
   events: ScheduledEvent[];
@@ -79,9 +75,7 @@ function OutdatedWarning({ since }: { since: number }) {
       <div className="flex max-w-[60rem] flex-col items-center gap-[1rem] rounded-[2rem] bg-white px-[4rem] py-[3rem] text-center shadow-xl ring-[0.3rem] ring-reserved">
         <WifiOff className="size-[5rem] text-reserved-deep" strokeWidth={2} />
         <div className="text-[3rem] font-bold text-slate-900">{strings.offline}</div>
-        <div className="text-[1.8rem] font-semibold text-slate-700">{strings.outdated[0]}</div>
-        <div className="text-[1.5rem] text-slate-500 italic">{strings.outdated[1]}</div>
-        <div className="mt-[0.5rem] text-[1.4rem] font-medium text-slate-500">
+        <div className="text-[1.6rem] font-medium text-slate-500">
           {strings.lastUpdate}: {formatDay(since)}, <Time at={since} />
         </div>
       </div>
@@ -115,7 +109,7 @@ function SignScreen() {
   if (!snapshot) {
     return (
       <div className="flex h-screen flex-col bg-canvas">
-        <Header now={now} staleSince={null} />
+        <Header now={now} staleSince={null} logo={null} />
         <div className="grid flex-1 place-items-center text-[2rem] font-semibold text-slate-400">{strings.connecting}</div>
       </div>
     );
@@ -126,7 +120,7 @@ function SignScreen() {
   return (
     <MarqueeSettings.Provider value={settings}>
       <div className="flex h-screen w-screen flex-col overflow-hidden bg-canvas">
-        <Header now={now} staleSince={offlineFor > STALE_AFTER ? lastContactAt : null} />
+        <Header now={now} staleSince={offlineFor > settings.staleAfterMinutes * MINUTE ? lastContactAt : null} logo={snapshot.venueLogo ?? null} />
 
         <main className="relative flex min-h-0 flex-1 gap-[2.5rem] px-[2.5rem] pt-[1.75rem] pb-[1.5rem]">
           {view.featured.length === 0 ? (
@@ -150,7 +144,7 @@ function SignScreen() {
             </section>
           )}
 
-          {offlineFor > OUTDATED_AFTER && lastContactAt !== null && <OutdatedWarning since={lastContactAt} />}
+          {offlineFor > settings.offlineAfterHours * HOUR && lastContactAt !== null && <OutdatedWarning since={lastContactAt} />}
         </main>
 
         <RoomStrip rooms={rooms} statuses={statuses} now={now} />

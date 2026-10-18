@@ -7,6 +7,8 @@ export const DEFAULT_SETTINGS: Settings = {
   signTheme: 'auto',
   darkFrom: '20:00',
   darkUntil: '07:00',
+  staleAfterMinutes: 3,
+  offlineAfterHours: 72,
 };
 
 /**

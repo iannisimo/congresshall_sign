@@ -1,11 +1,12 @@
 import { useMutation } from '@tanstack/react-query';
 import { startOfDay } from 'date-fns';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { ScheduledEvent, Settings } from '../../shared/model.ts';
 import { settingsSchema } from '../../shared/schemas.ts';
 import { DEFAULT_SETTINGS } from '../../shared/settings.ts';
 import { HOUR, MINUTE } from '../../shared/time.ts';
-import { api, errorMessage, keys, queryClient, useSettings } from './api.ts';
+import { VenueLogo } from '../sign/parts.tsx';
+import { api, errorMessage, keys, queryClient, useDisplay, useSettings } from './api.ts';
 import { SignCardPreview } from './SignPreview.tsx';
 import { Button, Card, ErrorNote, Field, inputClass, PageLoading, useFeedback } from './ui.tsx';
 
@@ -166,6 +167,36 @@ function SettingsForm({ saved }: { saved: Settings }) {
         )}
       </Card>
 
+      <Card className="space-y-5 p-5">
+        <div>
+          <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Cartello: connessione</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Il cartello chiede aggiornamenti ogni minuto. Se il server non risponde continua a funzionare con gli ultimi dati, e
+            lo segnala.
+          </p>
+        </div>
+        <Field label="Avviso piccolo «Last update» dopo" error={errors.get('staleAfterMinutes')}>
+          <NumberWithSlider
+            value={draft.staleAfterMinutes}
+            onChange={(staleAfterMinutes) => setDraft({ ...draft, staleAfterMinutes })}
+            min={2}
+            max={120}
+            step={1}
+            unit="minuti"
+          />
+        </Field>
+        <Field label="Avviso grande «Offline» dopo" error={errors.get('offlineAfterHours')} hint="72 ore = 3 giorni">
+          <NumberWithSlider
+            value={draft.offlineAfterHours}
+            onChange={(offlineAfterHours) => setDraft({ ...draft, offlineAfterHours })}
+            min={1}
+            max={168}
+            step={1}
+            unit="ore"
+          />
+        </Field>
+      </Card>
+
       <Card className="space-y-6 p-5">
         <div>
           <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Programma: cambio sala</h2>
@@ -197,6 +228,83 @@ function SettingsForm({ saved }: { saved: Settings }) {
   );
 }
 
+/** The venue logo shown in the sign's header: upload an SVG, or go back to the built-in one. */
+function VenueLogoSection() {
+  const { confirm, toast } = useFeedback();
+  const display = useDisplay();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const version = display.data?.venueLogo ?? null;
+  const refresh = () => void queryClient.invalidateQueries({ queryKey: keys.display });
+
+  const upload = useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.append('file', file);
+      return api('/venue-logo', { method: 'PUT', form });
+    },
+    onSuccess: () => {
+      refresh();
+      toast('Logo aggiornato: il cartello lo mostra entro un minuto');
+    },
+    onError: (error) => toast(errorMessage(error), 'error'),
+  });
+  const reset = useMutation({
+    mutationFn: () => api('/venue-logo', { method: 'DELETE' }),
+    onSuccess: () => {
+      refresh();
+      toast('Ripristinato il logo predefinito');
+    },
+    onError: (error) => toast(errorMessage(error), 'error'),
+  });
+
+  return (
+    <Card className="space-y-5 p-5">
+      <div>
+        <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Cartello: logo</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Il logo in alto a sinistra sul cartello e in questa pagina. Solo file SVG (max 1 MB). Nel tema scuro il logo
+          diventa bianco, quindi va bene un logo a un solo colore.
+        </p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="flex h-28 items-center justify-center rounded-lg bg-white p-4 ring-1 ring-slate-200">
+          <VenueLogo version={version} className="max-h-full max-w-full" />
+        </div>
+        <div className="flex h-28 items-center justify-center rounded-lg bg-[#121b2b] p-4">
+          <VenueLogo version={version} className="max-h-full max-w-full [filter:brightness(0)_invert(1)]" />
+        </div>
+      </div>
+      <input
+        ref={fileInput}
+        type="file"
+        accept=".svg,image/svg+xml"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) upload.mutate(file);
+          e.target.value = '';
+        }}
+      />
+      <div className="flex flex-wrap justify-end gap-2">
+        {version && (
+          <Button
+            variant="ghost"
+            busy={reset.isPending}
+            onClick={async () => {
+              if (await confirm('Tornare al logo predefinito?', { confirmLabel: 'Ripristina' })) reset.mutate();
+            }}
+          >
+            Logo predefinito
+          </Button>
+        )}
+        <Button variant="primary" busy={upload.isPending} onClick={() => fileInput.current?.click()}>
+          Carica SVG…
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
 /** Venue settings, for the superadmin. */
 export default function Settings() {
   const settings = useSettings();
@@ -205,6 +313,7 @@ export default function Settings() {
   return (
     <div className="max-w-3xl space-y-6">
       <h1 className="text-lg font-semibold text-slate-900">Impostazioni</h1>
+      <VenueLogoSection />
       <SettingsForm key={JSON.stringify(settings.data)} saved={settings.data} />
     </div>
   );

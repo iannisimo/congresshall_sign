@@ -16,6 +16,4 @@ export const strings = {
   },
   lastUpdate: 'Last update',
   offline: 'Offline',
-  /** The one message important enough to say in both languages. */
-  outdated: ['Information may be out of date', 'Le informazioni potrebbero non essere aggiornate'],
 } as const;

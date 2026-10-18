@@ -9,7 +9,7 @@ import { displayRoutes } from './routes/display.ts';
 import { eventRoutes } from './routes/events.ts';
 import { genericLogoRoutes, logoRoutes, organizerRoutes } from './routes/organizers.ts';
 import { roomRoutes } from './routes/rooms.ts';
-import { settingsRoutes } from './routes/settings.ts';
+import { settingsRoutes, venueLogoRoutes } from './routes/settings.ts';
 import { webRoutes } from './web.ts';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -52,8 +52,8 @@ export function createApp(deps: AppDeps, options: { serveWeb?: boolean } = {}) {
   });
 
   app.use('/api/*', sameOrigin(deps));
-  // Logo uploads have their own, larger limit.
-  app.use('/api/*', (c, next) => (/^\/api\/organizers\/\d+\/logos$/.test(c.req.path) ? next() : jsonLimit(c, next)));
+  // Logo uploads have their own, larger limits.
+  app.use('/api/*', (c, next) => (/^\/api\/(organizers\/\d+\/logos|venue-logo)$/.test(c.req.path) ? next() : jsonLimit(c, next)));
   app.use('/api/*', loadSession(deps));
 
   app.get('/api/health', (c) => c.json({ ok: true, version: deps.version }));
@@ -65,6 +65,7 @@ export function createApp(deps: AppDeps, options: { serveWeb?: boolean } = {}) {
   app.route('/api/generic-logos', genericLogoRoutes());
   app.route('/api/rooms', roomRoutes(deps));
   app.route('/api/settings', settingsRoutes(deps));
+  app.route('/api/venue-logo', venueLogoRoutes(deps));
   app.all('/api/*', (c) => c.json({ error: 'Non trovato' }, 404));
 
   if (options.serveWeb) app.route('/', webRoutes(deps.config.webDir));

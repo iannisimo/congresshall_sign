@@ -62,6 +62,12 @@ export default defineConfig(({ command }) => {
           cleanupOutdatedCaches: true,
           runtimeCaching: [
             {
+              // The uploaded venue logo; its URL changes with each upload (?v=…).
+              urlPattern: ({ url }) => url.pathname === '/api/venue-logo' && url.searchParams.has('v'),
+              handler: 'CacheFirst',
+              options: { cacheName: 'venue-logo', expiration: { maxEntries: 4 }, cacheableResponse: { statuses: [200] } },
+            },
+            {
               // Logos never change once uploaded.
               urlPattern: ({ url }) => url.pathname.startsWith('/api/logos/'),
               handler: 'CacheFirst',

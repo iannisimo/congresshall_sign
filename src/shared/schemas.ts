@@ -124,6 +124,8 @@ export const settingsSchema = z.object({
   signTheme: z.enum(['auto', 'light', 'dark']),
   darkFrom: clockTime,
   darkUntil: clockTime,
+  staleAfterMinutes: z.number().int({ error: 'Usa un numero intero' }).min(2, { error: 'Minimo 2 minuti' }).max(1440, { error: 'Massimo 1440 minuti' }),
+  offlineAfterHours: z.number().int({ error: 'Usa un numero intero' }).min(1, { error: 'Minimo 1 ora' }).max(720, { error: 'Massimo 720 ore' }),
 });
 
 export const loginSchema = z.object({
