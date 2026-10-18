@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
-import { MINUTE } from '../shared/time.ts';
+import { changeoverMargins } from '../shared/time.ts';
 import { openDatabase } from './db/database.ts';
 import { listEvents } from './data/events.ts';
 import { listOrganizers } from './data/organizers.ts';
@@ -63,7 +63,7 @@ describe('importMongo', () => {
       subtitle: null,
       roomIds: [salaA.id],
       prepAt: Date.parse('2026-10-17T07:30:00Z'),
-      releaseAt: Date.parse('2026-10-17T10:00:00Z') + 30 * MINUTE,
+      releaseAt: changeoverMargins(Date.parse('2026-10-17T08:00:00Z'), Date.parse('2026-10-17T10:00:00Z'), '14:00').releaseAt,
       visible: true,
     });
     expect(event!.logoId).toBe(listOrganizers(db)[0]!.logoIds[0]);

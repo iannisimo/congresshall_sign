@@ -61,19 +61,21 @@ export interface SessionUser {
   role: Role;
 }
 
-/** How the sign behaves; set by the superadmin. */
-export interface SignSettings {
-  /** Speed of text too long for its space, in pixels per second on a 1080p sign. */
+/** Venue-wide settings, set by the superadmin. */
+export interface Settings {
+  /** Speed of text too long for its space on the sign, in pixels per second on a 1080p screen. */
   marqueeSpeed: number;
   /** Seconds that text waits at its start before scrolling. */
   marqueePause: number;
+  /** "HH:MM" when rooms change hands: default preparation starts and clean-up ends then. */
+  changeoverTime: string;
 }
 
 /** Everything the sign needs, from GET /api/display. */
 export interface DisplaySnapshot {
   version: string;
   venueName: string;
-  settings: SignSettings;
+  settings: Settings;
   rooms: Room[];
   events: ScheduledEvent[];
   overrides: Override[];

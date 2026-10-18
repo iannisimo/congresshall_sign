@@ -1,6 +1,6 @@
-import type { SignSettings } from '../../shared/model.ts';
-import { signSettingsSchema } from '../../shared/schemas.ts';
-import { DEFAULT_SIGN_SETTINGS } from '../../shared/settings.ts';
+import type { Settings } from '../../shared/model.ts';
+import { settingsSchema } from '../../shared/schemas.ts';
+import { DEFAULT_SETTINGS } from '../../shared/settings.ts';
 import { all, run, transaction, type Db } from '../db/database.ts';
 
 function parseJson(value: string): unknown {
@@ -12,17 +12,17 @@ function parseJson(value: string): unknown {
 }
 
 /** Saved values over the defaults; a missing or unreadable value uses its default. */
-export function getSignSettings(db: Db): SignSettings {
+export function getSettings(db: Db): Settings {
   const saved = new Map(all<{ key: string; value: string }>(db, 'SELECT key, value FROM settings').map((r) => [r.key, parseJson(r.value)]));
-  const settings = { ...DEFAULT_SIGN_SETTINGS };
-  for (const key of Object.keys(settings) as (keyof SignSettings)[]) {
-    const parsed = signSettingsSchema.shape[key].safeParse(saved.get(key));
+  const settings: Record<string, unknown> = { ...DEFAULT_SETTINGS };
+  for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]) {
+    const parsed = settingsSchema.shape[key].safeParse(saved.get(key));
     if (parsed.success) settings[key] = parsed.data;
   }
-  return settings;
+  return settings as unknown as Settings;
 }
 
-export function saveSignSettings(db: Db, settings: SignSettings): void {
+export function saveSettings(db: Db, settings: Settings): void {
   transaction(db, () => {
     for (const [key, value] of Object.entries(settings)) {
       run(db, 'INSERT OR REPLACE INTO settings (key, value) VALUES (:key, :value)', { key, value: JSON.stringify(value) });

@@ -5,7 +5,7 @@ import { displayWindow } from '../../shared/time.ts';
 import { listEvents } from '../data/events.ts';
 import { activeOverrides } from '../data/overrides.ts';
 import { listRooms } from '../data/rooms.ts';
-import { getSignSettings } from '../data/settings.ts';
+import { getSettings } from '../data/settings.ts';
 import type { AppDeps, AppEnv } from '../http.ts';
 
 /**
@@ -20,7 +20,7 @@ export function displayRoutes(deps: AppDeps) {
     const snapshot: DisplaySnapshot = {
       version: deps.version,
       venueName: deps.config.venueName,
-      settings: getSignSettings(deps.db),
+      settings: getSettings(deps.db),
       rooms: listRooms(deps.db),
       events: listEvents(deps.db, { ...displayWindow(now), visibleOnly: true }),
       overrides: activeOverrides(deps.db, now),

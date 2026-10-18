@@ -1,9 +1,9 @@
 import { useMutation } from '@tanstack/react-query';
 import { startOfDay } from 'date-fns';
 import { useState } from 'react';
-import type { ScheduledEvent, SignSettings } from '../../shared/model.ts';
-import { signSettingsSchema } from '../../shared/schemas.ts';
-import { DEFAULT_SIGN_SETTINGS } from '../../shared/settings.ts';
+import type { ScheduledEvent, Settings } from '../../shared/model.ts';
+import { settingsSchema } from '../../shared/schemas.ts';
+import { DEFAULT_SETTINGS } from '../../shared/settings.ts';
 import { HOUR, MINUTE } from '../../shared/time.ts';
 import { api, errorMessage, keys, queryClient, useSettings } from './api.ts';
 import { SignCardPreview } from './SignPreview.tsx';
@@ -68,81 +68,102 @@ function NumberWithSlider({
   );
 }
 
-function SettingsForm({ saved }: { saved: SignSettings }) {
+function SettingsForm({ saved }: { saved: Settings }) {
   const { toast } = useFeedback();
   const [draft, setDraft] = useState(saved);
   const [sample] = useState(sampleEvent);
 
-  const result = signSettingsSchema.safeParse(draft);
+  const result = settingsSchema.safeParse(draft);
   const errors = new Map(result.error?.issues.map((issue) => [String(issue.path[0]), issue.message]) ?? []);
-  const changed = draft.marqueeSpeed !== saved.marqueeSpeed || draft.marqueePause !== saved.marqueePause;
+  const changed = (Object.keys(saved) as (keyof Settings)[]).some((key) => draft[key] !== saved[key]);
 
   const save = useMutation({
-    mutationFn: () => api<SignSettings>('/settings', { method: 'PUT', json: draft }),
+    mutationFn: () => api<Settings>('/settings', { method: 'PUT', json: draft }),
     onSuccess: (settings) => {
       queryClient.setQueryData(keys.settings, settings);
       void queryClient.invalidateQueries({ queryKey: keys.display });
+      void queryClient.invalidateQueries({ queryKey: keys.settings });
       toast('Impostazioni salvate: il cartello le applica entro un minuto');
     },
   });
 
   return (
-    <Card className="space-y-6 p-5">
-      <div>
-        <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Testi lunghi</h2>
-        <p className="mt-1 text-sm text-slate-600">
-          I testi che non entrano nel loro spazio (titoli e sottotitoli, e organizzatore e sale nella lista «Coming up»)
-          restano fermi all’inizio per qualche secondo, poi scorrono finché il testo ricomincia.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <Card className="space-y-6 p-5">
+        <div>
+          <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Cartello: testi lunghi</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            I testi che non entrano nel loro spazio (titoli e sottotitoli, e organizzatore e sale nella lista «Coming up»)
+            restano fermi all’inizio per qualche secondo, poi scorrono finché il testo ricomincia.
+          </p>
+        </div>
 
-      <Field label="Velocità" error={errors.get('marqueeSpeed')} hint="Pixel al secondo su uno schermo Full HD; su altre risoluzioni si adatta da sola.">
-        <NumberWithSlider
-          value={draft.marqueeSpeed}
-          onChange={(marqueeSpeed) => setDraft({ ...draft, marqueeSpeed })}
-          min={10}
-          max={400}
-          step={5}
-          unit="px/s"
-        />
-      </Field>
-      <Field label="Pausa all’inizio" error={errors.get('marqueePause')}>
-        <NumberWithSlider
-          value={draft.marqueePause}
-          onChange={(marqueePause) => setDraft({ ...draft, marqueePause })}
-          min={0}
-          max={30}
-          step={0.5}
-          unit="secondi"
-        />
-      </Field>
+        <Field label="Velocità" error={errors.get('marqueeSpeed')} hint="Pixel al secondo su uno schermo Full HD; su altre risoluzioni si adatta da sola.">
+          <NumberWithSlider
+            value={draft.marqueeSpeed}
+            onChange={(marqueeSpeed) => setDraft({ ...draft, marqueeSpeed })}
+            min={10}
+            max={400}
+            step={5}
+            unit="px/s"
+          />
+        </Field>
+        <Field label="Pausa all’inizio" error={errors.get('marqueePause')}>
+          <NumberWithSlider
+            value={draft.marqueePause}
+            onChange={(marqueePause) => setDraft({ ...draft, marqueePause })}
+            min={0}
+            max={30}
+            step={0.5}
+            unit="secondi"
+          />
+        </Field>
 
-      <div>
-        <div className="mb-2 text-sm font-medium text-slate-700">Anteprima</div>
-        <SignCardPreview event={sample} roomNames={['Auditorium']} now={sample.prepAt - HOUR} settings={result.success ? result.data : saved} />
-      </div>
+        <div>
+          <div className="mb-2 text-sm font-medium text-slate-700">Anteprima</div>
+          <SignCardPreview event={sample} roomNames={['Auditorium']} now={sample.prepAt - HOUR} settings={result.success ? result.data : saved} />
+        </div>
+      </Card>
 
-      {save.isError && <ErrorNote>{errorMessage(save.error)}</ErrorNote>}
-      <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="ghost" onClick={() => setDraft(DEFAULT_SIGN_SETTINGS)}>
-          Valori predefiniti
-        </Button>
-        <Button variant="primary" disabled={!changed || !result.success} busy={save.isPending} onClick={() => save.mutate()}>
-          Salva
-        </Button>
-      </div>
-    </Card>
+      <Card className="space-y-6 p-5">
+        <div>
+          <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Programma: cambio sala</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Orario a cui le sale passano da un evento all’altro. Per i nuovi eventi la preparazione parte a quest’ora del
+            giorno prima e il riordino finisce a quest’ora dopo la fine. Gli eventi già salvati non cambiano.
+          </p>
+        </div>
+        <Field label="Orario di cambio sala" error={errors.get('changeoverTime')}>
+          <input
+            type="time"
+            className={`${inputClass} w-32!`}
+            value={draft.changeoverTime}
+            onChange={(e) => setDraft({ ...draft, changeoverTime: e.target.value })}
+          />
+        </Field>
+      </Card>
+
+        {save.isError && <ErrorNote>{errorMessage(save.error)}</ErrorNote>}
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="ghost" onClick={() => setDraft(DEFAULT_SETTINGS)}>
+            Valori predefiniti
+          </Button>
+          <Button variant="primary" disabled={!changed || !result.success} busy={save.isPending} onClick={() => save.mutate()}>
+            Salva
+          </Button>
+        </div>
+    </div>
   );
 }
 
-/** Sign settings, for the superadmin. */
+/** Venue settings, for the superadmin. */
 export default function Settings() {
   const settings = useSettings();
   if (settings.isPending) return <PageLoading />;
   if (settings.isError) return <ErrorNote>{errorMessage(settings.error)}</ErrorNote>;
   return (
     <div className="max-w-3xl space-y-6">
-      <h1 className="text-lg font-semibold text-slate-900">Impostazioni del cartello</h1>
+      <h1 className="text-lg font-semibold text-slate-900">Impostazioni</h1>
       <SettingsForm key={JSON.stringify(settings.data)} saved={settings.data} />
     </div>
   );

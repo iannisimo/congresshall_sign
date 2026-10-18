@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { findConflicts } from './conflicts.ts';
 import type { ScheduledEvent } from './model.ts';
 
-function event(id: number, roomIds: number[], prepAt: number, releaseAt: number, visible = true): ScheduledEvent {
+/** Event running [startAt, endAt), with long preparation and clean-up around it. */
+function event(id: number, roomIds: number[], startAt: number, endAt: number, visible = true): ScheduledEvent {
   return {
     id,
     organizerId: 1,
@@ -11,10 +12,10 @@ function event(id: number, roomIds: number[], prepAt: number, releaseAt: number,
     title: `Event ${id}`,
     subtitle: null,
     roomIds,
-    prepAt,
-    startAt: prepAt,
-    endAt: releaseAt,
-    releaseAt,
+    prepAt: startAt - 1000,
+    startAt,
+    endAt,
+    releaseAt: endAt + 1000,
     visible,
   };
 }
@@ -22,8 +23,8 @@ function event(id: number, roomIds: number[], prepAt: number, releaseAt: number,
 describe('findConflicts', () => {
   const existing = [event(1, [1, 2], 100, 200), event(2, [3], 100, 200), event(3, [1], 300, 400, false)];
 
-  it('finds overlapping events in shared rooms', () => {
-    const conflicts = findConflicts({ roomIds: [2, 3], prepAt: 150, releaseAt: 250 }, existing);
+  it('finds events running at the same time in shared rooms', () => {
+    const conflicts = findConflicts({ roomIds: [2, 3], startAt: 150, endAt: 250 }, existing);
     expect(conflicts.map((c) => [c.event.id, c.roomIds])).toEqual([
       [1, [2]],
       [2, [3]],
@@ -31,14 +32,19 @@ describe('findConflicts', () => {
   });
 
   it('allows back-to-back events', () => {
-    expect(findConflicts({ roomIds: [1], prepAt: 200, releaseAt: 300 }, existing)).toEqual([]);
+    expect(findConflicts({ roomIds: [1], startAt: 200, endAt: 300 }, existing)).toEqual([]);
+  });
+
+  it('ignores overlapping preparation and clean-up', () => {
+    // Event 1 is still being cleaned up (until 1200) and event 3 already prepared (from -700).
+    expect(findConflicts({ roomIds: [1], startAt: 210, endAt: 290 }, existing)).toEqual([]);
   });
 
   it('ignores the event being edited', () => {
-    expect(findConflicts({ id: 1, roomIds: [1], prepAt: 150, releaseAt: 250 }, existing)).toEqual([]);
+    expect(findConflicts({ id: 1, roomIds: [1], startAt: 150, endAt: 250 }, existing)).toEqual([]);
   });
 
   it('counts hidden events', () => {
-    expect(findConflicts({ roomIds: [1], prepAt: 350, releaseAt: 500 }, existing).map((c) => c.event.id)).toEqual([3]);
+    expect(findConflicts({ roomIds: [1], startAt: 350, endAt: 500 }, existing).map((c) => c.event.id)).toEqual([3]);
   });
 });

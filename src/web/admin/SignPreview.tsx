@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import type { ScheduledEvent, SignSettings } from '../../shared/model.ts';
+import type { ScheduledEvent, Settings } from '../../shared/model.ts';
 import { CARD_HEIGHT, CARD_WIDTH, EventCard } from '../sign/EventCard.tsx';
 import { MarqueeSettings } from '../sign/Marquee.tsx';
 
@@ -13,7 +13,7 @@ export function SignCardPreview({
   event: ScheduledEvent;
   roomNames: string[];
   now: number;
-  settings: SignSettings;
+  settings: Settings;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.5);

@@ -2,7 +2,7 @@ import { CalendarDays, WifiOff } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ScheduledEvent } from '../../shared/model.ts';
 import { computeRoomStatuses } from '../../shared/status.ts';
-import { DEFAULT_SIGN_SETTINGS } from '../../shared/settings.ts';
+import { DEFAULT_SETTINGS } from '../../shared/settings.ts';
 import { DAY, MINUTE } from '../../shared/time.ts';
 import { formatDay } from '../lib/format.ts';
 import { ComingUp } from './ComingUp.tsx';
@@ -123,7 +123,7 @@ function SignScreen() {
 
   return (
     // Snapshots saved by older versions have no settings.
-    <MarqueeSettings.Provider value={snapshot.settings ?? DEFAULT_SIGN_SETTINGS}>
+    <MarqueeSettings.Provider value={snapshot.settings ?? DEFAULT_SETTINGS}>
       <div className="flex h-screen w-screen flex-col overflow-hidden bg-canvas">
         <Header venueName={venueName} now={now} staleSince={offlineFor > STALE_AFTER ? lastContactAt : null} />
 

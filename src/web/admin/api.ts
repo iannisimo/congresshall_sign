@@ -1,5 +1,5 @@
 import { keepPreviousData, MutationCache, QueryCache, QueryClient, useQuery } from '@tanstack/react-query';
-import type { Conflict, DisplaySnapshot, Organizer, Room, ScheduledEvent, SessionUser, SignSettings } from '../../shared/model.ts';
+import type { Conflict, DisplaySnapshot, Organizer, Room, ScheduledEvent, SessionUser, Settings } from '../../shared/model.ts';
 
 export interface ConflictReport {
   /** Position of the event in the request. */
@@ -111,7 +111,7 @@ export const useEvents = (from: number, to: number, options: { enabled?: boolean
 export const useEvent = (id: number | undefined) =>
   useQuery({ queryKey: keys.event(id ?? 0), queryFn: () => api<ScheduledEvent>(`/events/${id}`), enabled: id !== undefined });
 
-export const useSettings = () => useQuery({ queryKey: keys.settings, queryFn: () => api<SignSettings>('/settings') });
+export const useSettings = () => useQuery({ queryKey: keys.settings, queryFn: () => api<Settings>('/settings') });
 
 /** Same data as the sign, for the current room statuses. */
 export const useDisplay = () =>

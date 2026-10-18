@@ -6,9 +6,9 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { findConflicts } from '../../shared/conflicts.ts';
 import type { Conflict, Organizer, Room, ScheduledEvent } from '../../shared/model.ts';
 import { eventInputSchema, type EventInput } from '../../shared/schemas.ts';
-import { DAY, DEFAULT_CLEANUP_MINUTES, DEFAULT_DURATION_MINUTES, DEFAULT_PREP_MINUTES, MINUTE } from '../../shared/time.ts';
+import { changeoverMargins, DAY, DEFAULT_DURATION_MINUTES, MINUTE } from '../../shared/time.ts';
 import { formatAdminShortDay, formatAdminTime } from '../lib/format.ts';
-import { DEFAULT_SIGN_SETTINGS } from '../../shared/settings.ts';
+import { DEFAULT_SETTINGS } from '../../shared/settings.ts';
 import { api, errorMessage, HttpError, refreshSchedule, useEvent, useEvents, useOrganizers, useRooms, useSettings } from './api.ts';
 import { atTime, dateShortcut, fromDateTimeValue, fromDateValue, toDateTimeValue, toDateValue, todayValue, toTimeValue } from './dates.ts';
 import { LogoPicker, OrganizerPicker } from './OrganizerFields.tsx';
@@ -27,9 +27,28 @@ interface Draft {
   dates: string[];
   start: string;
   end: string;
+  margins: MarginMode;
+  /** Used with custom margins. */
   prepMinutes: number;
   cleanupMinutes: number;
   visible: boolean;
+}
+
+/**
+ * How long the room is held around the event: the two usual congress set-ups (from/until 14:00 around
+ * the event, or nothing), or custom times.
+ */
+type MarginMode = 'changeover' | 'none' | 'custom';
+
+function margins(draft: Draft, startAt: number, endAt: number, changeoverTime: string): { prepAt: number; releaseAt: number } {
+  switch (draft.margins) {
+    case 'changeover':
+      return changeoverMargins(startAt, endAt, changeoverTime);
+    case 'none':
+      return { prepAt: startAt, releaseAt: endAt };
+    case 'custom':
+      return { prepAt: startAt - draft.prepMinutes * MINUTE, releaseAt: endAt + draft.cleanupMinutes * MINUTE };
+  }
 }
 
 type FieldKey = 'organizer' | 'title' | 'subtitle' | 'rooms' | 'dates' | 'times' | 'prep' | 'cleanup';
@@ -65,13 +84,21 @@ function newDraft(search: URLSearchParams): Draft {
     dates: [date],
     start,
     end: shiftTime(start, DEFAULT_DURATION_MINUTES),
-    prepMinutes: DEFAULT_PREP_MINUTES,
-    cleanupMinutes: DEFAULT_CLEANUP_MINUTES,
+    margins: 'changeover',
+    prepMinutes: 30,
+    cleanupMinutes: 30,
     visible: true,
   };
 }
 
-function draftFrom(event: ScheduledEvent): Draft {
+function draftFrom(event: ScheduledEvent, changeoverTime: string): Draft {
+  const changeover = changeoverMargins(event.startAt, event.endAt, changeoverTime);
+  const mode: MarginMode =
+    event.prepAt === changeover.prepAt && event.releaseAt === changeover.releaseAt
+      ? 'changeover'
+      : event.prepAt === event.startAt && event.releaseAt === event.endAt
+        ? 'none'
+        : 'custom';
   return {
     organizerId: event.organizerId,
     logoId: event.logoId,
@@ -81,6 +108,7 @@ function draftFrom(event: ScheduledEvent): Draft {
     dates: [toDateValue(event.startAt)],
     start: toTimeValue(event.startAt),
     end: toTimeValue(event.endAt),
+    margins: mode,
     prepMinutes: Math.round((event.startAt - event.prepAt) / MINUTE),
     cleanupMinutes: Math.round((event.releaseAt - event.endAt) / MINUTE),
     visible: event.visible,
@@ -88,22 +116,23 @@ function draftFrom(event: ScheduledEvent): Draft {
 }
 
 /** API inputs for each date, or null where the date or times can't be read. Ends before the start mean the next day. */
-function buildInputs(draft: Draft): (EventInput | null)[] {
+function buildInputs(draft: Draft, changeoverTime: string): (EventInput | null)[] {
   return draft.dates.map((date) => {
     const startAt = atTime(date, draft.start);
     let endAt = atTime(date, draft.end);
     if (startAt === null || endAt === null) return null;
     if (endAt <= startAt) endAt += DAY;
+    const { prepAt, releaseAt } = margins(draft, startAt, endAt, changeoverTime);
     return {
       organizerId: draft.organizerId ?? 0,
       logoId: draft.logoId,
       title: draft.title,
       subtitle: draft.subtitle,
       roomIds: draft.roomIds,
-      prepAt: startAt - draft.prepMinutes * MINUTE,
+      prepAt,
       startAt,
       endAt,
-      releaseAt: endAt + draft.cleanupMinutes * MINUTE,
+      releaseAt,
       visible: draft.visible,
     };
   });
@@ -134,6 +163,29 @@ function minutesLabel(m: number): string {
   if (m === 0) return 'Nessuna';
   if (m % 60 === 0) return m === 60 ? '1 ora' : `${m / 60} ore`;
   return `${m} min`;
+}
+
+function MarginOption({
+  selected,
+  onSelect,
+  title,
+  description,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  title: string;
+  description: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`rounded-lg px-4 py-3 text-left ring-1 transition-colors ${selected ? 'bg-brand-50 ring-2 ring-brand-600' : 'bg-white ring-slate-300 hover:bg-slate-50'}`}
+    >
+      <span className="block text-sm font-semibold text-slate-900">{title}</span>
+      <span className="mt-0.5 block text-xs text-slate-600">{description}</span>
+    </button>
+  );
 }
 
 /** Preparation before the start or clean-up after the end: presets, or an exact time (e.g. the evening before). */
@@ -190,7 +242,7 @@ function MarginField({
 /** The event as it will look on the sign (ADMIN-4), scaled to the available width. */
 function Preview({ event, roomNames }: { event: ScheduledEvent; roomNames: string[] }) {
   const [live, setLive] = useState(false);
-  const settings = useSettings().data ?? DEFAULT_SIGN_SETTINGS;
+  const settings = useSettings().data ?? DEFAULT_SETTINGS;
   const now = live ? (event.startAt + event.endAt) / 2 : event.startAt - DAY;
 
   return (
@@ -244,6 +296,7 @@ function EditorForm({
   eventId,
   rooms,
   organizers,
+  changeoverTime,
   backTo,
 }: {
   mode: Mode;
@@ -251,6 +304,8 @@ function EditorForm({
   eventId: number | undefined;
   rooms: Room[];
   organizers: Organizer[];
+  /** From the settings: when the default preparation starts and clean-up ends. */
+  changeoverTime: string;
   backTo: string;
 }) {
   const navigate = useNavigate();
@@ -263,7 +318,7 @@ function EditorForm({
   const bookable = rooms.filter((r) => r.kind === 'main');
   const organizer = organizers.find((o) => o.id === draft.organizerId);
 
-  const built = buildInputs(draft);
+  const built = buildInputs(draft, changeoverTime);
   const { errors, inputs } = validate(draft, built);
   const first = built[0] ?? null;
   const overnight = draft.start !== '' && draft.end !== '' && draft.end <= draft.start;
@@ -478,24 +533,73 @@ function EditorForm({
               </div>
             </Field>
 
-            <MarginField
-              label="Preparazione della sala"
-              minutes={draft.prepMinutes}
-              onChange={(prepMinutes) => update({ prepMinutes })}
-              anchor={first?.startAt ?? null}
-              direction="before"
-              describe={(t) => `Sala riservata dalle ${formatAdminTime(t)} (${formatAdminShortDay(t)})`}
-              error={shown('prep')}
-            />
-            <MarginField
-              label="Riordino dopo l’evento"
-              minutes={draft.cleanupMinutes}
-              onChange={(cleanupMinutes) => update({ cleanupMinutes })}
-              anchor={first?.endAt ?? null}
-              direction="after"
-              describe={(t) => `La sala torna libera alle ${formatAdminTime(t)} (${formatAdminShortDay(t)})`}
-              error={shown('cleanup')}
-            />
+            <Field
+              label="Preparazione e riordino della sala"
+              error={draft.margins === 'custom' ? undefined : (shown('prep') ?? shown('cleanup'))}
+              hint={
+                first && draft.margins !== 'custom'
+                  ? `${draft.dates.length > 1 ? 'Primo giorno: sala riservata' : 'Sala riservata'} dalle ${formatAdminTime(first.prepAt)} di ${formatAdminShortDay(first.prepAt)} alle ${formatAdminTime(first.releaseAt)} di ${formatAdminShortDay(first.releaseAt)}`
+                  : undefined
+              }
+            >
+              <div className="grid gap-2 sm:grid-cols-2">
+                <MarginOption
+                  selected={draft.margins === 'changeover'}
+                  onSelect={() => update({ margins: 'changeover' })}
+                  title={`Dalle ${changeoverTime} del giorno prima`}
+                  description={`Fino alle ${changeoverTime} dopo la fine (lo stesso giorno se finisce prima). Tra i giorni di un congresso la sala resta riservata.`}
+                />
+                <MarginOption
+                  selected={draft.margins === 'none'}
+                  onSelect={() => update({ margins: 'none' })}
+                  title="Nessuna preparazione né riordino"
+                  description="La sala è riservata solo durante l’evento."
+                />
+              </div>
+              {draft.margins !== 'custom' && (
+                <button
+                  type="button"
+                  className="mt-2 text-sm font-medium text-brand-800 hover:underline"
+                  onClick={() =>
+                    // Start from what is shown now, so the times only change when edited.
+                    update({
+                      margins: 'custom',
+                      ...(first && {
+                        prepMinutes: Math.round((first.startAt - first.prepAt) / MINUTE),
+                        cleanupMinutes: Math.round((first.releaseAt - first.endAt) / MINUTE),
+                      }),
+                    })
+                  }
+                >
+                  Orari personalizzati…
+                </button>
+              )}
+            </Field>
+            {draft.margins === 'custom' && (
+              <>
+                <MarginField
+                  label="Preparazione della sala"
+                  minutes={draft.prepMinutes}
+                  onChange={(prepMinutes) => update({ prepMinutes })}
+                  anchor={first?.startAt ?? null}
+                  direction="before"
+                  describe={(t) => `Sala riservata dalle ${formatAdminTime(t)} (${formatAdminShortDay(t)})`}
+                  error={shown('prep')}
+                />
+                <MarginField
+                  label="Riordino dopo l’evento"
+                  minutes={draft.cleanupMinutes}
+                  onChange={(cleanupMinutes) => update({ cleanupMinutes })}
+                  anchor={first?.endAt ?? null}
+                  direction="after"
+                  describe={(t) => `La sala torna libera alle ${formatAdminTime(t)} (${formatAdminShortDay(t)})`}
+                  error={shown('cleanup')}
+                />
+                <button type="button" className="text-sm font-medium text-brand-800 hover:underline" onClick={() => update({ margins: 'changeover' })}>
+                  Torna alle impostazioni consuete
+                </button>
+              </>
+            )}
           </Section>
         </div>
 
@@ -556,12 +660,14 @@ export default function EventEditor({ mode }: { mode: Mode }) {
   const source = useEvent(id);
   const rooms = useRooms();
   const organizers = useOrganizers();
+  const settings = useSettings();
 
   if (source.isError) return <ErrorNote>{errorMessage(source.error)}</ErrorNote>;
-  if ((id !== undefined && source.isPending) || rooms.isPending || organizers.isPending) return <PageLoading />;
+  if ((id !== undefined && source.isPending) || rooms.isPending || organizers.isPending || settings.isPending) return <PageLoading />;
   if (rooms.isError || organizers.isError) return <ErrorNote>{errorMessage(rooms.error ?? organizers.error)}</ErrorNote>;
 
-  const initial = source.data ? draftFrom(source.data) : newDraft(search);
+  const { changeoverTime } = settings.data ?? DEFAULT_SETTINGS;
+  const initial = source.data ? draftFrom(source.data, changeoverTime) : newDraft(search);
   return (
     <EditorForm
       key={`${mode}-${id ?? 'new'}`}
@@ -570,6 +676,7 @@ export default function EventEditor({ mode }: { mode: Mode }) {
       eventId={mode === 'edit' ? id : undefined}
       rooms={rooms.data}
       organizers={organizers.data}
+      changeoverTime={changeoverTime}
       backTo={search.get('d') ?? initial.dates[0] ?? todayValue()}
     />
   );

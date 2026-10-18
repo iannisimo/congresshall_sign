@@ -1,13 +1,13 @@
 import { createContext, useContext, useLayoutEffect, useRef, useState } from 'react';
-import type { SignSettings } from '../../shared/model.ts';
-import { DEFAULT_SIGN_SETTINGS, REFERENCE_REM_PX } from '../../shared/settings.ts';
+import type { Settings } from '../../shared/model.ts';
+import { DEFAULT_SETTINGS, REFERENCE_REM_PX } from '../../shared/settings.ts';
 
 /** Space between the end of the text and the copy that follows it, in rem. */
 const GAP = 3;
 const FADE = 'linear-gradient(to right, black calc(100% - 1.5rem), transparent)';
 const canAnimate = typeof Element !== 'undefined' && typeof Element.prototype.animate === 'function';
 
-export const MarqueeSettings = createContext<SignSettings>(DEFAULT_SIGN_SETTINGS);
+export const MarqueeSettings = createContext<Settings>(DEFAULT_SETTINGS);
 
 /** Told how long a full scroll cycle lasts (ms), so a page of cards can stay up until it ends. */
 export const MarqueeCycle = createContext<((ms: number) => void) | null>(null);

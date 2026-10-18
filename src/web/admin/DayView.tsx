@@ -1,10 +1,10 @@
 import { useMutation } from '@tanstack/react-query';
-import { addDays, isToday, startOfDay } from 'date-fns';
+import { addDays, isSameDay, isToday, startOfDay } from 'date-fns';
 import { ChevronLeft, ChevronRight, Copy, Eye, EyeOff, MapPin, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import type { Room, ScheduledEvent } from '../../shared/model.ts';
-import { formatAdminDay, formatAdminTime } from '../lib/format.ts';
+import { formatAdminDay, formatAdminShortDay, formatAdminTime } from '../lib/format.ts';
 import { Logo } from '../sign/parts.tsx';
 import { api, errorMessage, refreshSchedule, useEvents, useRooms } from './api.ts';
 import { dateShortcut, fromDateValue, toDateValue } from './dates.ts';
@@ -16,6 +16,13 @@ import { Badge, Button, buttonClass, Card, ErrorNote, inputClass, PageLoading, u
 export function toInput(event: ScheduledEvent) {
   const { id: _id, organizerName: _name, ...input } = event;
   return input;
+}
+
+/** When the room is held around the event, with the day when it isn't the event's. */
+function heldText(event: ScheduledEvent): string {
+  if (event.prepAt === event.startAt && event.releaseAt === event.endAt) return 'nessuna preparazione né riordino';
+  const at = (t: number) => (isSameDay(t, event.startAt) ? formatAdminTime(t) : `${formatAdminTime(t)} di ${formatAdminShortDay(t)}`);
+  return `sala riservata dalle ${at(event.prepAt)} alle ${at(event.releaseAt)}`;
 }
 
 function EventRow({ event, rooms, day }: { event: ScheduledEvent; rooms: Map<number, Room>; day: string }) {
@@ -56,9 +63,7 @@ function EventRow({ event, rooms, day }: { event: ScheduledEvent; rooms: Map<num
             <span className="font-medium tabular-nums">
               {formatAdminTime(event.startAt)}–{formatAdminTime(event.endAt)}
             </span>
-            <span className="text-slate-500 tabular-nums">
-              sala riservata {formatAdminTime(event.prepAt)}–{formatAdminTime(event.releaseAt)}
-            </span>
+            <span className="text-slate-500 tabular-nums">{heldText(event)}</span>
             <span className="flex items-center gap-1">
               <MapPin className="size-3.5 text-slate-400" />
               {roomNames}
@@ -114,6 +119,9 @@ export default function DayView() {
     return () => clearInterval(timer);
   }, []);
 
+  // The query also returns events that only hold a room by preparation or clean-up (the timeline shows
+  // those); the list is about what runs this day.
+  const running = (events.data ?? []).filter((e) => e.startAt < next && e.endAt > day);
   const roomMap = useMemo(() => new Map((rooms.data ?? []).map((r) => [r.id, r])), [rooms.data]);
   const bookable = (rooms.data ?? []).filter((r) => r.kind === 'main');
   const goTo = (t: number) => setParams({ d: toDateValue(t) });
@@ -173,11 +181,11 @@ export default function DayView() {
             </Card>
 
             <Card>
-              {(events.data ?? []).length === 0 ? (
+              {running.length === 0 ? (
                 <p className="px-4 py-10 text-center text-sm text-slate-500">Nessun evento in questo giorno.</p>
               ) : (
                 <ul className="divide-y divide-slate-100">
-                  {(events.data ?? []).map((event) => (
+                  {running.map((event) => (
                     <EventRow key={event.id} event={event} rooms={roomMap} day={dayValue} />
                   ))}
                 </ul>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Override, Room, ScheduledEvent } from './model.ts';
 import { computeRoomStatuses, eventPhase } from './status.ts';
-import { HOUR, MINUTE } from './time.ts';
+import { changeoverMargins, HOUR, MINUTE } from './time.ts';
 
 const T0 = Date.UTC(2026, 9, 17, 8, 0); // reference "now"; offsets below are relative to it
 
@@ -160,5 +160,39 @@ describe('computeRoomStatuses: overrides', () => {
   it('takes the earlier of expiry and next change', () => {
     const o = [override(1, { createdAt: at(0), expiresAt: at(3), untilNextChange: true })];
     expect(statusAt(at(1), rooms, events, o).get(1)).toMatchObject({ changesAt: at(1.5) });
+  });
+});
+
+describe('changeover margins', () => {
+  const local = (iso: string) => new Date(iso).getTime();
+
+  it('reserve the room from 14:00 the day before to the next 14:00', () => {
+    expect(changeoverMargins(local('2026-10-20T09:00'), local('2026-10-20T18:00'), '14:00')).toEqual({
+      prepAt: local('2026-10-19T14:00'),
+      releaseAt: local('2026-10-21T14:00'),
+    });
+  });
+
+  it('free the room the same afternoon after a morning event', () => {
+    expect(changeoverMargins(local('2026-10-20T09:00'), local('2026-10-20T12:30'), '14:00').releaseAt).toBe(local('2026-10-20T14:00'));
+  });
+
+  it('keep the room reserved between the days of a congress', () => {
+    const day1 = event(1, [1], 0, 0, { ...changeoverMargins(local('2026-10-20T09:00'), local('2026-10-20T18:00'), '14:00'), startAt: local('2026-10-20T09:00'), endAt: local('2026-10-20T18:00') });
+    const day2 = event(2, [1], 0, 0, { ...changeoverMargins(local('2026-10-21T09:00'), local('2026-10-21T18:00'), '14:00'), startAt: local('2026-10-21T09:00'), endAt: local('2026-10-21T18:00') });
+    const night = computeRoomStatuses({ rooms: [room(1)], events: [day1, day2], overrides: [], now: local('2026-10-21T02:00') });
+    expect(night.get(1)).toMatchObject({ status: 'reserved', changesAt: local('2026-10-21T09:00') });
+  });
+
+  it('use the changeover time set by the superadmin', () => {
+    expect(changeoverMargins(local('2026-10-20T09:00'), local('2026-10-20T12:30'), '13:30')).toEqual({
+      prepAt: local('2026-10-19T13:30'),
+      releaseAt: local('2026-10-20T13:30'),
+    });
+  });
+
+  it('follow local time across the daylight saving change', () => {
+    // Clocks go back on 25 October 2026 in Italy.
+    expect(changeoverMargins(local('2026-10-26T09:00'), local('2026-10-26T18:00'), '14:00').prepAt).toBe(local('2026-10-25T14:00'));
   });
 });

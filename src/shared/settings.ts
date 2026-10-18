@@ -1,8 +1,9 @@
-import type { SignSettings } from './model.ts';
+import type { Settings } from './model.ts';
 
-export const DEFAULT_SIGN_SETTINGS: SignSettings = {
+export const DEFAULT_SETTINGS: Settings = {
   marqueeSpeed: 80,
   marqueePause: 3,
+  changeoverTime: '14:00',
 };
 
 /**

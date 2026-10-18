@@ -1,7 +1,7 @@
 import sharp from 'sharp';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { DisplaySnapshot, Organizer, Room, ScheduledEvent } from '../shared/model.ts';
-import { DAY, HOUR, MINUTE } from '../shared/time.ts';
+import { changeoverMargins, DAY, HOUR, MINUTE } from '../shared/time.ts';
 import { createApp } from './app.ts';
 import { hashPassword } from './auth/password.ts';
 import { loadConfig } from './config.ts';
@@ -213,6 +213,19 @@ describe('events', () => {
     expect((await admin.req('POST', '/api/events', { events: [clash], allowConflicts: true })).status).toBe(201);
   });
 
+  it('lets the days of a congress hold the room in between without conflicts', async () => {
+    const t = setup();
+    const { admin, rooms, org } = await seed(t);
+    const days = [24, 48].map((h) => {
+      const input = eventInput(t, org.id, [rooms.a.id], h, 9);
+      return { ...input, ...changeoverMargins(input.startAt, input.endAt, '14:00') };
+    });
+    // Day 1 is cleaned up until 14:00 of day 2, day 2 is prepared from 14:00 of day 1: no conflict.
+    expect((await admin.req('POST', '/api/events', { events: days })).status).toBe(201);
+    // Another event during day 2 is a conflict.
+    expect((await admin.req('POST', '/api/events', { events: [eventInput(t, org.id, [rooms.a.id], 50)] })).status).toBe(409);
+  });
+
   it('creates the same event on several days at once', async () => {
     const t = setup();
     const { admin, rooms, org } = await seed(t);
@@ -323,24 +336,25 @@ describe('display', () => {
   });
 });
 
-describe('sign settings', () => {
+describe('settings', () => {
   it('start from the defaults, only the superadmin changes them, and the sign gets them', async () => {
     const t = setup();
     const admin = t.client();
     await admin.login();
-    expect(await json(await admin.req('GET', '/api/settings'))).toEqual({ marqueeSpeed: 80, marqueePause: 3 });
-    expect((await admin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 2 })).status).toBe(403);
+    expect(await json(await admin.req('GET', '/api/settings'))).toEqual({ marqueeSpeed: 80, marqueePause: 3, changeoverTime: '14:00' });
+    expect((await admin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 2, changeoverTime: '14:00' })).status).toBe(403);
 
     const superadmin = t.client();
     await superadmin.login('superadmin');
-    expect((await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 5, marqueePause: 2 })).status).toBe(400);
+    expect((await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 5, marqueePause: 2, changeoverTime: '14:00' })).status).toBe(400);
+    expect((await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 2, changeoverTime: '25:00' })).status).toBe(400);
     const before = await t.app.request('/api/display');
-    const saved = await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 1.5 });
-    expect(await json(saved)).toEqual({ marqueeSpeed: 50, marqueePause: 1.5 });
+    const saved = await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 1.5, changeoverTime: '13:30' });
+    expect(await json(saved)).toEqual({ marqueeSpeed: 50, marqueePause: 1.5, changeoverTime: '13:30' });
 
     // The snapshot changes, so the sign fetches the new settings at its next poll.
     const after = await t.app.request('/api/display', { headers: { 'if-none-match': before.headers.get('etag')! } });
     expect(after.status).toBe(200);
-    expect((await json<DisplaySnapshot>(after)).settings).toEqual({ marqueeSpeed: 50, marqueePause: 1.5 });
+    expect((await json<DisplaySnapshot>(after)).settings).toEqual({ marqueeSpeed: 50, marqueePause: 1.5, changeoverTime: '13:30' });
   });
 });
