@@ -28,6 +28,18 @@ export const eventInputSchema = z
     startAt: time,
     endAt: time,
     releaseAt: time,
+    breaks: z
+      .array(
+        z
+          .object({
+            label: z.string().trim().min(1, { error: 'Dai un nome alla pausa' }).max(40, { error: 'Massimo 40 caratteri' }),
+            startAt: time,
+            endAt: time,
+          })
+          .refine((b) => b.startAt < b.endAt, { error: 'La pausa deve finire dopo il suo inizio' }),
+      )
+      .max(20)
+      .default([]),
     visible: z.boolean(),
   })
   .refine((e) => e.prepAt <= e.startAt, {
@@ -38,7 +50,15 @@ export const eventInputSchema = z
   .refine((e) => e.endAt <= e.releaseAt, {
     path: ['releaseAt'],
     error: "La sala non può liberarsi prima della fine dell'evento",
-  });
+  })
+  .refine((e) => e.breaks.every((b) => b.startAt >= e.startAt && b.endAt <= e.endAt), {
+    path: ['breaks'],
+    error: "Le pause devono stare dentro l'orario dell'evento",
+  })
+  .refine(
+    (e) => [...e.breaks].sort((a, b) => a.startAt - b.startAt).every((b, i, list) => i === 0 || list[i - 1]!.endAt <= b.startAt),
+    { path: ['breaks'], error: 'Le pause non possono sovrapporsi' },
+  );
 export type EventInput = z.output<typeof eventInputSchema>;
 
 export const createEventsSchema = z.object({

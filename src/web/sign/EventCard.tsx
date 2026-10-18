@@ -1,5 +1,5 @@
-import { MapPin } from 'lucide-react';
-import type { ScheduledEvent } from '../../shared/model.ts';
+import { Coffee, MapPin, Pause, UtensilsCrossed } from 'lucide-react';
+import type { EventBreak, ScheduledEvent } from '../../shared/model.ts';
 import { eventPhase } from '../../shared/status.ts';
 import { formatDay } from '../lib/format.ts';
 import { Marquee } from './Marquee.tsx';
@@ -10,6 +10,30 @@ import { strings } from './strings.ts';
 export const CARD_HEIGHT = 8.75;
 /** Width of a card on a 16:9 sign, in rem; the admin preview uses it to scale. */
 export const CARD_WIDTH = 54;
+
+function BreakIcon({ label }: { label: string }) {
+  const className = 'size-[1.25rem] shrink-0';
+  if (/lunch|pranzo/i.test(label)) return <UtensilsCrossed className={className} strokeWidth={2.25} />;
+  if (/coffee|caff/i.test(label)) return <Coffee className={className} strokeWidth={2.25} />;
+  return <Pause className={className} strokeWidth={2.25} />;
+}
+
+/** The break under way ("Coffee break → 11:00 AM") or the next one ("Coffee break 10:30 AM"). */
+function BreakLine({ pause, now }: { pause: EventBreak; now: number }) {
+  const current = now >= pause.startAt;
+  return (
+    <span
+      className={`mt-[0.5rem] flex max-w-[18rem] items-center gap-[0.4rem] rounded-full px-[0.7rem] py-[0.15rem] text-[1.15rem] font-semibold ${current ? 'bg-reserved/20 text-reserved-deep' : 'bg-slate-100 text-slate-600'}`}
+    >
+      <BreakIcon label={pause.label} />
+      <span className="truncate">{pause.label}</span>
+      <span className="shrink-0">
+        {current ? '→ ' : ''}
+        <Time at={current ? pause.endAt : pause.startAt} />
+      </span>
+    </span>
+  );
+}
 
 /** Big card for an event that is running or coming up soon. Also used as the admin preview. */
 export function EventCard({
@@ -25,6 +49,8 @@ export function EventCard({
 }) {
   const live = eventPhase(event, now) === 'live';
   const progress = live ? (now - event.startAt) / (event.endAt - event.startAt) : 0;
+  // The break under way, or else the next one.
+  const pause = live ? (event.breaks.find((b) => now < b.endAt) ?? null) : null;
 
   return (
     <article
@@ -59,6 +85,7 @@ export function EventCard({
             <span className="mt-[0.6rem] text-[1.6rem] font-semibold text-slate-600">
               → <Time at={event.endAt} />
             </span>
+            {pause && <BreakLine pause={pause} now={now} />}
           </>
         ) : (
           <>

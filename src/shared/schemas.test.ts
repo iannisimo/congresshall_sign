@@ -43,3 +43,21 @@ describe('roomInputSchema', () => {
     expect(roomInputSchema.safeParse({ name: 'A1', kind: 'sub', parentIds: [1], blockedMessage: null }).success).toBe(true);
   });
 });
+
+describe('event breaks', () => {
+  const coffee = { label: 'Coffee break', startAt: 220, endAt: 240 };
+
+  it('accept breaks inside the event, and default to none', () => {
+    expect(eventInputSchema.parse(valid).breaks).toEqual([]);
+    expect(eventInputSchema.safeParse({ ...valid, breaks: [coffee] }).success).toBe(true);
+  });
+
+  it.each([
+    [[{ ...coffee, endAt: 310 }], 'outside the event'],
+    [[coffee, { label: 'Break', startAt: 230, endAt: 250 }], 'overlapping'],
+    [[{ ...coffee, label: ' ' }], 'without a name'],
+    [[{ ...coffee, endAt: 220 }], 'empty'],
+  ])('reject %o (%s)', (breaks) => {
+    expect(eventInputSchema.safeParse({ ...valid, breaks }).success).toBe(false);
+  });
+});

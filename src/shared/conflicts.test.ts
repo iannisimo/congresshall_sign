@@ -16,6 +16,7 @@ function event(id: number, roomIds: number[], startAt: number, endAt: number, vi
     startAt,
     endAt,
     releaseAt: endAt + 1000,
+    breaks: [],
     visible,
   };
 }

@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowLeft, Eye, EyeOff, Plus, Trash2, X } from 'lucide-r
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { findConflicts } from '../../shared/conflicts.ts';
-import type { Conflict, Organizer, Room, ScheduledEvent } from '../../shared/model.ts';
+import { BREAK_PRESETS, type Conflict, type Organizer, type Room, type ScheduledEvent } from '../../shared/model.ts';
 import { eventInputSchema, type EventInput } from '../../shared/schemas.ts';
 import { changeoverMargins, DAY, DEFAULT_DURATION_MINUTES, MINUTE } from '../../shared/time.ts';
 import { formatAdminShortDay, formatAdminTime } from '../lib/format.ts';
@@ -31,7 +31,15 @@ interface Draft {
   /** Used with custom margins. */
   prepMinutes: number;
   cleanupMinutes: number;
+  /** Pauses as times of day, repeated on every date. */
+  breaks: DraftBreak[];
   visible: boolean;
+}
+
+interface DraftBreak {
+  label: string;
+  start: string;
+  end: string;
 }
 
 /**
@@ -51,7 +59,7 @@ function margins(draft: Draft, startAt: number, endAt: number, changeoverTime: s
   }
 }
 
-type FieldKey = 'organizer' | 'title' | 'subtitle' | 'rooms' | 'dates' | 'times' | 'prep' | 'cleanup';
+type FieldKey = 'organizer' | 'title' | 'subtitle' | 'rooms' | 'dates' | 'times' | 'prep' | 'cleanup' | 'breaks';
 
 const FIELD_OF: Record<string, FieldKey> = {
   organizerId: 'organizer',
@@ -62,6 +70,7 @@ const FIELD_OF: Record<string, FieldKey> = {
   endAt: 'times',
   prepAt: 'prep',
   releaseAt: 'cleanup',
+  breaks: 'breaks',
 };
 
 function shiftTime(time: string, minutes: number): string {
@@ -87,6 +96,7 @@ function newDraft(search: URLSearchParams): Draft {
     margins: 'changeover',
     prepMinutes: 30,
     cleanupMinutes: 30,
+    breaks: [],
     visible: true,
   };
 }
@@ -111,6 +121,7 @@ function draftFrom(event: ScheduledEvent, changeoverTime: string): Draft {
     margins: mode,
     prepMinutes: Math.round((event.startAt - event.prepAt) / MINUTE),
     cleanupMinutes: Math.round((event.releaseAt - event.endAt) / MINUTE),
+    breaks: event.breaks.map((b) => ({ label: b.label, start: toTimeValue(b.startAt), end: toTimeValue(b.endAt) })),
     visible: event.visible,
   };
 }
@@ -123,6 +134,16 @@ function buildInputs(draft: Draft, changeoverTime: string): (EventInput | null)[
     if (startAt === null || endAt === null) return null;
     if (endAt <= startAt) endAt += DAY;
     const { prepAt, releaseAt } = margins(draft, startAt, endAt, changeoverTime);
+    // Break times are on the event's day; in events past midnight, earlier times are the next day.
+    const breaks = [];
+    for (const b of draft.breaks) {
+      let breakStart = atTime(date, b.start);
+      let breakEnd = atTime(date, b.end);
+      if (breakStart === null || breakEnd === null) return null;
+      if (breakStart < startAt) breakStart += DAY;
+      if (breakEnd <= breakStart) breakEnd += DAY;
+      breaks.push({ label: b.label, startAt: breakStart, endAt: breakEnd });
+    }
     return {
       organizerId: draft.organizerId ?? 0,
       logoId: draft.logoId,
@@ -133,6 +154,7 @@ function buildInputs(draft: Draft, changeoverTime: string): (EventInput | null)[
       startAt,
       endAt,
       releaseAt,
+      breaks,
       visible: draft.visible,
     };
   });
@@ -163,6 +185,91 @@ function minutesLabel(m: number): string {
   if (m === 0) return 'Nessuna';
   if (m % 60 === 0) return m === 60 ? '1 ora' : `${m / 60} ore`;
   return `${m} min`;
+}
+
+const BREAK_MINUTES: Record<string, number> = { Break: 15, 'Coffee break': 30, 'Lunch break': 60 };
+
+/** A sensible slot for a new break: lunch at 13:00 when it fits, otherwise after the last break. */
+function suggestBreak(label: string, breaks: DraftBreak[], eventStart: string, eventEnd: string): DraftBreak {
+  const toMinutes = (time: string) => {
+    const [h = 0, m = 0] = time.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const toTime = (minutes: number) => `${String(Math.floor(minutes / 60) % 24).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+  const start = toMinutes(eventStart);
+  let end = toMinutes(eventEnd);
+  if (end <= start) end += 24 * 60;
+  const length = BREAK_MINUTES[label] ?? 30;
+  let from: number;
+  if (label === 'Lunch break' && start <= 13 * 60 && 14 * 60 <= end) from = 13 * 60;
+  else {
+    const after = breaks.length > 0 ? toMinutes(breaks[breaks.length - 1]!.end) + 90 : start + 90;
+    from = Math.ceil(after / 15) * 15;
+  }
+  // Keep it inside the event.
+  from = Math.max(start, Math.min(from, end - length));
+  return { label, start: toTime(from), end: toTime(from + length) };
+}
+
+function BreaksEditor({
+  breaks,
+  onChange,
+  eventStart,
+  eventEnd,
+}: {
+  breaks: DraftBreak[];
+  onChange: (breaks: DraftBreak[]) => void;
+  eventStart: string;
+  eventEnd: string;
+}) {
+  const set = (i: number, patch: Partial<DraftBreak>) => onChange(breaks.map((b, j) => (j === i ? { ...b, ...patch } : b)));
+  const add = (label: string) =>
+    onChange([...breaks, suggestBreak(label, breaks, eventStart, eventEnd)].sort((a, b) => a.start.localeCompare(b.start)));
+  return (
+    <div className="space-y-2">
+      {breaks.map((b, i) => (
+        <div key={i} className="flex flex-wrap items-center gap-2">
+          <input
+            className={`${inputClass} w-44!`}
+            value={b.label}
+            maxLength={40}
+            placeholder="Nome della pausa"
+            list="break-presets"
+            onChange={(e) => set(i, { label: e.target.value })}
+          />
+          <input type="time" className={`${inputClass} w-auto!`} value={b.start} onChange={(e) => set(i, { start: e.target.value })} />
+          <span className="text-slate-400">–</span>
+          <input type="time" className={`${inputClass} w-auto!`} value={b.end} onChange={(e) => set(i, { end: e.target.value })} />
+          <button
+            type="button"
+            onClick={() => onChange(breaks.filter((_, j) => j !== i))}
+            className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            aria-label="Togli pausa"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      ))}
+      <datalist id="break-presets">
+        {BREAK_PRESETS.map((label) => (
+          <option key={label} value={label} />
+        ))}
+      </datalist>
+      <div className="flex flex-wrap gap-1.5">
+        {[...BREAK_PRESETS, ''].map((label) => (
+          <button
+            key={label || 'custom'}
+            type="button"
+            onClick={() => add(label)}
+            className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-sm text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
+          >
+            <Plus className="size-3.5" />
+            {label || 'Altro…'}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function MarginOption({
@@ -399,6 +506,7 @@ function EditorForm({
     startAt: first?.startAt ?? Date.now(),
     endAt: first?.endAt ?? Date.now() + DAY / 24,
     releaseAt: first?.releaseAt ?? Date.now() + DAY / 24,
+    breaks: first?.breaks.map((b) => ({ ...b, label: b.label.trim() || 'Break' })) ?? [],
     visible: draft.visible,
   };
   const titles: Record<Mode, string> = { new: 'Nuovo evento', edit: 'Modifica evento', clone: 'Duplica evento' };
@@ -537,6 +645,14 @@ function EditorForm({
                 <span className="text-slate-400">–</span>
                 <input type="time" className={`${inputClass} w-auto!`} value={draft.end} onChange={(e) => update({ end: e.target.value })} />
               </div>
+            </Field>
+
+            <Field
+              label="Pause"
+              error={shown('breaks')}
+              hint="Durante l’evento il cartello mostra la prossima pausa. I nomi appaiono sul cartello: meglio in inglese."
+            >
+              <BreaksEditor breaks={draft.breaks} onChange={(breaks) => update({ breaks })} eventStart={draft.start} eventEnd={draft.end} />
             </Field>
 
             <Field

@@ -89,4 +89,13 @@ export const migrations: string[] = [
     value TEXT NOT NULL
   );
   `,
+  `
+  CREATE TABLE event_breaks (
+    event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    label TEXT NOT NULL,
+    start_at INTEGER NOT NULL,
+    end_at INTEGER NOT NULL
+  );
+  CREATE INDEX event_breaks_event ON event_breaks(event_id);
+  `,
 ];

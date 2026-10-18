@@ -188,6 +188,19 @@ describe('events', () => {
     expect((await admin.req('GET', `/api/events/${id}`)).status).toBe(404);
   });
 
+  it('keeps breaks with the event', async () => {
+    const t = setup();
+    const { admin, rooms, org } = await seed(t);
+    const input = eventInput(t, org.id, [rooms.a.id], 1, 4);
+    const lunch = { label: 'Lunch break', startAt: input.startAt + 2 * HOUR, endAt: input.startAt + 3 * HOUR };
+    const coffee = { label: 'Coffee break', startAt: input.startAt + HOUR, endAt: input.startAt + 1.5 * HOUR };
+    const [id] = (await json<{ ids: number[] }>(await admin.req('POST', '/api/events', { events: [{ ...input, breaks: [lunch, coffee] }] }))).ids;
+    expect((await json<ScheduledEvent>(await admin.req('GET', `/api/events/${id}`))).breaks).toEqual([coffee, lunch]);
+    await admin.req('PUT', `/api/events/${id}`, { event: { ...input, breaks: [lunch] } });
+    const snapshot = await json<DisplaySnapshot>(await t.app.request('/api/display'));
+    expect(snapshot.events[0]!.breaks).toEqual([lunch]);
+  });
+
   it('validates times and references', async () => {
     const t = setup();
     const { admin, rooms, org } = await seed(t);

@@ -19,6 +19,7 @@ function event(id: number, start: string, end: string, visible = true): Schedule
     startAt: at(start),
     endAt: at(end),
     releaseAt: at(end) + HOUR,
+    breaks: [],
     visible,
   };
 }

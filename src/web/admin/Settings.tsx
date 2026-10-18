@@ -24,6 +24,7 @@ function sampleEvent(): ScheduledEvent {
     startAt,
     endAt: startAt + 2.5 * HOUR,
     releaseAt: startAt + 3 * HOUR,
+    breaks: [],
     visible: true,
   };
 }

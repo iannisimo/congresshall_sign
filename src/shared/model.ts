@@ -15,6 +15,16 @@ export interface Room {
   blockedMessage: string | null;
 }
 
+/** A pause inside an event (coffee break, lunch…), shown on the sign while the event is live. */
+export interface EventBreak {
+  label: string;
+  startAt: number;
+  endAt: number;
+}
+
+/** Labels offered as defaults; any other label is allowed. */
+export const BREAK_PRESETS = ['Break', 'Coffee break', 'Lunch break'] as const;
+
 export interface ScheduledEvent {
   id: number;
   organizerId: number;
@@ -30,6 +40,8 @@ export interface ScheduledEvent {
   endAt: number;
   /** ...until here, when it becomes free again. */
   releaseAt: number;
+  /** Pauses within [startAt, endAt), in time order. The room stays occupied during them. */
+  breaks: EventBreak[];
   /** Hidden events are drafts: not on the sign and no effect on room status. */
   visible: boolean;
 }

@@ -1,4 +1,4 @@
-import type { ScheduledEvent } from '../../shared/model.ts';
+import type { EventBreak, ScheduledEvent } from '../../shared/model.ts';
 import type { EventInput } from '../../shared/schemas.ts';
 import { all, get, run, type Db } from '../db/database.ts';
 
@@ -15,11 +15,14 @@ interface EventRow {
   release_at: number;
   visible: number;
   room_ids: string;
+  breaks: string;
 }
 
 const SELECT = `
   SELECT e.*, o.name AS organizer_name,
-    (SELECT json_group_array(room_id ORDER BY position) FROM event_rooms WHERE event_id = e.id) AS room_ids
+    (SELECT json_group_array(room_id ORDER BY position) FROM event_rooms WHERE event_id = e.id) AS room_ids,
+    (SELECT json_group_array(json_object('label', label, 'startAt', start_at, 'endAt', end_at) ORDER BY start_at)
+       FROM event_breaks WHERE event_id = e.id) AS breaks
   FROM events e JOIN organizers o ON o.id = e.organizer_id`;
 
 function toEvent(row: EventRow): ScheduledEvent {
@@ -35,6 +38,7 @@ function toEvent(row: EventRow): ScheduledEvent {
     startAt: row.start_at,
     endAt: row.end_at,
     releaseAt: row.release_at,
+    breaks: JSON.parse(row.breaks) as EventBreak[],
     visible: row.visible === 1,
   };
 }
@@ -79,6 +83,18 @@ function setRooms(db: Db, eventId: number, roomIds: number[]): void {
   );
 }
 
+function setBreaks(db: Db, eventId: number, breaks: EventBreak[]): void {
+  run(db, 'DELETE FROM event_breaks WHERE event_id = :eventId', { eventId });
+  for (const b of breaks) {
+    run(db, 'INSERT INTO event_breaks (event_id, label, start_at, end_at) VALUES (:eventId, :label, :startAt, :endAt)', {
+      eventId,
+      label: b.label,
+      startAt: b.startAt,
+      endAt: b.endAt,
+    });
+  }
+}
+
 /** Call inside a transaction. */
 export function insertEvent(db: Db, input: EventInput, now: number): number {
   const { lastInsertRowid: id } = run(
@@ -88,6 +104,7 @@ export function insertEvent(db: Db, input: EventInput, now: number): number {
     { ...columns(input), now },
   );
   setRooms(db, id, input.roomIds);
+  setBreaks(db, id, input.breaks);
   return id;
 }
 
@@ -102,6 +119,7 @@ export function updateEvent(db: Db, id: number, input: EventInput, now: number):
     { ...columns(input), id, now },
   );
   setRooms(db, id, input.roomIds);
+  setBreaks(db, id, input.breaks);
 }
 
 export function deleteEvent(db: Db, id: number): boolean {

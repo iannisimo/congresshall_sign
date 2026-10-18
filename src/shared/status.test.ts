@@ -25,6 +25,7 @@ function event(id: number, roomIds: number[], startH: number, endH: number, extr
     startAt,
     endAt,
     releaseAt: endAt + 30 * MINUTE,
+    breaks: [],
     visible: true,
     ...extra,
   };

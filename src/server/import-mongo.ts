@@ -148,6 +148,7 @@ export async function importMongo(db: Db, dir: string, now: number): Promise<Imp
           endAt,
           // The old app had no clean-up time: rooms stayed reserved until freed by hand.
           releaseAt: changeoverMargins(startAt, endAt, changeoverTime).releaseAt,
+          breaks: [],
           visible: doc['enabled'] !== false,
         },
         now,
