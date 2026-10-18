@@ -95,8 +95,8 @@ become a smart-TV browser. **One person** does the admin work.
   shown on the sign or sent to it.
 - **ADMIN-10** Logo library for each organizer: upload (file, drag and drop, paste), preview and
   delete. Before uploading, a dialog picks the square to keep (drag, zoom; the logo's edges snap to the
-  centre and the sides of the frame); what the frame shows is exactly the logo on the cards, where square
-  logos fill their tile. Uploading without cropping is still possible. Organizers can be renamed. Choosing an organizer preselects its first logo. A set of generic
+  centre and the sides of the frame); what the frame shows is exactly the logo on the cards, where every
+  logo has a white margin inside its tile. Uploading without cropping is still possible. Organizers can be renamed. Choosing an organizer preselects its first logo. A set of generic
   emblems (university, medicine, technology, associations…) is available for organizers without a logo.
 - **ADMIN-11** Uploaded logos are checked (type and size) and shrunk by the server. No third-party
   proxies.

@@ -21,8 +21,6 @@ function initials(name: string): string {
 /** Organizer logo, or its initials when there is none (or it fails to load). */
 export function Logo({ logoId, name, className = '' }: { logoId: number | null; name: string; className?: string }) {
   const [failed, setFailed] = useState(false);
-  /** Square logos were cropped in the admin area: they fill the tile, with no extra border. */
-  const [square, setSquare] = useState(false);
   if (logoId === null || failed) {
     return (
       <div className={`@container grid shrink-0 place-items-center rounded-[1rem] bg-brand-50 font-bold text-brand-800 ${className}`}>
@@ -31,15 +29,11 @@ export function Logo({ logoId, name, className = '' }: { logoId: number | null; 
     );
   }
   return (
-    // Always a white tile (not the theme's card colour), so dark logos stay readable at night.
-    <div className={`grid shrink-0 place-items-center overflow-hidden rounded-[1rem] bg-[#fff] ${square ? '' : 'p-[0.5rem]'} ${className}`}>
-      <img
-        src={`/api/logos/${logoId}`}
-        alt=""
-        className="max-h-full max-w-full object-contain"
-        onLoad={(e) => setSquare(e.currentTarget.naturalWidth === e.currentTarget.naturalHeight)}
-        onError={() => setFailed(true)}
-      />
+    // Always a white tile (not the theme's card colour), so dark logos stay readable at night. Every logo
+    // keeps a margin inside it, so the rounded corners of the tile never cut into the logo, whatever its shape.
+    // (A percentage padding would follow the parent's width, so the image is sized against the tile instead.)
+    <div className={`grid shrink-0 place-items-center overflow-hidden rounded-[1rem] bg-[#fff] ${className}`}>
+      <img src={`/api/logos/${logoId}`} alt="" className="max-h-[84%] max-w-[84%] object-contain" onError={() => setFailed(true)} />
     </div>
   );
 }

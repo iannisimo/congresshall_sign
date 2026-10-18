@@ -221,7 +221,7 @@ These are assumptions. Each one is easy to change.
    smart-TV browsers. SVG uploads are turned into PNG, which also removes the risk of scripts inside SVG.
    With a crop from the admin dialog (`LogoCropper.tsx`) the server keeps that square, padding with
    transparency where it reaches past the image; without one it trims uniform borders. The sign's `Logo`
-   tile drops its inner border for square logos, so the cropped frame is what the cards show.
+   tile keeps a white margin around every logo, so its rounded corners never cut into one.
 7. **Logo by URL:** the server fetches the image itself (admin only, http/https, 10 s timeout, 10 MB
    limit) instead of going through corsproxy.io.
 8. **No venue name on the sign:** the header shows the venue logo on the left and the clock on the right;
