@@ -5,12 +5,12 @@ import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router';
 import logo from '../assets/logo-small.svg';
 import { installUpdate, onUpdateWaiting } from '../lib/pwa.ts';
 import { api, keys, queryClient, useMe } from './api.ts';
-import DayView from './DayView.tsx';
 import EventEditor from './EventEditor.tsx';
 import Login from './Login.tsx';
 import Organizers from './Organizers.tsx';
 import Rooms from './Rooms.tsx';
 import Settings from './Settings.tsx';
+import WeekView from './WeekView.tsx';
 import { Button, FeedbackProvider, PageLoading } from './ui.tsx';
 
 function NavItem({ to, icon, children }: { to: string; icon: ReactNode; children: ReactNode }) {
@@ -108,7 +108,7 @@ function Gate() {
   return (
     <Shell superadmin={superadmin} username={me.data.username}>
       <Routes>
-        <Route index element={<DayView />} />
+        <Route index element={<WeekView />} />
         <Route path="events/new" element={<EventEditor mode="new" />} />
         <Route path="events/:id" element={<EventEditor mode="edit" />} />
         <Route path="events/:id/clone" element={<EventEditor mode="clone" />} />

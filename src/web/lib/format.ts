@@ -33,6 +33,18 @@ export function formatAdminDay(t: number): string {
   return adminDayFormat.format(t);
 }
 
+const adminFullDateFormat = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+const adminDayMonthFormat = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' });
+
+/** "12–18 ottobre 2026", "26 ottobre – 1 novembre 2026", "28 dicembre 2026 – 3 gennaio 2027". */
+export function formatAdminWeek(first: number, last: number): string {
+  const a = new Date(first);
+  const b = new Date(last);
+  if (a.getFullYear() !== b.getFullYear()) return `${adminFullDateFormat.format(a)} – ${adminFullDateFormat.format(b)}`;
+  if (a.getMonth() !== b.getMonth()) return `${adminDayMonthFormat.format(a)} – ${adminFullDateFormat.format(b)}`;
+  return `${a.getDate()}–${adminFullDateFormat.format(b)}`;
+}
+
 export function formatAdminShortDay(t: number): string {
   return adminShortDayFormat.format(t);
 }

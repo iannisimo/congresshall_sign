@@ -1,10 +1,10 @@
 import { useMutation } from '@tanstack/react-query';
-import { addDays, isSameDay, isToday, startOfDay } from 'date-fns';
+import { addDays, isSameDay, isSameWeek, isToday, startOfDay, startOfWeek } from 'date-fns';
 import { ChevronLeft, ChevronRight, Copy, Eye, EyeOff, MapPin, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import type { Room, ScheduledEvent } from '../../shared/model.ts';
-import { formatAdminDay, formatAdminShortDay, formatAdminTime } from '../lib/format.ts';
+import { formatAdminDay, formatAdminShortDay, formatAdminTime, formatAdminWeek } from '../lib/format.ts';
 import { Logo } from '../sign/parts.tsx';
 import { api, errorMessage, refreshSchedule, useEvents, useRooms } from './api.ts';
 import { dateShortcut, fromDateValue, toDateValue } from './dates.ts';
@@ -104,14 +104,79 @@ function EventRow({ event, rooms, day }: { event: ScheduledEvent; rooms: Map<num
   );
 }
 
-export default function DayView() {
-  const [params, setParams] = useSearchParams();
+/** One day of the week: its timeline and the events running that day. */
+function DaySection({
+  day,
+  rooms,
+  events,
+  now,
+}: {
+  day: number;
+  rooms: Room[];
+  events: ScheduledEvent[];
+  now: number;
+}) {
   const navigate = useNavigate();
-  const dayValue = params.get('d') ?? toDateValue(Date.now());
-  const day = startOfDay(fromDateValue(dayValue) ?? Date.now()).getTime();
+  const value = toDateValue(day);
   const next = addDays(day, 1).getTime();
+  // Events holding a room this day, also only by preparation or clean-up (the timeline shows those as
+  // stripes); the list is about what runs this day.
+  const touching = events.filter((e) => e.prepAt < next && e.releaseAt > day);
+  const running = touching.filter((e) => e.startAt < next && e.endAt > day);
+  const roomMap = useMemo(() => new Map(rooms.map((r) => [r.id, r])), [rooms]);
+  const bookable = rooms.filter((r) => r.kind === 'main');
+  const today = isToday(day);
 
-  const events = useEvents(day, next);
+  return (
+    <section id={`day-${value}`} className="scroll-mt-20">
+      <Card className={`overflow-hidden ${today ? 'ring-2 ring-brand-600' : ''}`}>
+        <div className="flex items-center gap-3 px-4 py-3">
+          <h2 className="font-semibold text-slate-900 first-letter:uppercase">{formatAdminDay(day)}</h2>
+          {today && <Badge tone="brand">Oggi</Badge>}
+          <span className="text-sm text-slate-500">
+            {running.length === 0 ? 'nessun evento' : running.length === 1 ? '1 evento' : `${running.length} eventi`}
+          </span>
+          <Link to={`/admin/events/new?d=${value}`} className={`${buttonClass('ghost', 'sm')} ml-auto`} title="Nuovo evento in questo giorno">
+            <Plus className="size-4" />
+            <span className="hidden sm:inline">Evento</span>
+          </Link>
+        </div>
+        <div className="border-t border-slate-100 p-4">
+          {bookable.length === 0 ? (
+            <p className="py-4 text-center text-sm text-slate-500">Nessuna sala configurata. Il superadmin può aggiungerle dalla pagina Sale.</p>
+          ) : (
+            <Timeline
+              day={day}
+              rooms={bookable}
+              events={touching}
+              now={now}
+              onOpen={(e) => navigate(`/admin/events/${e.id}?d=${value}`)}
+              onCreate={(roomId, hour) => navigate(`/admin/events/new?d=${value}&room=${roomId}&start=${String(hour).padStart(2, '0')}:00`)}
+            />
+          )}
+        </div>
+        {running.length > 0 && (
+          <ul className="divide-y divide-slate-100 border-t border-slate-100">
+            {running.map((event) => (
+              <EventRow key={event.id} event={event} rooms={roomMap} day={value} />
+            ))}
+          </ul>
+        )}
+      </Card>
+    </section>
+  );
+}
+
+/** The programme, a week at a time (Monday to Sunday), one day under the other. */
+export default function WeekView() {
+  const [params, setParams] = useSearchParams();
+  const selectedValue = params.get('d') ?? toDateValue(Date.now());
+  const selected = startOfDay(fromDateValue(selectedValue) ?? Date.now()).getTime();
+  const weekStart = startOfWeek(selected, { weekStartsOn: 1 }).getTime();
+  const weekEnd = addDays(weekStart, 7).getTime();
+  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i).getTime());
+
+  const events = useEvents(weekStart, weekEnd);
   const rooms = useRooms();
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
@@ -119,11 +184,12 @@ export default function DayView() {
     return () => clearInterval(timer);
   }, []);
 
-  // The query also returns events that only hold a room by preparation or clean-up (the timeline shows
-  // those); the list is about what runs this day.
-  const running = (events.data ?? []).filter((e) => e.startAt < next && e.endAt > day);
-  const roomMap = useMemo(() => new Map((rooms.data ?? []).map((r) => [r.id, r])), [rooms.data]);
-  const bookable = (rooms.data ?? []).filter((r) => r.kind === 'main');
+  // Show the selected day (today, or the day the editor came back from) once the week has loaded.
+  const loaded = !events.isPending && !rooms.isPending;
+  useEffect(() => {
+    if (loaded) document.getElementById(`day-${toDateValue(selected)}`)?.scrollIntoView({ block: 'start' });
+  }, [loaded, selected]);
+
   const goTo = (t: number) => setParams({ d: toDateValue(t) });
 
   return (
@@ -131,67 +197,40 @@ export default function DayView() {
       <div className="min-w-0 space-y-6">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1">
-            <Button size="sm" variant="ghost" onClick={() => goTo(addDays(day, -1).getTime())} aria-label="Giorno precedente">
+            <Button size="sm" variant="ghost" onClick={() => goTo(addDays(weekStart, -7).getTime())} aria-label="Settimana precedente">
               <ChevronLeft className="size-4" />
             </Button>
             <input
               type="date"
               className={`${inputClass} w-auto!`}
-              value={dayValue}
+              value={toDateValue(selected)}
               onChange={(e) => e.target.value && setParams({ d: e.target.value })}
               onKeyDown={(e) => {
                 const value = dateShortcut(e);
                 if (value) setParams({ d: value });
               }}
             />
-            <Button size="sm" variant="ghost" onClick={() => goTo(next)} aria-label="Giorno successivo">
+            <Button size="sm" variant="ghost" onClick={() => goTo(weekEnd)} aria-label="Settimana successiva">
               <ChevronRight className="size-4" />
             </Button>
-            {!isToday(day) && (
+            {!isSameWeek(selected, Date.now(), { weekStartsOn: 1 }) && (
               <Button size="sm" variant="ghost" onClick={() => goTo(Date.now())}>
-                Oggi
+                Questa settimana
               </Button>
             )}
           </div>
-          <h1 className="flex-1 text-lg font-semibold text-slate-900 first-letter:uppercase">{formatAdminDay(day)}</h1>
-          <Link to={`/admin/events/new?d=${dayValue}`} className={buttonClass('primary')}>
+          <h1 className="flex-1 text-lg font-semibold text-slate-900">{formatAdminWeek(weekStart, addDays(weekStart, 6).getTime())}</h1>
+          <Link to={`/admin/events/new?d=${toDateValue(selected)}`} className={buttonClass('primary')}>
             <Plus className="size-4" />
             Nuovo evento
           </Link>
         </div>
 
         {events.isError && <ErrorNote>{errorMessage(events.error)}</ErrorNote>}
-        {events.isPending || rooms.isPending ? (
+        {!loaded ? (
           <PageLoading />
         ) : (
-          <>
-            <Card className="p-4">
-              {bookable.length === 0 ? (
-                <p className="py-6 text-center text-sm text-slate-500">Nessuna sala configurata. Il superadmin può aggiungerle dalla pagina Sale.</p>
-              ) : (
-                <Timeline
-                  day={day}
-                  rooms={bookable}
-                  events={events.data ?? []}
-                  now={now}
-                  onOpen={(e) => navigate(`/admin/events/${e.id}?d=${dayValue}`)}
-                  onCreate={(roomId, hour) => navigate(`/admin/events/new?d=${dayValue}&room=${roomId}&start=${String(hour).padStart(2, '0')}:00`)}
-                />
-              )}
-            </Card>
-
-            <Card>
-              {running.length === 0 ? (
-                <p className="px-4 py-10 text-center text-sm text-slate-500">Nessun evento in questo giorno.</p>
-              ) : (
-                <ul className="divide-y divide-slate-100">
-                  {running.map((event) => (
-                    <EventRow key={event.id} event={event} rooms={roomMap} day={dayValue} />
-                  ))}
-                </ul>
-              )}
-            </Card>
-          </>
+          days.map((day) => <DaySection key={day} day={day} rooms={rooms.data ?? []} events={events.data ?? []} now={now} />)
         )}
       </div>
 
