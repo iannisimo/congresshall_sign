@@ -79,8 +79,12 @@ export interface Settings {
   marqueeSpeed: number;
   /** Seconds that text waits at its start before scrolling. */
   marqueePause: number;
-  /** "HH:MM" when rooms change hands: default preparation starts and clean-up ends then. */
-  changeoverTime: string;
+  /** "HH:MM" when the default preparation starts, on the day before the event. */
+  prepTime: string;
+  /** "HH:MM" when the default clean-up ends, after the event. */
+  cleanupTime: string;
+  /** Hours: an event ending less than this before the clean-up time is cleaned up at the next day's. */
+  cleanupMinGapHours: number;
   /** Sign colours: dark between darkFrom and darkUntil ("auto"), or always one of the two. */
   signTheme: 'auto' | 'light' | 'dark';
   darkFrom: string;

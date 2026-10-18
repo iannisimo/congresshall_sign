@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import sharp from 'sharp';
+import sharp, { type Sharp } from 'sharp';
+import type { LogoCrop } from '../shared/schemas.ts';
 import { ApiError } from './http.ts';
 
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -13,12 +14,36 @@ export interface NormalizedLogo {
   height: number;
 }
 
+/** Longest side images are brought to before cropping, so zooming far out stays cheap. */
+const CROP_SOURCE_SIDE = 2048;
+
+/** The square `crop` of an image, padded with transparency where it reaches past the edges. */
+async function cropSquare(image: Sharp, crop: LogoCrop) {
+  const { data, info } = await image
+    .resize({ width: CROP_SOURCE_SIDE, height: CROP_SOURCE_SIDE, fit: 'inside', withoutEnlargement: true })
+    .png()
+    .toBuffer({ resolveWithObject: true });
+  const left = Math.round(crop.left * info.width);
+  const top = Math.round(crop.top * info.height);
+  const side = Math.max(1, Math.round(crop.size * info.width));
+  const pad = {
+    left: Math.max(0, -left),
+    top: Math.max(0, -top),
+    right: Math.max(0, left + side - info.width),
+    bottom: Math.max(0, top + side - info.height),
+  };
+  const padded = await sharp(data)
+    .extend({ ...pad, background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .toBuffer();
+  return sharp(padded).extract({ left: left + pad.left, top: top + pad.top, width: side, height: side });
+}
+
 /**
- * Turns any accepted image into a PNG of at most 512 px per side, with uniform borders trimmed so logos
- * fill their box on the sign. PNG works on every browser a smart TV may have; rasterizing SVG also
+ * Turns any accepted image into a PNG of at most 512 px per side. With a `crop` (chosen in the admin
+ * area) it keeps that square; otherwise uniform borders are trimmed so logos fill their box on the sign. PNG works on every browser a smart TV may have; rasterizing SVG also
  * removes any script it may contain.
  */
-export async function normalizeLogo(input: Uint8Array): Promise<NormalizedLogo> {
+export async function normalizeLogo(input: Uint8Array, crop?: LogoCrop): Promise<NormalizedLogo> {
   let format: string | undefined;
   let width = 0;
   let height = 0;
@@ -31,9 +56,10 @@ export async function normalizeLogo(input: Uint8Array): Promise<NormalizedLogo> 
 
   // Rasterize vectors big enough to downscale cleanly.
   const density = format === 'svg' ? Math.min(2400, Math.max(72, (72 * MAX_SIDE * 2) / Math.max(width, height, 1))) : undefined;
-  const pipeline = (trim: boolean) => {
+  const pipeline = async (trim: boolean) => {
     let image = sharp(input, { density, limitInputPixels: 50_000_000 }).rotate();
-    if (trim) image = image.trim({ threshold: 10 });
+    if (crop) image = await cropSquare(image, crop);
+    else if (trim) image = image.trim({ threshold: 10 });
     return image
       .resize({ width: MAX_SIDE, height: MAX_SIDE, fit: 'inside', withoutEnlargement: true })
       .png({ compressionLevel: 9, adaptiveFiltering: true })

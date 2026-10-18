@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import type { Organizer } from '../../shared/model.ts';
 import { api, ddgLogoSearch, errorMessage, keys, queryClient, refreshSchedule, useOrganizers } from './api.ts';
+import { Logo } from '../sign/parts.tsx';
 import { GenericLogoGallery, LogoUploader } from './OrganizerFields.tsx';
 import { Button, Card, ErrorNote, Field, inputClass, PageLoading, useFeedback } from './ui.tsx';
 
@@ -60,8 +61,8 @@ function OrganizerDetail({ organizer, onDeleted }: { organizer: Organizer; onDel
         {organizer.logoIds.length > 0 && (
           <div className="mb-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
             {organizer.logoIds.map((id) => (
-              <div key={id} className="group relative grid aspect-square place-items-center rounded-lg bg-white p-2 ring-1 ring-slate-200">
-                <img src={`/api/logos/${id}`} alt="" className="max-h-full max-w-full object-contain" />
+              <div key={id} className="group relative grid aspect-square place-items-center overflow-hidden rounded-lg bg-white ring-1 ring-slate-200">
+                <Logo logoId={id} name={organizer.name} className="size-full" />
                 <button
                   type="button"
                   aria-label="Elimina logo"

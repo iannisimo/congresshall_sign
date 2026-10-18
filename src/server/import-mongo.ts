@@ -79,7 +79,7 @@ export async function importMongo(db: Db, dir: string, now: number): Promise<Imp
     throw new Error('The database already has rooms: the import only runs on a new, empty database.');
   }
 
-  const { changeoverTime } = getSettings(db);
+  const settings = getSettings(db);
   const report: ImportReport = { rooms: 0, organizers: 0, logos: 0, events: 0, skipped: [] };
 
   // Logos first, outside the transaction: resizing them is async.
@@ -147,7 +147,7 @@ export async function importMongo(db: Db, dir: string, now: number): Promise<Imp
           startAt,
           endAt,
           // The old app had no clean-up time: rooms stayed reserved until freed by hand.
-          releaseAt: changeoverMargins(startAt, endAt, changeoverTime).releaseAt,
+          releaseAt: changeoverMargins(startAt, endAt, settings).releaseAt,
           breaks: [],
           visible: doc['enabled'] !== false,
         },

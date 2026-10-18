@@ -3,7 +3,9 @@ import type { Settings } from './model.ts';
 export const DEFAULT_SETTINGS: Settings = {
   marqueeSpeed: 80,
   marqueePause: 3,
-  changeoverTime: '14:00',
+  prepTime: '14:00',
+  cleanupTime: '14:00',
+  cleanupMinGapHours: 1,
   signTheme: 'auto',
   darkFrom: '20:00',
   darkUntil: '07:00',

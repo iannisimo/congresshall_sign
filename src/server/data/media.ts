@@ -30,8 +30,9 @@ export function getMedia(db: Db, id: number): StoredMedia | undefined {
 export function insertMedia(db: Db, media: Omit<StoredMedia, 'id' | 'enabled' | 'fit'>, now: number): number {
   return run(
     db,
-    `INSERT INTO media (kind, name, mime, file, size, sort_order, created_at)
-     VALUES (:kind, :name, :mime, :file, :size, (SELECT coalesce(max(sort_order), -1) + 1 FROM media), :now)`,
+    `INSERT INTO media (id, kind, name, mime, file, size, sort_order, created_at)
+     VALUES ((SELECT next FROM id_sequences WHERE name = 'media'), :kind, :name, :mime, :file, :size,
+       (SELECT coalesce(max(sort_order), -1) + 1 FROM media), :now)`,
     { ...media, now },
   ).lastInsertRowid;
 }

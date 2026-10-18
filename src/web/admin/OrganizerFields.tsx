@@ -2,6 +2,9 @@ import { useMutation } from '@tanstack/react-query';
 import { Check, ChevronDown, ImagePlus, Plus, Search, Shapes, X } from 'lucide-react';
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import type { Organizer } from '../../shared/model.ts';
+import type { LogoCrop } from '../../shared/schemas.ts';
+import { Logo } from '../sign/parts.tsx';
+import { LogoCropper } from './LogoCropper.tsx';
 import { api, ddgLogoSearch, errorMessage, keys, queryClient, useGenericLogos } from './api.ts';
 import { Button, inputClass, Spinner, useFeedback } from './ui.tsx';
 
@@ -16,31 +19,41 @@ function draggedImageUrl(data: DataTransfer): string | null {
 
 /**
  * Adds a logo to an organizer's library (ADMIN-10): drop a file or an image from another page, paste
- * an image, pick a file, or give a URL. The server checks and shrinks it (ADMIN-11).
+ * an image, pick a file, or give a URL; then pick the square to keep. The server checks and shrinks it (ADMIN-11).
  */
 export function LogoUploader({ organizerId, onUploaded }: { organizerId: number; onUploaded?: (logoId: number) => void }) {
   const { toast } = useFeedback();
   const fileInput = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [url, setUrl] = useState('');
+  /** The image waiting in the crop dialog, with the address its preview loads from. */
+  const [pending, setPending] = useState<{ source: File | string; preview: string } | null>(null);
 
   const upload = useMutation({
-    mutationFn: (source: File | string) => {
+    mutationFn: ({ source, crop }: { source: File | string; crop?: LogoCrop }) => {
       const path = `/organizers/${organizerId}/logos`;
-      if (typeof source === 'string') return api<{ id: number }>(path, { method: 'POST', json: { url: source } });
+      if (typeof source === 'string') return api<{ id: number }>(path, { method: 'POST', json: { url: source, crop } });
       const form = new FormData();
       form.append('file', source);
+      if (crop) form.append('crop', JSON.stringify(crop));
       return api<{ id: number }>(path, { method: 'POST', form });
     },
     onSuccess: ({ id }) => {
       void queryClient.invalidateQueries({ queryKey: keys.organizers });
       setUrl('');
+      show(null);
       toast('Logo caricato');
       onUploaded?.(id);
     },
     onError: (error) => toast(errorMessage(error), 'error'),
   });
-  const { mutate } = upload;
+  /** Replaces the image in the crop dialog (null closes it), freeing the preview of the previous file. */
+  const show = (next: typeof pending) =>
+    setPending((prev) => {
+      if (prev?.preview.startsWith('blob:') && prev.preview !== next?.preview) URL.revokeObjectURL(prev.preview);
+      return next;
+    });
+  const mutate = (source: File | string) => show({ source, preview: typeof source === 'string' ? source : URL.createObjectURL(source) });
 
   // Pasting an image anywhere on the page uploads it.
   useEffect(() => {
@@ -52,7 +65,7 @@ export function LogoUploader({ organizerId, onUploaded }: { organizerId: number;
     };
     document.addEventListener('paste', onPaste);
     return () => document.removeEventListener('paste', onPaste);
-  }, [mutate]);
+  }, []);
 
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
@@ -116,10 +129,17 @@ export function LogoUploader({ organizerId, onUploaded }: { organizerId: number;
             }
           }}
         />
-        <Button onClick={() => url.trim() && mutate(url.trim())} disabled={!url.trim()} busy={upload.isPending && typeof upload.variables === 'string'}>
+        <Button onClick={() => url.trim() && mutate(url.trim())} disabled={!url.trim()}>
           Carica
         </Button>
       </div>
+      <LogoCropper
+        src={pending?.preview ?? null}
+        busy={upload.isPending}
+        onCrop={(crop) => pending && upload.mutate({ source: pending.source, crop })}
+        onSkip={() => pending && upload.mutate({ source: pending.source })}
+        onClose={() => !upload.isPending && show(null)}
+      />
     </div>
   );
 }
@@ -281,7 +301,7 @@ export function LogoPicker({
   value: number | null;
   onChange: (logoId: number | null) => void;
 }) {
-  const tile = 'relative grid aspect-square place-items-center rounded-lg bg-white p-2 ring-1 transition-shadow';
+  const tile = 'relative grid aspect-square place-items-center overflow-hidden rounded-lg bg-white ring-1 transition-shadow';
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
@@ -299,7 +319,7 @@ export function LogoPicker({
             onClick={() => onChange(id)}
             className={`${tile} ${value === id ? 'ring-2 ring-brand-600' : 'ring-slate-200 hover:ring-slate-300'}`}
           >
-            <img src={`/api/logos/${id}`} alt="" className="max-h-full max-w-full object-contain" />
+            <Logo logoId={id} name={organizer.name} className="size-full" />
             {value === id && <Check className="absolute top-1 right-1 size-4 rounded-full bg-brand-600 p-0.5 text-white" />}
           </button>
         ))}

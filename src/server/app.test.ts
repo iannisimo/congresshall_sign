@@ -236,7 +236,7 @@ describe('events', () => {
     const { admin, rooms, org } = await seed(t);
     const days = [24, 48].map((h) => {
       const input = eventInput(t, org.id, [rooms.a.id], h, 9);
-      return { ...input, ...changeoverMargins(input.startAt, input.endAt, '14:00') };
+      return { ...input, ...changeoverMargins(input.startAt, input.endAt, { prepTime: '14:00', cleanupTime: '14:00', cleanupMinGapHours: 0 }) };
     });
     // Day 1 is cleaned up until 14:00 of day 2, day 2 is prepared from 14:00 of day 1: no conflict.
     expect((await admin.req('POST', '/api/events', { events: days })).status).toBe(201);
@@ -291,6 +291,30 @@ describe('organizers and logos', () => {
     await admin.req('POST', '/api/events', { events: [{ ...eventInput(t, org.id, [rooms.a.id], 1), logoId: id }] });
     expect((await admin.req('DELETE', `/api/logos/${id}`)).status).toBe(409);
     expect((await admin.req('DELETE', `/api/organizers/${org.id}`)).status).toBe(409);
+  });
+
+  it('never reuses the id of a deleted logo, since browsers cache logos forever', async () => {
+    const t = setup();
+    const { admin, org } = await seed(t);
+    const upload = async () => {
+      const form = new FormData();
+      form.append('file', new Blob([await png(100, 100)], { type: 'image/png' }), 'logo.png');
+      return (await json<{ id: number }>(await admin.req('POST', `/api/organizers/${org.id}/logos`, form))).id;
+    };
+    const first = await upload();
+    expect((await admin.req('DELETE', `/api/logos/${first}`)).status).toBeLessThan(300);
+    expect(await upload()).toBeGreaterThan(first);
+  });
+
+  it('keeps the square chosen in the crop dialog', async () => {
+    const t = setup();
+    const { admin, org } = await seed(t);
+    const form = new FormData();
+    form.append('file', new Blob([await png(800, 200)], { type: 'image/png' }), 'logo.png');
+    form.append('crop', JSON.stringify({ left: 0, top: -1.5, size: 1 }));
+    const { id } = await json<{ id: number }>(await admin.req('POST', `/api/organizers/${org.id}/logos`, form));
+    const meta = await sharp(Buffer.from(await (await t.app.request(`/api/logos/${id}`)).arrayBuffer())).metadata();
+    expect([meta.width, meta.height]).toEqual([512, 512]);
   });
 
   it('rejects files that are not images', async () => {
@@ -359,21 +383,21 @@ describe('settings', () => {
     const t = setup();
     const admin = t.client();
     await admin.login();
-    expect(await json(await admin.req('GET', '/api/settings'))).toEqual({ marqueeSpeed: 80, marqueePause: 3, changeoverTime: '14:00', signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' });
-    expect((await admin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 2, changeoverTime: '14:00', signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' })).status).toBe(403);
+    expect(await json(await admin.req('GET', '/api/settings'))).toEqual({ marqueeSpeed: 80, marqueePause: 3, prepTime: '14:00', cleanupTime: '14:00', cleanupMinGapHours: 1, signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' });
+    expect((await admin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 2, prepTime: '14:00', cleanupTime: '14:00', cleanupMinGapHours: 1, signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' })).status).toBe(403);
 
     const superadmin = t.client();
     await superadmin.login('superadmin');
-    expect((await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 5, marqueePause: 2, changeoverTime: '14:00', signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' })).status).toBe(400);
-    expect((await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 2, changeoverTime: '25:00', signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' })).status).toBe(400);
+    expect((await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 5, marqueePause: 2, prepTime: '14:00', cleanupTime: '14:00', cleanupMinGapHours: 1, signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' })).status).toBe(400);
+    expect((await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 2, prepTime: '25:00', cleanupTime: '25:00', cleanupMinGapHours: 1, signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' })).status).toBe(400);
     const before = await t.app.request('/api/display');
-    const saved = await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 1.5, changeoverTime: '13:30', signTheme: 'dark', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' });
-    expect(await json(saved)).toEqual({ marqueeSpeed: 50, marqueePause: 1.5, changeoverTime: '13:30', signTheme: 'dark', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' });
+    const saved = await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 1.5, prepTime: '13:30', cleanupTime: '13:30', cleanupMinGapHours: 1, signTheme: 'dark', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' });
+    expect(await json(saved)).toEqual({ marqueeSpeed: 50, marqueePause: 1.5, prepTime: '13:30', cleanupTime: '13:30', cleanupMinGapHours: 1, signTheme: 'dark', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' });
 
     // The snapshot changes, so the sign fetches the new settings at its next poll.
     const after = await t.app.request('/api/display', { headers: { 'if-none-match': before.headers.get('etag')! } });
     expect(after.status).toBe(200);
-    expect((await json<DisplaySnapshot>(after)).settings).toEqual({ marqueeSpeed: 50, marqueePause: 1.5, changeoverTime: '13:30', signTheme: 'dark', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' });
+    expect((await json<DisplaySnapshot>(after)).settings).toEqual({ marqueeSpeed: 50, marqueePause: 1.5, prepTime: '13:30', cleanupTime: '13:30', cleanupMinGapHours: 1, signTheme: 'dark', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' });
   });
 });
 

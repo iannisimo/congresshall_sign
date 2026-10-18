@@ -63,7 +63,7 @@ describe('importMongo', () => {
       subtitle: null,
       roomIds: [salaA.id],
       prepAt: Date.parse('2026-10-17T07:30:00Z'),
-      releaseAt: changeoverMargins(Date.parse('2026-10-17T08:00:00Z'), Date.parse('2026-10-17T10:00:00Z'), '14:00').releaseAt,
+      releaseAt: changeoverMargins(Date.parse('2026-10-17T08:00:00Z'), Date.parse('2026-10-17T10:00:00Z'), { prepTime: '14:00', cleanupTime: '14:00', cleanupMinGapHours: 0 }).releaseAt,
       visible: true,
     });
     expect(event!.logoId).toBe(listOrganizers(db)[0]!.logoIds[0]);

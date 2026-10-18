@@ -60,8 +60,8 @@ export function insertLogo(
 ): number {
   return run(
     db,
-    `INSERT INTO logos (organizer_id, mime, data, width, height, created_at)
-     VALUES (:organizerId, :mime, :data, :width, :height, :now)`,
+    `INSERT INTO logos (id, organizer_id, mime, data, width, height, created_at)
+     VALUES ((SELECT next FROM id_sequences WHERE name = 'logos'), :organizerId, :mime, :data, :width, :height, :now)`,
     { ...logo, now },
   ).lastInsertRowid;
 }

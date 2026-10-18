@@ -80,8 +80,19 @@ export const organizerInputSchema = z.object({
 });
 
 /** A logo from a URL the server downloads, or a copy of a generic emblem. */
+/**
+ * Square part of an uploaded image to keep, as fractions of its width (`left`, `size`) and height (`top`).
+ * It may reach past the image: that space stays transparent.
+ */
+export const logoCropSchema = z.object({
+  left: z.number().min(-20).max(20),
+  top: z.number().min(-20).max(20),
+  size: z.number().positive().max(20),
+});
+export type LogoCrop = z.infer<typeof logoCropSchema>;
+
 export const logoSourceSchema = z.union([
-  z.object({ url: z.url({ protocol: /^https?$/, error: 'Indirizzo non valido' }) }),
+  z.object({ url: z.url({ protocol: /^https?$/, error: 'Indirizzo non valido' }), crop: logoCropSchema.optional() }),
   z.object({ generic: z.string().regex(/^[a-z-]+$/) }),
 ]);
 
@@ -121,7 +132,9 @@ export const settingsSchema = z.object({
     .min(10, { error: 'Minimo 10 pixel al secondo' })
     .max(400, { error: 'Massimo 400 pixel al secondo' }),
   marqueePause: z.number().min(0, { error: 'Non può essere negativa' }).max(30, { error: 'Massimo 30 secondi' }),
-  changeoverTime: clockTime,
+  prepTime: clockTime,
+  cleanupTime: clockTime,
+  cleanupMinGapHours: z.number().min(0, { error: 'Non può essere negativo' }).max(12, { error: 'Massimo 12 ore' }),
   signTheme: z.enum(['auto', 'light', 'dark']),
   darkFrom: clockTime,
   darkUntil: clockTime,

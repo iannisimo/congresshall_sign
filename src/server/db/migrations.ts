@@ -115,4 +115,17 @@ export const migrations: string[] = [
   ALTER TABLE media ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1;
   ALTER TABLE media ADD COLUMN fit TEXT CHECK (fit IN ('contain', 'fill', 'cover'));
   `,
+  `
+  -- Logos and media are cached by browsers forever under their id, so a deleted id must never come back
+  -- (SQLite would reuse the highest one). Inserts take the next id from here; the triggers keep it ahead.
+  CREATE TABLE id_sequences (name TEXT PRIMARY KEY, next INTEGER NOT NULL);
+  INSERT INTO id_sequences SELECT 'logos', coalesce(max(id), 0) + 1 FROM logos;
+  INSERT INTO id_sequences SELECT 'media', coalesce(max(id), 0) + 1 FROM media;
+  CREATE TRIGGER logos_sequence AFTER INSERT ON logos BEGIN
+    UPDATE id_sequences SET next = max(next, NEW.id + 1) WHERE name = 'logos';
+  END;
+  CREATE TRIGGER media_sequence AFTER INSERT ON media BEGIN
+    UPDATE id_sequences SET next = max(next, NEW.id + 1) WHERE name = 'media';
+  END;
+  `,
 ];

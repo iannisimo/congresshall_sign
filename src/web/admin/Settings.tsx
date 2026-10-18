@@ -295,16 +295,40 @@ function SettingsForm({ saved }: { saved: Settings }) {
         <div>
           <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Programma: cambio sala</h2>
           <p className="mt-1 text-sm text-slate-600">
-            Orario a cui le sale passano da un evento all’altro. Per i nuovi eventi la preparazione parte a quest’ora del
-            giorno prima e il riordino finisce a quest’ora dopo la fine. Gli eventi già salvati non cambiano.
+            Per i nuovi eventi la preparazione parte all’orario di preparazione del giorno prima e il riordino finisce
+            all’orario di riordino dopo la fine. Gli eventi già salvati non cambiano.
           </p>
         </div>
-        <Field label="Orario di cambio sala" error={errors.get('changeoverTime')}>
-          <input
-            type="time"
-            className={`${inputClass} w-32!`}
-            value={draft.changeoverTime}
-            onChange={(e) => setDraft({ ...draft, changeoverTime: e.target.value })}
+        <div className="flex flex-wrap gap-6">
+          <Field label="Inizio preparazione" error={errors.get('prepTime')}>
+            <input
+              type="time"
+              className={`${inputClass} w-32!`}
+              value={draft.prepTime}
+              onChange={(e) => setDraft({ ...draft, prepTime: e.target.value })}
+            />
+          </Field>
+          <Field label="Fine riordino" error={errors.get('cleanupTime')}>
+            <input
+              type="time"
+              className={`${inputClass} w-32!`}
+              value={draft.cleanupTime}
+              onChange={(e) => setDraft({ ...draft, cleanupTime: e.target.value })}
+            />
+          </Field>
+        </div>
+        <Field
+          label="Margine minimo per il riordino in giornata"
+          error={errors.get('cleanupMinGapHours')}
+          hint="Se l’evento finisce meno di queste ore prima della fine riordino, il riordino slitta al giorno dopo"
+        >
+          <NumberWithSlider
+            value={draft.cleanupMinGapHours}
+            onChange={(cleanupMinGapHours) => setDraft({ ...draft, cleanupMinGapHours })}
+            min={0}
+            max={12}
+            step={0.5}
+            unit="ore"
           />
         </Field>
       </Card>

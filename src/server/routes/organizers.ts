@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
-import { logoSourceSchema, organizerInputSchema } from '../../shared/schemas.ts';
+import { logoCropSchema, logoSourceSchema, organizerInputSchema, type LogoCrop } from '../../shared/schemas.ts';
 import { requireRole } from '../auth/session.ts';
 import {
   countLogoUses,
@@ -66,13 +66,31 @@ export function organizerRoutes(deps: AppDeps) {
       if (!getOrganizer(db, organizerId)) throw notFound();
 
       let input: Uint8Array;
+      let crop: LogoCrop | undefined;
       if (c.req.header('content-type')?.startsWith('multipart/form-data')) {
-        const file = (await c.req.parseBody())['file'];
+        const body = await c.req.parseBody();
+        const file = body['file'];
         if (!(file instanceof File)) throw new ApiError(400, 'Nessun file ricevuto');
         input = new Uint8Array(await file.arrayBuffer());
+        if (typeof body['crop'] === 'string') {
+          const parsed = logoCropSchema.safeParse(
+            (() => {
+              try {
+                return JSON.parse(body['crop'] as string);
+              } catch {
+                return null;
+              }
+            })(),
+          );
+          if (!parsed.success) throw new ApiError(400, 'Ritaglio non valido');
+          crop = parsed.data;
+        }
       } else {
         const source = await readJson(c, logoSourceSchema);
-        if ('url' in source) input = await fetchImage(source.url);
+        if ('url' in source) {
+          input = await fetchImage(source.url);
+          crop = source.crop;
+        }
         else {
           const emblem = readGenericLogo(source.generic);
           if (!emblem) throw new ApiError(400, 'Logo generico inesistente');
@@ -80,7 +98,7 @@ export function organizerRoutes(deps: AppDeps) {
         }
       }
 
-      const logo = await normalizeLogo(input);
+      const logo = await normalizeLogo(input, crop);
       const id = insertLogo(db, { organizerId, ...logo }, deps.clock());
       return c.json({ id }, 201);
     },

@@ -16,6 +16,12 @@ function parseJson(value: string): unknown {
 export function getSettings(db: Db): Settings {
   const saved = new Map(all<{ key: string; value: string }>(db, 'SELECT key, value FROM settings').map((r) => [r.key, parseJson(r.value)]));
   const settings: Record<string, unknown> = { ...DEFAULT_SETTINGS };
+  // Before preparation and clean-up had their own times, one changeover time set both.
+  const legacy = saved.get('changeoverTime');
+  if (legacy !== undefined) {
+    if (!saved.has('prepTime')) saved.set('prepTime', legacy);
+    if (!saved.has('cleanupTime')) saved.set('cleanupTime', legacy);
+  }
   for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]) {
     const parsed = settingsSchema.shape[key].safeParse(saved.get(key));
     if (parsed.success) settings[key] = parsed.data;

@@ -6,7 +6,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { findConflicts } from '../../shared/conflicts.ts';
 import { BREAK_PRESETS, type Conflict, type Organizer, type Room, type ScheduledEvent } from '../../shared/model.ts';
 import { eventInputSchema, type EventInput } from '../../shared/schemas.ts';
-import { changeoverMargins, DAY, DEFAULT_DURATION_MINUTES, MINUTE } from '../../shared/time.ts';
+import { changeoverMargins, type ChangeoverSettings as Changeover, DAY, DEFAULT_DURATION_MINUTES, MINUTE } from '../../shared/time.ts';
 import { formatAdminShortDay, formatAdminTime } from '../lib/format.ts';
 import { DEFAULT_SETTINGS } from '../../shared/settings.ts';
 import { api, errorMessage, HttpError, refreshSchedule, useEvent, useEvents, useOrganizers, useRooms, useSettings } from './api.ts';
@@ -48,10 +48,10 @@ interface DraftBreak {
  */
 type MarginMode = 'changeover' | 'none' | 'custom';
 
-function margins(draft: Draft, startAt: number, endAt: number, changeoverTime: string): { prepAt: number; releaseAt: number } {
+function margins(draft: Draft, startAt: number, endAt: number, changeover: Changeover): { prepAt: number; releaseAt: number } {
   switch (draft.margins) {
     case 'changeover':
-      return changeoverMargins(startAt, endAt, changeoverTime);
+      return changeoverMargins(startAt, endAt, changeover);
     case 'none':
       return { prepAt: startAt, releaseAt: endAt };
     case 'custom':
@@ -101,10 +101,10 @@ function newDraft(search: URLSearchParams): Draft {
   };
 }
 
-function draftFrom(event: ScheduledEvent, changeoverTime: string): Draft {
-  const changeover = changeoverMargins(event.startAt, event.endAt, changeoverTime);
+function draftFrom(event: ScheduledEvent, changeover: Changeover): Draft {
+  const defaults = changeoverMargins(event.startAt, event.endAt, changeover);
   const mode: MarginMode =
-    event.prepAt === changeover.prepAt && event.releaseAt === changeover.releaseAt
+    event.prepAt === defaults.prepAt && event.releaseAt === defaults.releaseAt
       ? 'changeover'
       : event.prepAt === event.startAt && event.releaseAt === event.endAt
         ? 'none'
@@ -127,13 +127,13 @@ function draftFrom(event: ScheduledEvent, changeoverTime: string): Draft {
 }
 
 /** API inputs for each date, or null where the date or times can't be read. Ends before the start mean the next day. */
-function buildInputs(draft: Draft, changeoverTime: string): (EventInput | null)[] {
+function buildInputs(draft: Draft, changeover: Changeover): (EventInput | null)[] {
   return draft.dates.map((date) => {
     const startAt = atTime(date, draft.start);
     let endAt = atTime(date, draft.end);
     if (startAt === null || endAt === null) return null;
     if (endAt <= startAt) endAt += DAY;
-    const { prepAt, releaseAt } = margins(draft, startAt, endAt, changeoverTime);
+    const { prepAt, releaseAt } = margins(draft, startAt, endAt, changeover);
     // Break times are on the event's day; in events past midnight, earlier times are the next day.
     const breaks = [];
     for (const b of draft.breaks) {
@@ -403,7 +403,7 @@ function EditorForm({
   eventId,
   rooms,
   organizers,
-  changeoverTime,
+  changeover,
   backTo,
 }: {
   mode: Mode;
@@ -412,7 +412,7 @@ function EditorForm({
   rooms: Room[];
   organizers: Organizer[];
   /** From the settings: when the default preparation starts and clean-up ends. */
-  changeoverTime: string;
+  changeover: Changeover;
   backTo: string;
 }) {
   const navigate = useNavigate();
@@ -425,7 +425,8 @@ function EditorForm({
   const bookable = rooms.filter((r) => r.kind === 'main');
   const organizer = organizers.find((o) => o.id === draft.organizerId);
 
-  const built = buildInputs(draft, changeoverTime);
+  const { prepTime, cleanupTime, cleanupMinGapHours } = changeover;
+  const built = buildInputs(draft, changeover);
   const { errors, inputs } = validate(draft, built);
   const first = built[0] ?? null;
   const overnight = draft.start !== '' && draft.end !== '' && draft.end <= draft.start;
@@ -668,8 +669,8 @@ function EditorForm({
                 <MarginOption
                   selected={draft.margins === 'changeover'}
                   onSelect={() => update({ margins: 'changeover' })}
-                  title={`Dalle ${changeoverTime} del giorno prima`}
-                  description={`Fino alle ${changeoverTime} dopo la fine (lo stesso giorno se finisce prima). Tra i giorni di un congresso la sala resta riservata.`}
+                  title={`Dalle ${prepTime} del giorno prima`}
+                  description={`Fino alle ${cleanupTime} dopo la fine (lo stesso giorno se finisce almeno ${cleanupMinGapHours} ${cleanupMinGapHours === 1 ? 'ora' : 'ore'} prima). Tra i giorni di un congresso la sala resta riservata.`}
                 />
                 <MarginOption
                   selected={draft.margins === 'none'}
@@ -788,8 +789,9 @@ export default function EventEditor({ mode }: { mode: Mode }) {
   if ((id !== undefined && source.isPending) || rooms.isPending || organizers.isPending || settings.isPending) return <PageLoading />;
   if (rooms.isError || organizers.isError) return <ErrorNote>{errorMessage(rooms.error ?? organizers.error)}</ErrorNote>;
 
-  const { changeoverTime } = settings.data ?? DEFAULT_SETTINGS;
-  const initial = source.data ? draftFrom(source.data, changeoverTime) : newDraft(search);
+  const { prepTime, cleanupTime, cleanupMinGapHours } = settings.data ?? DEFAULT_SETTINGS;
+  const changeover = { prepTime, cleanupTime, cleanupMinGapHours };
+  const initial = source.data ? draftFrom(source.data, changeover) : newDraft(search);
   return (
     <EditorForm
       key={`${mode}-${id ?? 'new'}`}
@@ -798,7 +800,7 @@ export default function EventEditor({ mode }: { mode: Mode }) {
       eventId={mode === 'edit' ? id : undefined}
       rooms={rooms.data}
       organizers={organizers.data}
-      changeoverTime={changeoverTime}
+      changeover={changeover}
       backTo={search.get('d') ?? initial.dates[0] ?? todayValue()}
     />
   );
