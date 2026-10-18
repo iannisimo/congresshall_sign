@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import type { Organizer } from '../../shared/model.ts';
 import { api, ddgLogoSearch, errorMessage, keys, queryClient, refreshSchedule, useOrganizers } from './api.ts';
-import { LogoUploader } from './OrganizerFields.tsx';
+import { GenericLogoGallery, LogoUploader } from './OrganizerFields.tsx';
 import { Button, Card, ErrorNote, Field, inputClass, PageLoading, useFeedback } from './ui.tsx';
 
 function OrganizerDetail({ organizer, onDeleted }: { organizer: Organizer; onDeleted: () => void }) {
@@ -77,6 +77,9 @@ function OrganizerDetail({ organizer, onDeleted }: { organizer: Organizer; onDel
           </div>
         )}
         <LogoUploader organizerId={organizer.id} />
+        <div className="mt-3">
+          <GenericLogoGallery organizerId={organizer.id} />
+        </div>
       </div>
 
       <div className="flex items-center justify-between border-t border-slate-100 pt-4">

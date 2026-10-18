@@ -113,6 +113,9 @@ export const useEvent = (id: number | undefined) =>
 
 export const useSettings = () => useQuery({ queryKey: keys.settings, queryFn: () => api<Settings>('/settings') });
 
+export const useGenericLogos = () =>
+  useQuery({ queryKey: ['generic-logos'], queryFn: () => api<{ id: string; name: string }[]>('/generic-logos'), staleTime: Infinity });
+
 /** Same data as the sign, for the current room statuses. */
 export const useDisplay = () =>
   useQuery({ queryKey: keys.display, queryFn: () => api<DisplaySnapshot>('/display'), refetchInterval: 30_000 });

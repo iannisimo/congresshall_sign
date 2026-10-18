@@ -1,0 +1,82 @@
+[
+  {
+    "id": "congresso",
+    "name": "Congresso"
+  },
+  {
+    "id": "universita",
+    "name": "Università"
+  },
+  {
+    "id": "formazione",
+    "name": "Scuola e formazione"
+  },
+  {
+    "id": "medicina",
+    "name": "Medicina"
+  },
+  {
+    "id": "cardiologia",
+    "name": "Cardiologia"
+  },
+  {
+    "id": "ricerca",
+    "name": "Ricerca e scienza"
+  },
+  {
+    "id": "tecnologia",
+    "name": "Tecnologia"
+  },
+  {
+    "id": "istituzioni",
+    "name": "Istituzioni ed enti pubblici"
+  },
+  {
+    "id": "aziende",
+    "name": "Aziende"
+  },
+  {
+    "id": "associazioni",
+    "name": "Associazioni"
+  },
+  {
+    "id": "legale",
+    "name": "Legale"
+  },
+  {
+    "id": "finanza",
+    "name": "Economia e finanza"
+  },
+  {
+    "id": "cultura",
+    "name": "Arte e cultura"
+  },
+  {
+    "id": "musica",
+    "name": "Musica e spettacolo"
+  },
+  {
+    "id": "sport",
+    "name": "Sport"
+  },
+  {
+    "id": "ambiente",
+    "name": "Ambiente"
+  },
+  {
+    "id": "internazionale",
+    "name": "Internazionale"
+  },
+  {
+    "id": "turismo",
+    "name": "Turismo e ospitalità"
+  },
+  {
+    "id": "comunicazione",
+    "name": "Media e comunicazione"
+  },
+  {
+    "id": "volontariato",
+    "name": "Volontariato"
+  }
+]

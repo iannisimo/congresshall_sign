@@ -358,3 +358,20 @@ describe('settings', () => {
     expect((await json<DisplaySnapshot>(after)).settings).toEqual({ marqueeSpeed: 50, marqueePause: 1.5, changeoverTime: '13:30' });
   });
 });
+
+describe('generic logos', () => {
+  it('are listed for admins and copied into an organizer as a normal logo', async () => {
+    const t = setup();
+    const { admin, org } = await seed(t);
+    expect((await t.app.request('/api/generic-logos')).status).toBe(401);
+    const list = await json<{ id: string; name: string }[]>(await admin.req('GET', '/api/generic-logos'));
+    expect(list.length).toBeGreaterThan(10);
+    expect((await admin.req('GET', `/api/generic-logos/${list[0]!.id}`)).headers.get('content-type')).toBe('image/svg+xml');
+
+    const copied = await admin.req('POST', `/api/organizers/${org.id}/logos`, { generic: 'universita' });
+    expect(copied.status).toBe(201);
+    const { id } = await json<{ id: number }>(copied);
+    expect((await t.app.request(`/api/logos/${id}`)).headers.get('content-type')).toBe('image/png');
+    expect((await admin.req('POST', `/api/organizers/${org.id}/logos`, { generic: 'nope' })).status).toBe(400);
+  });
+});

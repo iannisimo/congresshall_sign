@@ -1,8 +1,8 @@
 import { useMutation } from '@tanstack/react-query';
-import { Check, ImagePlus, Plus, Search, X } from 'lucide-react';
+import { Check, ChevronDown, ImagePlus, Plus, Search, Shapes, X } from 'lucide-react';
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import type { Organizer } from '../../shared/model.ts';
-import { api, ddgLogoSearch, errorMessage, keys, queryClient } from './api.ts';
+import { api, ddgLogoSearch, errorMessage, keys, queryClient, useGenericLogos } from './api.ts';
 import { Button, inputClass, Spinner, useFeedback } from './ui.tsx';
 
 /** Finds a link to an image in something dragged from another web page. */
@@ -120,6 +120,58 @@ export function LogoUploader({ organizerId, onUploaded }: { organizerId: number;
           Carica
         </Button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Generic emblems (university, medicine, …) for organizers without a logo of their own. Picking one
+ * copies it into the organizer's library, so it then works like any other logo.
+ */
+export function GenericLogoGallery({ organizerId, onAdded }: { organizerId: number; onAdded?: (logoId: number) => void }) {
+  const { toast } = useFeedback();
+  const [open, setOpen] = useState(false);
+  const generic = useGenericLogos();
+  const add = useMutation({
+    mutationFn: (id: string) => api<{ id: number }>(`/organizers/${organizerId}/logos`, { method: 'POST', json: { generic: id } }),
+    onSuccess: ({ id }) => {
+      void queryClient.invalidateQueries({ queryKey: keys.organizers });
+      toast('Logo aggiunto');
+      onAdded?.(id);
+      setOpen(false);
+    },
+    onError: (error) => toast(errorMessage(error), 'error'),
+  });
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-800 hover:underline"
+      >
+        <Shapes className="size-3.5" />
+        Usa un logo generico
+        <ChevronDown className={`size-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="mt-2 grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-7">
+          {(generic.data ?? []).map((logo) => (
+            <button
+              key={logo.id}
+              type="button"
+              title={logo.name}
+              disabled={add.isPending}
+              onClick={() => add.mutate(logo.id)}
+              className="flex flex-col items-center gap-1 rounded-lg p-1.5 text-center hover:bg-slate-100 disabled:opacity-50"
+            >
+              <img src={`/api/generic-logos/${logo.id}`} alt="" className="size-12" />
+              <span className="line-clamp-2 text-[11px] leading-tight text-slate-600">{logo.name}</span>
+            </button>
+          ))}
+          {generic.isPending && <Spinner />}
+        </div>
+      )}
     </div>
   );
 }
@@ -253,6 +305,7 @@ export function LogoPicker({
         ))}
       </div>
       <LogoUploader organizerId={organizer.id} onUploaded={onChange} />
+      <GenericLogoGallery organizerId={organizer.id} onAdded={onChange} />
       <a
         href={ddgLogoSearch(organizer.name)}
         target="_blank"

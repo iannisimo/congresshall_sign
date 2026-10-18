@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
-import { logoUrlSchema, organizerInputSchema } from '../../shared/schemas.ts';
+import { logoSourceSchema, organizerInputSchema } from '../../shared/schemas.ts';
 import { requireRole } from '../auth/session.ts';
 import {
   countLogoUses,
@@ -15,7 +15,7 @@ import {
   renameOrganizer,
 } from '../data/organizers.ts';
 import { ApiError, idParam, notFound, readJson, type AppDeps, type AppEnv } from '../http.ts';
-import { fetchImage, MAX_UPLOAD_BYTES, normalizeLogo } from '../images.ts';
+import { fetchImage, GENERIC_LOGOS, MAX_UPLOAD_BYTES, normalizeLogo, readGenericLogo } from '../images.ts';
 
 export function organizerRoutes(deps: AppDeps) {
   const app = new Hono<AppEnv>();
@@ -52,7 +52,7 @@ export function organizerRoutes(deps: AppDeps) {
     return c.body(null, 204);
   });
 
-  /** Multipart `file`, or JSON `{ url }` that the server downloads. */
+  /** Multipart `file`, JSON `{ url }` that the server downloads, or `{ generic }` to copy an emblem. */
   app.post(
     '/:id/logos',
     bodyLimit({
@@ -71,7 +71,13 @@ export function organizerRoutes(deps: AppDeps) {
         if (!(file instanceof File)) throw new ApiError(400, 'Nessun file ricevuto');
         input = new Uint8Array(await file.arrayBuffer());
       } else {
-        input = await fetchImage((await readJson(c, logoUrlSchema)).url);
+        const source = await readJson(c, logoSourceSchema);
+        if ('url' in source) input = await fetchImage(source.url);
+        else {
+          const emblem = readGenericLogo(source.generic);
+          if (!emblem) throw new ApiError(400, 'Logo generico inesistente');
+          input = emblem;
+        }
       }
 
       const logo = await normalizeLogo(input);
@@ -80,6 +86,19 @@ export function organizerRoutes(deps: AppDeps) {
     },
   );
 
+  return app;
+}
+
+/** The generic emblems: listed for the logo picker, and served as SVG for its previews. */
+export function genericLogoRoutes() {
+  const app = new Hono<AppEnv>();
+  app.use('*', requireRole('admin'));
+  app.get('/', (c) => c.json(GENERIC_LOGOS));
+  app.get('/:id', (c) => {
+    const svg = readGenericLogo(c.req.param('id'));
+    if (!svg) throw notFound();
+    return c.body(new Uint8Array(svg), 200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'private, max-age=86400' });
+  });
   return app;
 }
 

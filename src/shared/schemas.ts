@@ -59,7 +59,11 @@ export const organizerInputSchema = z.object({
   name: z.string().trim().min(1, { error: 'Inserisci un nome' }).max(120, { error: 'Massimo 120 caratteri' }),
 });
 
-export const logoUrlSchema = z.object({ url: z.url({ protocol: /^https?$/, error: 'Indirizzo non valido' }) });
+/** A logo from a URL the server downloads, or a copy of a generic emblem. */
+export const logoSourceSchema = z.union([
+  z.object({ url: z.url({ protocol: /^https?$/, error: 'Indirizzo non valido' }) }),
+  z.object({ generic: z.string().regex(/^[a-z-]+$/) }),
+]);
 
 export const roomInputSchema = z
   .object({

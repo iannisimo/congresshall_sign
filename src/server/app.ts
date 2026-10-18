@@ -7,7 +7,7 @@ import { ApiError, requestHost, type AppDeps, type AppEnv } from './http.ts';
 import { authRoutes } from './routes/auth.ts';
 import { displayRoutes } from './routes/display.ts';
 import { eventRoutes } from './routes/events.ts';
-import { logoRoutes, organizerRoutes } from './routes/organizers.ts';
+import { genericLogoRoutes, logoRoutes, organizerRoutes } from './routes/organizers.ts';
 import { roomRoutes } from './routes/rooms.ts';
 import { settingsRoutes } from './routes/settings.ts';
 import { webRoutes } from './web.ts';
@@ -62,6 +62,7 @@ export function createApp(deps: AppDeps, options: { serveWeb?: boolean } = {}) {
   app.route('/api/events', eventRoutes(deps));
   app.route('/api/organizers', organizerRoutes(deps));
   app.route('/api/logos', logoRoutes(deps));
+  app.route('/api/generic-logos', genericLogoRoutes());
   app.route('/api/rooms', roomRoutes(deps));
   app.route('/api/settings', settingsRoutes(deps));
   app.all('/api/*', (c) => c.json({ error: 'Non trovato' }, 404));
