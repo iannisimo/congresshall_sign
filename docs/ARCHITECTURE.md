@@ -86,7 +86,7 @@ statuses at the right times while offline (SYNC-3), and the server needs no time
 `GET /api/display` (public) returns:
 
 ```json
-{ "version": "build id", "settings": {...}, "rooms": [...], "events": [...], "overrides": [...] }
+{ "version": "build id", "settings": {...}, "venueLogo": "version or null", "rooms": [...], "events": [...], "overrides": [...] }
 ```
 
 - Events: visible events overlapping `[start of today, start of today + 8 days)`. The body therefore only
@@ -130,8 +130,10 @@ All under `/api`, JSON unless stated otherwise. 🔓 public · 🔑 admin or sup
 | `PUT /rooms/order` | 👑 | `{ids}`. Display order |
 | `PUT /rooms/:id/override` | 🔑 | `{status, message?, until}`. `until` is `next-change`, `{at}` or `manual` |
 | `DELETE /rooms/:id/override` | 🔑 | Back to the calculated status |
+| `GET /venue-logo` | 🔓 | The uploaded venue logo (SVG, strict CSP); `?v=` versions are cached forever |
+| `PUT /venue-logo`, `DELETE /venue-logo` | 👑 | Upload an SVG (multipart `file`, max 1 MB, no scripts), or go back to the built-in logo |
 | `GET /settings` | 🔑 | Sign settings (the admin preview uses them too) |
-| `PUT /settings` | 👑 | `{marqueeSpeed, marqueePause, changeoverTime}` |
+| `PUT /settings` | 👑 | `{marqueeSpeed, marqueePause, changeoverTime, signTheme, darkFrom, darkUntil, staleAfterMinutes, offlineAfterHours}` |
 
 Saving events checks for **conflicts**: another event running in the same room at the same time
 (overlapping `[start_at, end_at)`). Preparation and clean-up don't count: the default ones span about a

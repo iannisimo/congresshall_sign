@@ -24,6 +24,8 @@ become a smart-TV browser. **One person** does the admin work.
 - **SIGN-5** Runs unattended: no mouse cursor, no interaction needed, recovers from errors by itself.
 - **SIGN-6** Updates and reloads itself when a new version is deployed.
 - **SIGN-7** The clock is corrected using the server's time.
+- **SIGN-10** The logo in the header is the venue's own SVG, uploaded by the superadmin (the built-in logo
+  otherwise).
 - **SIGN-9** Dark colours at night (20:00–07:00 by default). The superadmin can change the hours or force
   light or dark; a single screen can force its own with `?mode=dark` or `?mode=light` in its URL.
 - **SIGN-8** Text too long for its space scrolls instead of being cut: titles and subtitles of the event
@@ -38,8 +40,9 @@ become a smart-TV browser. **One person** does the admin work.
 - **SYNC-2** A service worker caches the app and the logos, and the last data received is stored on the
   device, so the sign starts and keeps working while offline.
 - **SYNC-3** Room statuses keep changing at the right times while offline (see ROOM-1).
-- **SYNC-4** When the data is out of date, a small "last update" note is shown. When it is older than
-  3 days, a big warning is shown.
+- **SYNC-4** When the data is out of date, a small "last update" note is shown in the top-right corner
+  (after 3 minutes without contact). After 72 hours, a big "Offline" warning with the time of the last
+  update is shown. The superadmin can change both delays.
 
 ### Rooms and status
 

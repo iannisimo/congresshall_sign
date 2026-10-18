@@ -120,6 +120,12 @@ Progress tracker for the rewrite. Requirement IDs refer to the README; design is
 - [x] Dark mode on the sign: automatic at night, forced by the superadmin, or per screen with `?mode=`
 - [x] No "Centro Congressi" text in the sign's header: the logo takes its place (VENUE_NAME removed)
 
+## Changes after the seventh review
+- [x] Smaller "last update" pill in the top-right corner; the offline banner shows only "Offline" and the last update
+- [x] Venue logo uploadable by the superadmin (SVG), used by the sign and the admin area
+- [x] The server closes idle connections on shutdown, so stopping it doesn't wait for browsers
+- [x] Delays before the "last update" pill and the "Offline" warning are superadmin settings
+
 ## Log
 - 2026-10-17: requirements agreed, plan written; shared core, server, sign, admin, offline support,
   container setup, import and docs done; old code removed.
