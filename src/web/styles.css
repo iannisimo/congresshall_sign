@@ -3,28 +3,39 @@
 @theme {
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
 
-  /* Brand blue, from the venue logo */
-  --color-brand-50: #f0f8ff;
-  --color-brand-100: #e5f3ff;
-  --color-brand-200: #d1e9ff;
-  --color-brand-300: #b3daff;
-  --color-brand-400: #85c4ff;
-  --color-brand-500: #47a6ff;
-  --color-brand-600: #0d83f2;
-  --color-brand-700: #0871d4;
-  --color-brand-800: #0b5ead;
-  --color-brand-900: #10508c;
-  --color-brand-950: #02274a;
+  /*
+   * Brand shades derived from one main colour (--brand, a setting): lighter tones mix it with white,
+   * the darkest with black. Status colours (--free, --occupied, --reserved) are settings too; their
+   * "deep" text tones are derived.
+   */
+  --color-brand-50: color-mix(in oklch, var(--brand) 6%, white);
+  --color-brand-100: color-mix(in oklch, var(--brand) 11%, white);
+  --color-brand-200: color-mix(in oklch, var(--brand) 20%, white);
+  --color-brand-300: color-mix(in oklch, var(--brand) 32%, white);
+  --color-brand-400: color-mix(in oklch, var(--brand) 46%, white);
+  --color-brand-500: color-mix(in oklch, var(--brand) 60%, white);
+  --color-brand-600: color-mix(in oklch, var(--brand) 74%, white);
+  --color-brand-700: color-mix(in oklch, var(--brand) 86%, white);
+  --color-brand-800: color-mix(in oklch, var(--brand) 94%, white);
+  --color-brand-900: var(--brand);
+  --color-brand-950: color-mix(in oklch, var(--brand) 55%, black);
 
-  /* Room status: the bright tone for dots and bars, the deep one for text */
-  --color-free: #14ae5c;
-  --color-free-deep: #0b7a3e;
-  --color-occupied: #e5322d;
-  --color-occupied-deep: #b4211d;
-  --color-reserved: #e8b931;
-  --color-reserved-deep: #8a6400;
+  --color-free: var(--free);
+  --color-free-deep: color-mix(in oklch, var(--free) 72%, black);
+  --color-occupied: var(--occupied);
+  --color-occupied-deep: color-mix(in oklch, var(--occupied) 80%, black);
+  --color-reserved: var(--reserved);
+  --color-reserved-deep: color-mix(in oklch, var(--reserved) 58%, black);
 
   --color-canvas: #eef2f7;
+}
+
+/* Defaults; the app sets the chosen colours on <html> (see useThemeColors). */
+:root {
+  --brand: #10508c;
+  --free: #14ae5c;
+  --occupied: #e5322d;
+  --reserved: #e8b931;
 }
 
 @layer base {
@@ -71,20 +82,29 @@ html.sign-dark {
   --color-slate-700: #c3ccd8;
   --color-slate-900: #e6ebf2;
 
-  --color-brand-50: #16294a;
-  --color-brand-100: #1c3355;
-  --color-brand-200: #24426b;
-  --color-brand-700: #4f9cff;
-  --color-brand-800: #7cb8ff;
-  --color-brand-900: #9cc9ff;
-  --color-brand-950: #e8f1ff;
+  --color-brand-50: color-mix(in oklch, var(--brand) 30%, #0a111d);
+  --color-brand-100: color-mix(in oklch, var(--brand) 38%, #0a111d);
+  --color-brand-200: color-mix(in oklch, var(--brand) 50%, #0a111d);
+  --color-brand-700: color-mix(in oklch, var(--brand) 70%, white);
+  --color-brand-800: color-mix(in oklch, var(--brand) 52%, white);
+  --color-brand-900: color-mix(in oklch, var(--brand) 40%, white);
+  --color-brand-950: color-mix(in oklch, var(--brand) 8%, white);
 
-  --color-free-deep: #4ade80;
-  --color-occupied-deep: #f87171;
-  --color-reserved-deep: #fbbf24;
+  --color-free-deep: color-mix(in oklch, var(--free) 75%, white);
+  --color-occupied-deep: color-mix(in oklch, var(--occupied) 70%, white);
+  --color-reserved-deep: color-mix(in oklch, var(--reserved) 85%, white);
 }
 
 /* The venue logo is single-colour navy: white on the dark header. */
 html.sign-dark .venue-logo {
   filter: brightness(0) invert(1);
+}
+
+@keyframes sign-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

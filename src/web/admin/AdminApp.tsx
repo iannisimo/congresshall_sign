@@ -1,12 +1,15 @@
 import { QueryClientProvider, useMutation } from '@tanstack/react-query';
-import { CalendarDays, DoorOpen, ExternalLink, LogOut, Settings as SettingsIcon, Users } from 'lucide-react';
+import { CalendarDays, DoorOpen, ExternalLink, Images, LogOut, Settings as SettingsIcon, Users } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router';
 import { installUpdate, onUpdateWaiting } from '../lib/pwa.ts';
+import { DEFAULT_SETTINGS } from '../../shared/settings.ts';
+import { useThemeColors } from '../sign/hooks.ts';
 import { VenueLogo } from '../sign/parts.tsx';
 import { api, keys, queryClient, useDisplay, useMe } from './api.ts';
 import EventEditor from './EventEditor.tsx';
 import Login from './Login.tsx';
+import Media from './Media.tsx';
 import Organizers from './Organizers.tsx';
 import Rooms from './Rooms.tsx';
 import Settings from './Settings.tsx';
@@ -75,6 +78,9 @@ function Shell({ superadmin, username, children }: { superadmin: boolean; userna
                 <NavItem to="/admin/rooms" icon={<DoorOpen className="size-4" />}>
                   Sale
                 </NavItem>
+                <NavItem to="/admin/media" icon={<Images className="size-4" />}>
+                  Media
+                </NavItem>
                 <NavItem to="/admin/settings" icon={<SettingsIcon className="size-4" />}>
                   Impostazioni
                 </NavItem>
@@ -102,6 +108,9 @@ function Shell({ superadmin, username, children }: { superadmin: boolean; userna
 
 function Gate() {
   const me = useMe();
+  // The admin area uses the same colours as the sign.
+  const display = useDisplay();
+  useThemeColors(display.data?.settings ? { ...DEFAULT_SETTINGS, ...display.data.settings } : undefined);
   if (me.isPending) return <PageLoading />;
   if (!me.data) return <Login />;
 
@@ -116,6 +125,7 @@ function Gate() {
         <Route path="organizers" element={<Organizers />} />
         {superadmin && <Route path="rooms" element={<Rooms />} />}
         {superadmin && <Route path="settings" element={<Settings />} />}
+        {superadmin && <Route path="media" element={<Media />} />}
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
     </Shell>

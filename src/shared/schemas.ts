@@ -111,6 +111,7 @@ export const overrideInputSchema = z.object({
 });
 export type OverrideInput = z.input<typeof overrideInputSchema>;
 
+const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, { error: 'Colore non valido (#rrggbb)' });
 const clockTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, { error: 'Orario non valido' });
 
 export const settingsSchema = z.object({
@@ -126,7 +127,21 @@ export const settingsSchema = z.object({
   darkUntil: clockTime,
   staleAfterMinutes: z.number().int({ error: 'Usa un numero intero' }).min(2, { error: 'Minimo 2 minuti' }).max(1440, { error: 'Massimo 1440 minuti' }),
   offlineAfterHours: z.number().int({ error: 'Usa un numero intero' }).min(1, { error: 'Minimo 1 ora' }).max(720, { error: 'Massimo 720 ore' }),
+  carouselImageSeconds: z.number().int({ error: 'Usa un numero intero' }).min(2, { error: 'Minimo 2 secondi' }).max(600, { error: 'Massimo 600 secondi' }),
+  nightClock: z.boolean(),
+  carouselFit: z.enum(['contain', 'fill', 'cover']),
+  brandColor: hexColor,
+  freeColor: hexColor,
+  occupiedColor: hexColor,
+  reservedColor: hexColor,
 });
+
+export const mediaPatchSchema = z.object({
+  enabled: z.boolean().optional(),
+  fit: z.enum(['contain', 'fill', 'cover']).nullable().optional(),
+});
+
+export const mediaOrderSchema = z.object({ ids: z.array(z.number().int().positive()).refine(unique) });
 
 export const loginSchema = z.object({
   username: z.string().trim().min(1).max(64),

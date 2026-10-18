@@ -41,6 +41,18 @@ export function useSignTheme(settings: Settings, now: number): 'light' | 'dark' 
   return theme;
 }
 
+/** Applies the colour settings to the page: the CSS derives every shade from these four. */
+export function useThemeColors(settings: Pick<Settings, 'brandColor' | 'freeColor' | 'occupiedColor' | 'reservedColor'> | undefined): void {
+  useEffect(() => {
+    if (!settings) return;
+    const style = document.documentElement.style;
+    style.setProperty('--brand', settings.brandColor);
+    style.setProperty('--free', settings.freeColor);
+    style.setProperty('--occupied', settings.occupiedColor);
+    style.setProperty('--reserved', settings.reservedColor);
+  }, [settings?.brandColor, settings?.freeColor, settings?.occupiedColor, settings?.reservedColor]);
+}
+
 /** Height of an element in rem, kept up to date as the screen or layout changes. */
 export function useRemHeight<T extends HTMLElement>() {
   const ref = useRef<T>(null);

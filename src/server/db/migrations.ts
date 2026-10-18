@@ -98,4 +98,21 @@ export const migrations: string[] = [
   );
   CREATE INDEX event_breaks_event ON event_breaks(event_id);
   `,
+  `
+  -- Carousel images and videos; the files live in DATA_DIR/media.
+  CREATE TABLE media (
+    id INTEGER PRIMARY KEY,
+    kind TEXT NOT NULL CHECK (kind IN ('image', 'video')),
+    name TEXT NOT NULL,
+    mime TEXT NOT NULL,
+    file TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    sort_order INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  `,
+  `
+  ALTER TABLE media ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE media ADD COLUMN fit TEXT CHECK (fit IN ('contain', 'fill', 'cover'));
+  `,
 ];

@@ -126,6 +126,13 @@ Progress tracker for the rewrite. Requirement IDs refer to the README; design is
 - [x] The server closes idle connections on shutdown, so stopping it doesn't wait for browsers
 - [x] Delays before the "last update" pill and the "Offline" warning are superadmin settings
 
+## Changes after the eighth review
+- [x] Media page for the superadmin: upload, reorder and delete carousel images and videos; image duration
+- [x] Carousel on the sign when no event is planned, cached for offline use; the room strip stays visible
+- [x] Night clock instead of the carousel in dark mode (setting)
+- [x] Carousel full screen without the header; items can be switched off; drag-and-drop ordering; fit,
+      stretch or zoom, globally and per item
+
 ## Log
 - 2026-10-17: requirements agreed, plan written; shared core, server, sign, admin, offline support,
   container setup, import and docs done; old code removed.

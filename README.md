@@ -26,6 +26,10 @@ become a smart-TV browser. **One person** does the admin work.
 - **SIGN-7** The clock is corrected using the server's time.
 - **SIGN-10** The logo in the header is the venue's own SVG, uploaded by the superadmin (the built-in logo
   otherwise).
+- **SIGN-11** When no event is planned, the sign shows a full-screen carousel of images and videos (no
+  header; the room strip stays visible). The superadmin uploads them, orders them by drag and drop,
+  switches them on and off, and sets how long images stay up and how items fit the screen (fit, stretch,
+  zoom), globally or per item. At night, a setting replaces the carousel with a dim clock.
 - **SIGN-9** Dark colours at night (20:00–07:00 by default). The superadmin can change the hours or force
   light or dark; a single screen can force its own with `?mode=dark` or `?mode=light` in its URL.
 - **SIGN-8** Text too long for its space scrolls instead of being cut: titles and subtitles of the event
@@ -148,7 +152,8 @@ reaches the sign by itself within a minute.
 **HTTPS:** put any reverse proxy in front (for example Caddy: `reverse_proxy app:3000`) and set
 `TRUST_PROXY=true`.
 
-**Backups:** the whole database is one SQLite file in the `data` volume. To copy it while running:
+**Backups:** the database is one SQLite file in the `data` volume, and carousel images and videos are in
+its `media` folder. To copy the database while running:
 
 ```sh
 docker compose exec app node src/server/cli.ts backup /data/backup-$(date +%F).db

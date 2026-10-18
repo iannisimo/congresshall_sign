@@ -68,6 +68,17 @@ export default defineConfig(({ command }) => {
               options: { cacheName: 'venue-logo', expiration: { maxEntries: 4 }, cacheableResponse: { statuses: [200] } },
             },
             {
+              // Carousel media: cached whole (the sign downloads them ahead), then played with range requests.
+              urlPattern: ({ url }) => /^\/api\/media\/\d+$/.test(url.pathname),
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'media',
+                rangeRequests: true,
+                expiration: { maxEntries: 60 },
+                cacheableResponse: { statuses: [200] },
+              },
+            },
+            {
               // Logos never change once uploaded.
               urlPattern: ({ url }) => url.pathname.startsWith('/api/logos/'),
               handler: 'CacheFirst',

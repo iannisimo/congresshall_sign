@@ -46,6 +46,9 @@ server's time zone (`TZ`, `Europe/Rome` in the container).
   overlapping; the room stays occupied during them.
 - **overrides**: `room_id` (one per room), `status`, `message?`, `created_at`, `expires_at?`,
   `until_next_change`.
+- **media**: `id`, `kind` (`image` | `video`), `name`, `mime`, `file`, `size`, `sort_order`, `enabled`, `fit`
+  (`contain` | `fill` | `cover`, or null for the global `carouselFit` setting). The files are in
+  `DATA_DIR/media` under random names and never change, so they are cached forever.
 - **settings**: `key`, `value` (JSON). `marqueeSpeed`, `marqueePause` (sign) and `changeoverTime` (default
   margins); a missing or
   invalid value uses its default from `src/shared/settings.ts`.
@@ -132,6 +135,11 @@ All under `/api`, JSON unless stated otherwise. 🔓 public · 🔑 admin or sup
 | `DELETE /rooms/:id/override` | 🔑 | Back to the calculated status |
 | `GET /venue-logo` | 🔓 | The uploaded venue logo (SVG, strict CSP); `?v=` versions are cached forever |
 | `PUT /venue-logo`, `DELETE /venue-logo` | 👑 | Upload an SVG (multipart `file`, max 1 MB, no scripts), or go back to the built-in logo |
+| `GET /media` | 🔑 | Carousel items, in order |
+| `GET /media/:id` | 🔓 | The file, with Range support (video playback) |
+| `POST /media` | 👑 | Raw file as the body, `Content-Type` and `X-File-Name`; streamed to disk. Images (max 30 MB) shrunk to Full HD; MP4/WebM videos (max 500 MB) kept as they are |
+| `PATCH /media/:id` | 👑 | `{enabled?, fit?}` |
+| `PUT /media/order`, `DELETE /media/:id` | 👑 | Reorder, delete |
 | `GET /settings` | 🔑 | Sign settings (the admin preview uses them too) |
 | `PUT /settings` | 👑 | `{marqueeSpeed, marqueePause, changeoverTime, signTheme, darkFrom, darkUntil, staleAfterMinutes, offlineAfterHours}` |
 
@@ -173,6 +181,9 @@ reserved). The server answers 409 with the list of conflicts unless
   jump. The speed is in pixels per second on a 1080p sign and scales with the rem, so it looks the same on
   every resolution. Each scrolling text reports its cycle length, and a page of cards stays up until the
   longest one has finished (at least 12 s). Browsers without the API cut the text with an ellipsis.
+- Carousel (SIGN-11): `Carousel` in `src/web/sign/Carousel.tsx`. The sign downloads every item in the
+  background so the service worker caches it whole; videos then play from the cache with range requests,
+  offline included.
 - Service worker updates: the sign installs a new version as soon as it's ready. The admin area shows an
   "Aggiorna" banner instead, so a half-filled form is never lost.
 - Browsers only run service workers (and screen wake lock) in a secure context: HTTPS or `localhost`. The

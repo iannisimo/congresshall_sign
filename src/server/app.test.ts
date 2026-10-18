@@ -1,3 +1,6 @@
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import sharp from 'sharp';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { DisplaySnapshot, Organizer, Room, ScheduledEvent } from '../shared/model.ts';
@@ -20,7 +23,9 @@ function setup() {
   const db = openDatabase(':memory:');
   setPassword(db, 'admin', passwordHash, clock.now);
   setPassword(db, 'superadmin', passwordHash, clock.now);
-  const app = createApp({ db, config: loadConfig({}), version: 'test', clock: () => clock.now });
+  // Uploaded media go to a throwaway folder.
+  const dataDir = mkdtempSync(join(tmpdir(), 'sign-test-'));
+  const app = createApp({ db, config: loadConfig({ DATA_DIR: dataDir }), version: 'test', clock: () => clock.now });
 
   /** A browser-like client that keeps its session cookie. */
   function client() {
@@ -354,21 +359,21 @@ describe('settings', () => {
     const t = setup();
     const admin = t.client();
     await admin.login();
-    expect(await json(await admin.req('GET', '/api/settings'))).toEqual({ marqueeSpeed: 80, marqueePause: 3, changeoverTime: '14:00', signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72 });
-    expect((await admin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 2, changeoverTime: '14:00', signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72 })).status).toBe(403);
+    expect(await json(await admin.req('GET', '/api/settings'))).toEqual({ marqueeSpeed: 80, marqueePause: 3, changeoverTime: '14:00', signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' });
+    expect((await admin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 2, changeoverTime: '14:00', signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' })).status).toBe(403);
 
     const superadmin = t.client();
     await superadmin.login('superadmin');
-    expect((await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 5, marqueePause: 2, changeoverTime: '14:00', signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72 })).status).toBe(400);
-    expect((await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 2, changeoverTime: '25:00', signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72 })).status).toBe(400);
+    expect((await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 5, marqueePause: 2, changeoverTime: '14:00', signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' })).status).toBe(400);
+    expect((await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 2, changeoverTime: '25:00', signTheme: 'auto', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' })).status).toBe(400);
     const before = await t.app.request('/api/display');
-    const saved = await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 1.5, changeoverTime: '13:30', signTheme: 'dark', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72 });
-    expect(await json(saved)).toEqual({ marqueeSpeed: 50, marqueePause: 1.5, changeoverTime: '13:30', signTheme: 'dark', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72 });
+    const saved = await superadmin.req('PUT', '/api/settings', { marqueeSpeed: 50, marqueePause: 1.5, changeoverTime: '13:30', signTheme: 'dark', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' });
+    expect(await json(saved)).toEqual({ marqueeSpeed: 50, marqueePause: 1.5, changeoverTime: '13:30', signTheme: 'dark', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' });
 
     // The snapshot changes, so the sign fetches the new settings at its next poll.
     const after = await t.app.request('/api/display', { headers: { 'if-none-match': before.headers.get('etag')! } });
     expect(after.status).toBe(200);
-    expect((await json<DisplaySnapshot>(after)).settings).toEqual({ marqueeSpeed: 50, marqueePause: 1.5, changeoverTime: '13:30', signTheme: 'dark', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72 });
+    expect((await json<DisplaySnapshot>(after)).settings).toEqual({ marqueeSpeed: 50, marqueePause: 1.5, changeoverTime: '13:30', signTheme: 'dark', darkFrom: '20:00', darkUntil: '07:00', staleAfterMinutes: 3, offlineAfterHours: 72, carouselImageSeconds: 10, nightClock: true, carouselFit: 'contain', brandColor: '#10508c', freeColor: '#14ae5c', occupiedColor: '#e5322d', reservedColor: '#e8b931' });
   });
 });
 
@@ -420,5 +425,53 @@ describe('venue logo', () => {
 
     expect((await superadmin.req('DELETE', '/api/venue-logo')).status).toBe(204);
     expect((await t.app.request('/api/venue-logo')).status).toBe(404);
+  });
+});
+
+describe('media', () => {
+  it('uploads images (resized) and videos, serves ranges, reorders and deletes', async () => {
+    const t = setup();
+    const superadmin = t.client();
+    await superadmin.login('superadmin');
+    const admin = t.client();
+    await admin.login();
+
+    const big = await sharp({ create: { width: 4000, height: 3000, channels: 3, background: '#336699' } }).jpeg().toBuffer();
+    const post = (c: typeof admin, body: Uint8Array, type: string, name: string) =>
+      t.app.request('/api/media', { method: 'POST', body, headers: { 'content-type': type, 'x-file-name': encodeURIComponent(name), cookie: c.cookie() } });
+
+    expect((await post(admin, big, 'image/jpeg', 'Foto.jpg')).status).toBe(403);
+    const image = await post(superadmin, big, 'image/jpeg', 'Foto sala.jpg');
+    expect(image.status).toBe(201);
+    const { id: imageId } = await json<{ id: number }>(image);
+    const served = await t.app.request(`/api/media/${imageId}`);
+    expect(served.headers.get('content-type')).toBe('image/jpeg');
+    expect((await sharp(Buffer.from(await served.arrayBuffer())).metadata()).width).toBe(1440); // 4000×3000 fitted in 1920×1080
+
+    // A minimal MP4 header is enough for the server, which doesn't decode videos.
+    const mp4 = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypisom'), Buffer.alloc(100, 7)]);
+    expect((await post(superadmin, Buffer.from('not a video at all'), 'video/mp4', 'x.mp4')).status).toBe(400);
+    const video = await post(superadmin, mp4, 'video/mp4', 'Spot.mp4');
+    const { id: videoId } = await json<{ id: number }>(video);
+    const part = await t.app.request(`/api/media/${videoId}`, { headers: { range: 'bytes=4-11' } });
+    expect(part.status).toBe(206);
+    expect(part.headers.get('content-range')).toBe(`bytes 4-11/${mp4.length}`);
+    expect(Buffer.from(await part.arrayBuffer()).toString('latin1')).toBe('ftypisom');
+
+    expect((await json<DisplaySnapshot>(await t.app.request('/api/display'))).media).toEqual([
+      { id: imageId, kind: 'image', fit: null },
+      { id: videoId, kind: 'video', fit: null },
+    ]);
+    // Disabled items leave the sign; an item can have its own fit.
+    await superadmin.req('PATCH', `/api/media/${imageId}`, { enabled: false });
+    await superadmin.req('PATCH', `/api/media/${videoId}`, { fit: 'cover' });
+    expect((await json<DisplaySnapshot>(await t.app.request('/api/display'))).media).toEqual([{ id: videoId, kind: 'video', fit: 'cover' }]);
+    expect((await superadmin.req('PATCH', `/api/media/${videoId}`, { fit: 'zoom' })).status).toBe(400);
+    await superadmin.req('PATCH', `/api/media/${imageId}`, { enabled: true });
+    await superadmin.req('PUT', '/api/media/order', { ids: [videoId, imageId] });
+    expect((await json<{ id: number }[]>(await admin.req('GET', '/api/media'))).map((m) => m.id)).toEqual([videoId, imageId]);
+
+    expect((await superadmin.req('DELETE', `/api/media/${imageId}`)).status).toBe(204);
+    expect((await t.app.request(`/api/media/${imageId}`)).status).toBe(404);
   });
 });

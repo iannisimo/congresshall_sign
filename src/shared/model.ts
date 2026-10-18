@@ -89,6 +89,35 @@ export interface Settings {
   staleAfterMinutes: number;
   /** Hours without contact before the sign shows the big "Offline" warning. */
   offlineAfterHours: number;
+  /** Seconds each image stays up in the carousel shown when no event is planned. */
+  carouselImageSeconds: number;
+  /** In dark mode, show a dim clock instead of the carousel. */
+  nightClock: boolean;
+  /** How carousel items fill the screen, unless an item says otherwise. */
+  carouselFit: MediaFit;
+  /** Main colour ("#rrggbb"); all its lighter and darker shades are derived from it. */
+  brandColor: string;
+  /** Room status colours; their darker text tones are derived. */
+  freeColor: string;
+  occupiedColor: string;
+  reservedColor: string;
+}
+
+export type MediaKind = 'image' | 'video';
+/** Fit: whole item visible; fill: stretched to the area; cover: zoomed to fill, edges cropped. */
+export type MediaFit = 'contain' | 'fill' | 'cover';
+
+/** An image or video for the carousel the sign shows when no event is planned. */
+export interface MediaItem {
+  id: number;
+  kind: MediaKind;
+  name: string;
+  mime: string;
+  size: number;
+  /** Disabled items stay in the list but are not shown. */
+  enabled: boolean;
+  /** Overrides the global fit when set. */
+  fit: MediaFit | null;
 }
 
 /** Everything the sign needs, from GET /api/display. */
@@ -97,6 +126,8 @@ export interface DisplaySnapshot {
   settings: Settings;
   /** Version of the uploaded venue logo (GET /api/venue-logo?v=…), or null for the built-in one. */
   venueLogo: string | null;
+  /** The carousel, in order (GET /api/media/:id). */
+  media: { id: number; kind: MediaKind; fit: MediaFit | null }[];
   rooms: Room[];
   events: ScheduledEvent[];
   overrides: Override[];

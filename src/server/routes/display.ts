@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import type { DisplaySnapshot } from '../../shared/model.ts';
 import { displayWindow } from '../../shared/time.ts';
 import { listEvents } from '../data/events.ts';
+import { listMedia } from '../data/media.ts';
 import { activeOverrides } from '../data/overrides.ts';
 import { listRooms } from '../data/rooms.ts';
 import { getSettings, getVenueLogo } from '../data/settings.ts';
@@ -21,6 +22,9 @@ export function displayRoutes(deps: AppDeps) {
       version: deps.version,
       settings: getSettings(deps.db),
       venueLogo: getVenueLogo(deps.db)?.version ?? null,
+      media: listMedia(deps.db)
+        .filter((m) => m.enabled)
+        .map((m) => ({ id: m.id, kind: m.kind, fit: m.fit })),
       rooms: listRooms(deps.db),
       events: listEvents(deps.db, { ...displayWindow(now), visibleOnly: true }),
       overrides: activeOverrides(deps.db, now),

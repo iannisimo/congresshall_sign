@@ -7,8 +7,9 @@ import { HOUR, MINUTE } from '../../shared/time.ts';
 import { formatDay } from '../lib/format.ts';
 import { ComingUp } from './ComingUp.tsx';
 import { CARD_HEIGHT, EventCard } from './EventCard.tsx';
-import { Header } from './Header.tsx';
-import { useKiosk, useNow, useRemHeight, useSelfUpdate, useSignTheme } from './hooks.ts';
+import { Header, StalePill } from './Header.tsx';
+import { useKiosk, useNow, useRemHeight, useSelfUpdate, useSignTheme, useThemeColors } from './hooks.ts';
+import { Carousel, NightClock, usePrefetchMedia } from './Carousel.tsx';
 import { MarqueeCycle, MarqueeSettings } from './Marquee.tsx';
 import { SectionTitle, Time } from './parts.tsx';
 import { RecoveringBoundary } from './RecoveringBoundary.tsx';
@@ -90,7 +91,10 @@ function SignScreen() {
   const now = useNow(clockOffset);
   // Snapshots saved by older versions may lack some settings.
   const settings = useMemo(() => ({ ...DEFAULT_SETTINGS, ...snapshot?.settings }), [snapshot]);
-  useSignTheme(settings, now);
+  const theme = useSignTheme(settings, now);
+  useThemeColors(settings);
+  const media = useMemo(() => snapshot?.media ?? [], [snapshot]);
+  usePrefetchMedia(media);
 
   const rooms = useMemo(() => snapshot?.rooms ?? [], [snapshot]);
   const roomNames = useMemo(() => {
@@ -116,14 +120,45 @@ function SignScreen() {
   }
 
   const featuredIsToday = view.featuredDay === null || view.featuredDay <= now;
+  const nothingPlanned = view.featured.length === 0;
+  const outdated = offlineFor > settings.offlineAfterHours * HOUR && lastContactAt !== null;
+
+  const staleSince = offlineFor > settings.staleAfterMinutes * MINUTE ? lastContactAt : null;
+
+  // Nothing planned and media to show: the carousel takes the whole screen above the rooms.
+  if (nothingPlanned && media.length > 0 && !(theme === 'dark' && settings.nightClock)) {
+    return (
+      <div className="flex h-screen w-screen flex-col overflow-hidden bg-canvas">
+        <main className="relative flex min-h-0 flex-1">
+          <Carousel items={media} imageSeconds={settings.carouselImageSeconds} defaultFit={settings.carouselFit} />
+          {staleSince !== null && <StalePill since={staleSince} now={now} className="absolute top-[1rem] right-[1.5rem] bg-white/90" />}
+          {outdated && <OutdatedWarning since={lastContactAt!} />}
+        </main>
+        <RoomStrip rooms={rooms} statuses={statuses} now={now} />
+      </div>
+    );
+  }
+
+  // Night with nothing planned: only a dim clock and the rooms.
+  if (nothingPlanned && theme === 'dark' && settings.nightClock) {
+    return (
+      <div className="flex h-screen w-screen flex-col overflow-hidden bg-canvas">
+        <main className="relative flex min-h-0 flex-1">
+          <NightClock now={now} />
+          {outdated && <OutdatedWarning since={lastContactAt!} />}
+        </main>
+        <RoomStrip rooms={rooms} statuses={statuses} now={now} />
+      </div>
+    );
+  }
 
   return (
     <MarqueeSettings.Provider value={settings}>
       <div className="flex h-screen w-screen flex-col overflow-hidden bg-canvas">
-        <Header now={now} staleSince={offlineFor > settings.staleAfterMinutes * MINUTE ? lastContactAt : null} logo={snapshot.venueLogo ?? null} />
+        <Header now={now} staleSince={staleSince} logo={snapshot.venueLogo ?? null} />
 
         <main className="relative flex min-h-0 flex-1 gap-[2.5rem] px-[2.5rem] pt-[1.75rem] pb-[1.5rem]">
-          {view.featured.length === 0 ? (
+          {nothingPlanned ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-[1rem] text-slate-400">
               <CalendarDays className="size-[5rem]" strokeWidth={1.5} />
               <span className="text-[2rem] font-semibold">{strings.noEvents}</span>
@@ -144,7 +179,7 @@ function SignScreen() {
             </section>
           )}
 
-          {offlineFor > settings.offlineAfterHours * HOUR && lastContactAt !== null && <OutdatedWarning since={lastContactAt} />}
+          {outdated && <OutdatedWarning since={lastContactAt!} />}
         </main>
 
         <RoomStrip rooms={rooms} statuses={statuses} now={now} />

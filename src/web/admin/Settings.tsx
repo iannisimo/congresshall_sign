@@ -3,7 +3,7 @@ import { startOfDay } from 'date-fns';
 import { useRef, useState } from 'react';
 import type { ScheduledEvent, Settings } from '../../shared/model.ts';
 import { settingsSchema } from '../../shared/schemas.ts';
-import { DEFAULT_SETTINGS } from '../../shared/settings.ts';
+import { BRAND_PRESETS, DEFAULT_SETTINGS } from '../../shared/settings.ts';
 import { HOUR, MINUTE } from '../../shared/time.ts';
 import { VenueLogo } from '../sign/parts.tsx';
 import { api, errorMessage, keys, queryClient, useDisplay, useSettings } from './api.ts';
@@ -30,7 +30,36 @@ function sampleEvent(): ScheduledEvent {
   };
 }
 
-function NumberWithSlider({
+/** Brand shades as styles.css derives them from the main colour (keep the two in step). */
+const LIGHT_SHADES: [number, number][] = [[50, 6], [100, 11], [200, 20], [300, 32], [400, 46], [500, 60], [600, 74], [700, 86], [800, 94]];
+const SHADE_MIXES: [number, (c: string) => string][] = [
+  ...LIGHT_SHADES.map(([shade, percent]): [number, (c: string) => string] => [shade, (c) => `color-mix(in oklch, ${c} ${percent}%, white)`]),
+  [900, (c) => c],
+  [950, (c) => `color-mix(in oklch, ${c} 55%, black)`],
+];
+
+/** Colour picker plus a hex field, kept in sync. */
+function ColorInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const valid = /^#[0-9a-fA-F]{6}$/.test(value);
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="color"
+        className="h-9 w-11 cursor-pointer rounded-md border-0 bg-transparent p-0"
+        value={valid ? value.toLowerCase() : '#000000'}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <input
+        className={`${inputClass} w-28! font-mono uppercase`}
+        value={value}
+        maxLength={7}
+        onChange={(e) => onChange(e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`)}
+      />
+    </div>
+  );
+}
+
+export function NumberWithSlider({
   value,
   onChange,
   min,
@@ -91,6 +120,57 @@ function SettingsForm({ saved }: { saved: Settings }) {
 
   return (
     <div className="space-y-6">
+      <Card className="space-y-5 p-5">
+        <div>
+          <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Colori</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Il colore principale vale per cartello e gestione: tutte le sue tonalità, più chiare e più scure, sono calcolate da lui.
+          </p>
+        </div>
+        <Field label="Colore principale" error={errors.get('brandColor')}>
+          <div className="flex flex-wrap items-center gap-2">
+            {BRAND_PRESETS.map((preset) => (
+              <button
+                key={preset.color}
+                type="button"
+                title={preset.name}
+                onClick={() => setDraft({ ...draft, brandColor: preset.color })}
+                className={`size-9 rounded-full ring-offset-2 ${draft.brandColor.toLowerCase() === preset.color ? 'ring-2 ring-slate-900' : 'ring-1 ring-slate-300'}`}
+                style={{ background: preset.color }}
+              />
+            ))}
+            <ColorInput value={draft.brandColor} onChange={(brandColor) => setDraft({ ...draft, brandColor })} />
+          </div>
+        </Field>
+        {/* The derived shades of the colour being chosen; same mixes as in styles.css. */}
+        <div className="flex h-8 overflow-hidden rounded-lg ring-1 ring-slate-200">
+          {SHADE_MIXES.map(([shade, mix]) => {
+            const base = /^#[0-9a-fA-F]{6}$/.test(draft.brandColor) ? draft.brandColor : saved.brandColor;
+            return <span key={shade} className="flex-1" style={{ background: mix(base) }} title={String(shade)} />;
+          })}
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {(
+            [
+              ['freeColor', 'Libera'],
+              ['occupiedColor', 'Occupata'],
+              ['reservedColor', 'Riservata'],
+            ] as const
+          ).map(([key, label]) => (
+            <Field key={key} label={`Stato «${label}»`} error={errors.get(key)}>
+              <div className="flex items-center gap-2">
+                <ColorInput value={draft[key]} onChange={(value) => setDraft({ ...draft, [key]: value })} />
+                {draft[key].toLowerCase() !== DEFAULT_SETTINGS[key] && (
+                  <button type="button" className="text-xs font-medium text-brand-800 hover:underline" onClick={() => setDraft({ ...draft, [key]: DEFAULT_SETTINGS[key] })}>
+                    Predefinito
+                  </button>
+                )}
+              </div>
+            </Field>
+          ))}
+        </div>
+      </Card>
+
       <Card className="space-y-6 p-5">
         <div>
           <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Cartello: testi lunghi</h2>
@@ -165,6 +245,20 @@ function SettingsForm({ saved }: { saved: Settings }) {
             </div>
           </Field>
         )}
+        <label className="flex cursor-pointer items-start gap-3 rounded-lg bg-slate-50 px-3 py-2.5 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 size-4 accent-brand-900"
+            checked={draft.nightClock}
+            onChange={(e) => setDraft({ ...draft, nightClock: e.target.checked })}
+          />
+          <span>
+            <span className="font-medium text-slate-900">Di notte, solo l’orologio</span>
+            <span className="block text-xs text-slate-500">
+              Con i colori scuri e nessun evento in programma, al posto del carosello il cartello mostra solo un orologio grigio e le sale.
+            </span>
+          </span>
+        </label>
       </Card>
 
       <Card className="space-y-5 p-5">
