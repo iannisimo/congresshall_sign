@@ -9,13 +9,12 @@
     {
       devShell = pkgs.mkShell {
         buildInputs = with pkgs; [
-          nodejs
-          corepack
+          # Same major version as the container; >= 22.18 is required to run TypeScript directly.
+          nodejs_24
           vtsls
           typescript
           nodePackages.vscode-json-languageserver
           tailwindcss-language-server
-          tmux
         ];
       };
     }

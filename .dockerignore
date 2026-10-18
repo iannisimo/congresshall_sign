@@ -1,0 +1,7 @@
+.git
+.direnv
+node_modules
+dist
+data
+docs
+**/*.test.ts
