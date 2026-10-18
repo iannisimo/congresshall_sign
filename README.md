@@ -71,6 +71,8 @@ become a smart-TV browser. **One person** does the admin work.
 - **ADMIN-8** Multi-day congresses: create the same event on several days at once, and clone existing
   events.
 - **ADMIN-9** Events are edited in place and keep their identity.
+- **ADMIN-12** Breaks inside an event (presets: Break, Coffee break, Lunch break, or any name). While the
+  event is live, its card on the sign shows the break under way, or else the next one.
 - **ADMIN-10** Logo library for each organizer: upload (file, drag and drop, paste), preview and
   delete. Organizers can be renamed. Choosing an organizer preselects its first logo. A set of generic
   emblems (university, medicine, technology, associations…) is available for organizers without a logo.

@@ -113,6 +113,9 @@ Progress tracker for the rewrite. Requirement IDs refer to the README; design is
 - [x] Choosing an organizer preselects its first logo
 - [x] Generic emblems (20, from Lucide icons, ISC license) that any organizer can copy into its logo library
 
+## Changes after the fifth review
+- [x] Breaks inside events, with presets and custom names; live cards show the current or next break
+
 ## Log
 - 2026-10-17: requirements agreed, plan written; shared core, server, sign, admin, offline support,
   container setup, import and docs done; old code removed.

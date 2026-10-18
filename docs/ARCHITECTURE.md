@@ -42,6 +42,8 @@ server's time zone (`TZ`, `Europe/Rome` in the container).
   `release_at`, `visible`, `created_at`, `updated_at`.
   Rule: `prep_at ≤ start_at < end_at ≤ release_at`.
 - **event_rooms**: `event_id`, `room_id`, `position`.
+- **event_breaks**: `event_id`, `label`, `start_at`, `end_at`. Pauses inside `[start_at, end_at)`, not
+  overlapping; the room stays occupied during them.
 - **overrides**: `room_id` (one per room), `status`, `message?`, `created_at`, `expires_at?`,
   `until_next_change`.
 - **settings**: `key`, `value` (JSON). `marqueeSpeed`, `marqueePause` (sign) and `changeoverTime` (default
