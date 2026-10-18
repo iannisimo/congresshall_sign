@@ -109,6 +109,10 @@ Progress tracker for the rewrite. Requirement IDs refer to the README; design is
 ## Changes after the third review
 - [x] Programme page shows a week (Monday to Sunday): timeline and event list for each day, one under the other
 
+## Changes after the fourth review
+- [x] Choosing an organizer preselects its first logo
+- [x] Generic emblems (20, from Lucide icons, ISC license) that any organizer can copy into its logo library
+
 ## Log
 - 2026-10-17: requirements agreed, plan written; shared core, server, sign, admin, offline support,
   container setup, import and docs done; old code removed.

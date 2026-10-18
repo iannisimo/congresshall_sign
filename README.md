@@ -72,7 +72,8 @@ become a smart-TV browser. **One person** does the admin work.
   events.
 - **ADMIN-9** Events are edited in place and keep their identity.
 - **ADMIN-10** Logo library for each organizer: upload (file, drag and drop, paste), preview and
-  delete. Organizers can be renamed.
+  delete. Organizers can be renamed. Choosing an organizer preselects its first logo. A set of generic
+  emblems (university, medicine, technology, associations…) is available for organizers without a logo.
 - **ADMIN-11** Uploaded logos are checked (type and size) and shrunk by the server. No third-party
   proxies.
 
@@ -184,4 +185,7 @@ License
 -------
 
 - [src/web/assets](./src/web/assets): refer to [src/web/assets/LICENSE](./src/web/assets/LICENSE)
+- [src/server/generic-logos](./src/server/generic-logos): emblems made from [Lucide](https://lucide.dev)
+  icons, ISC license (some icons MIT): see [src/server/generic-logos/LICENSE](./src/server/generic-logos/LICENSE).
+  Regenerate them with `node scripts/generate-generic-logos.mjs`.
 - Everything else: refer to [LICENSE](./LICENSE)

@@ -120,8 +120,9 @@ All under `/api`, JSON unless stated otherwise. 🔓 public · 🔑 admin or sup
 | `POST /organizers` | 🔑 | `{name}` |
 | `PATCH /organizers/:id` | 🔑 | `{name}`. Rename |
 | `DELETE /organizers/:id` | 🔑 | Only when no event uses it |
-| `POST /organizers/:id/logos` | 🔑 | Multipart `file`, or JSON `{url}` fetched by the server |
+| `POST /organizers/:id/logos` | 🔑 | Multipart `file`, JSON `{url}` fetched by the server, or `{generic}` to copy an emblem |
 | `DELETE /logos/:id` | 🔑 | 409 when an event uses it |
+| `GET /generic-logos`, `GET /generic-logos/:id` | 🔑 | Generic emblems, listed and as SVG for previews |
 | `GET /rooms` | 🔑 | Rooms with parents |
 | `POST /rooms`, `PUT /rooms/:id`, `DELETE /rooms/:id` | 👑 | Room management (ROOM-5) |
 | `PUT /rooms/order` | 👑 | `{ids}`. Display order |
