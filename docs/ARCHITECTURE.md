@@ -49,9 +49,13 @@ server's time zone (`TZ`, `Europe/Rome` in the container).
 - **media**: `id`, `kind` (`image` | `video`), `name`, `mime`, `file`, `size`, `sort_order`, `enabled`, `fit`
   (`contain` | `fill` | `cover`, or null for the global `carouselFit` setting). The files are in
   `DATA_DIR/media` under random names and never change, so they are cached forever.
-- **settings**: `key`, `value` (JSON). `marqueeSpeed`, `marqueePause` (sign) and `changeoverTime` (default
-  margins); a missing or
-  invalid value uses its default from `src/shared/settings.ts`.
+- **id_sequences**: `name` (`logos` | `media`), `next`. Logos and media are cached forever under their id,
+  so a deleted id must never be given out again (SQLite would reuse the highest one): inserts take `next`,
+  and triggers keep it ahead of every id used.
+- **settings**: `key`, `value` (JSON). The full list and the defaults are in `src/shared/settings.ts`
+  (scrolling, theme, offline warnings, carousel, colours, and `prepTime`, `cleanupTime`,
+  `cleanupMinGapHours` for the default margins). A missing or invalid value uses its default; a value
+  saved under the old `changeoverTime` key is used for both `prepTime` and `cleanupTime`.
 - **users**: `username` (`admin` | `superadmin`), `password_hash?`, `password_changed_at`.
 - **sessions**: `token_hash`, `username`, `created_at`, `expires_at`.
 
@@ -125,7 +129,7 @@ All under `/api`, JSON unless stated otherwise. 🔓 public · 🔑 admin or sup
 | `POST /organizers` | 🔑 | `{name}` |
 | `PATCH /organizers/:id` | 🔑 | `{name}`. Rename |
 | `DELETE /organizers/:id` | 🔑 | Only when no event uses it |
-| `POST /organizers/:id/logos` | 🔑 | Multipart `file`, JSON `{url}` fetched by the server, or `{generic}` to copy an emblem |
+| `POST /organizers/:id/logos` | 🔑 | Multipart `file`, JSON `{url}` fetched by the server, or `{generic}` to copy an emblem; optional `crop` `{left, top, size}` (fractions of the image, multipart field as JSON) |
 | `DELETE /logos/:id` | 🔑 | 409 when an event uses it |
 | `GET /generic-logos`, `GET /generic-logos/:id` | 🔑 | Generic emblems, listed and as SVG for previews |
 | `GET /rooms` | 🔑 | Rooms with parents |
@@ -141,7 +145,7 @@ All under `/api`, JSON unless stated otherwise. 🔓 public · 🔑 admin or sup
 | `PATCH /media/:id` | 👑 | `{enabled?, fit?}` |
 | `PUT /media/order`, `DELETE /media/:id` | 👑 | Reorder, delete |
 | `GET /settings` | 🔑 | Sign settings (the admin preview uses them too) |
-| `PUT /settings` | 👑 | `{marqueeSpeed, marqueePause, changeoverTime, signTheme, darkFrom, darkUntil, staleAfterMinutes, offlineAfterHours}` |
+| `PUT /settings` | 👑 | Every key of `Settings` (`src/shared/model.ts`) |
 
 Saving events checks for **conflicts**: another event running in the same room at the same time
 (overlapping `[start_at, end_at)`). Preparation and clean-up don't count: the default ones span about a
@@ -184,7 +188,7 @@ reserved). The server answers 409 with the list of conflicts unless
   longest one has finished (at least 12 s). Browsers without the API cut the text with an ellipsis.
   `FitText` (same file) is the multi-line version used by `HeroCard`: the text wraps within a set number
   of lines at the largest size, shrinks in steps down to a minimum, and past that scrolls upwards the same
-  way.
+  way, at its own speed (`marqueeVerticalSpeed`).
 - Carousel (SIGN-11): `Carousel` in `src/web/sign/Carousel.tsx`. The sign downloads every item in the
   background so the service worker caches it whole; videos then play from the cache with range requests,
   offline included.
@@ -203,15 +207,19 @@ These are assumptions. Each one is easy to change.
 2. **Hidden events are drafts.** They don't appear on the sign and don't affect room status, as in the
    old app. They still count for conflict warnings in the admin area.
 3. **Preparation and clean-up** are stored as absolute times. The form offers the two usual congress
-   set-ups (from the changeover time of the day before to the next changeover after the end, see
-   `changeoverMargins` in `src/shared/time.ts`; or none), plus custom times. The changeover time is a
-   superadmin setting (default 14:00); changing it only affects events saved afterwards.
+   set-ups (from the preparation time of the day before to the next clean-up time after the end, see
+   `changeoverMargins` in `src/shared/time.ts`; or none), plus custom times. Clean-up stays on the same day
+   only if the event ends at least `cleanupMinGapHours` before the clean-up time. Both times and the gap
+   are superadmin settings; changing them only affects events saved afterwards.
 4. **Sign wording:** English words that most Italians know or that look alike in Italian ("Free",
    "Occupied", "Reserved", "Now", "Next"), dates like `Sat 17 Oct`, the 12-hour clock, and symbols where
    possible (`→ 4:30 PM`).
 5. **The admin area is in Italian**, like the old one, since one Italian-speaking person uses it.
 6. **Logos are stored as PNG,** at most 512 px on the longest side. PNG rather than WebP for older
    smart-TV browsers. SVG uploads are turned into PNG, which also removes the risk of scripts inside SVG.
+   With a crop from the admin dialog (`LogoCropper.tsx`) the server keeps that square, padding with
+   transparency where it reaches past the image; without one it trims uniform borders. The sign's `Logo`
+   tile drops its inner border for square logos, so the cropped frame is what the cards show.
 7. **Logo by URL:** the server fetches the image itself (admin only, http/https, 10 s timeout, 10 MB
    limit) instead of going through corsproxy.io.
 8. **No venue name on the sign:** the header shows the venue logo on the left and the clock on the right;

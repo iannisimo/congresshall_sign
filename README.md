@@ -33,12 +33,13 @@ become a smart-TV browser. **One person** does the admin work.
 - **SIGN-9** Dark colours at night (20:00–07:00 by default). The superadmin can change the hours or force
   light or dark; a single screen can force its own with `?mode=dark` or `?mode=light` in its URL.
 - **SIGN-8** Text too long for its space scrolls instead of being cut: titles and subtitles of the event
-  cards, and the title and "organizer · rooms" line in the "Coming up" list. It waits at its start, then
+  cards and their list of rooms, and the title and "organizer · rooms" line in the "Coming up" list. It waits at its start, then
   scrolls until it starts again. The superadmin sets the speed and the pause. A page of cards stays up
   until its texts have scrolled through.
 - **SIGN-12** With one or two events on the featured day (the usual case), their cards grow to fill the
   space, with a large logo. Titles and subtitles wrap onto a few lines, shrink when they don't fit, and
-  only past a minimum size scroll upwards (same speed and pause as SIGN-8).
+  only past a minimum size scroll upwards, at a separate, slower speed set by the superadmin (same pause
+  as SIGN-8).
 
 ### Data sync and offline
 
@@ -69,10 +70,12 @@ become a smart-TV browser. **One person** does the admin work.
 
 - **ADMIN-1** Separate admin area at `/admin`, usable on desktop, tablet and phone.
 - **ADMIN-2** Weekly programme (Monday to Sunday): for each day, a timeline of the rooms showing
-  preparation, event and clean-up, and the list of that day's events.
-- **ADMIN-3** Event form with defaults for the two usual set-ups: the room is reserved from the changeover
-  time (14:00, set by the superadmin) of the day before until the next changeover after the end (the same
-  day if it ends earlier), or there is no preparation and clean-up at all. Custom times are still possible. With the first set-up, the days of a
+  preparation, event and clean-up, and the list of that day's events. A month calendar (*Calendario*)
+  shows a coloured dot for each main room booked on each day, with a legend; clicking a day opens its week.
+- **ADMIN-3** Event form with defaults for the two usual set-ups: the room is reserved from the preparation
+  time (14:00, set by the superadmin) of the day before until the next clean-up time (also 14:00) after the
+  end, or there is no preparation and clean-up at all. Clean-up is the same day only when the event ends at
+  least a set number of hours (1 by default) before the clean-up time; otherwise it moves to the next day. Custom times are still possible. With the first set-up, the days of a
   congress keep the room reserved in between.
 - **ADMIN-4** Live preview of how the event will look on the sign.
 - **ADMIN-5** Keyboard shortcuts in date fields: `o` for today (*oggi*), `d` for tomorrow (*domani*).
@@ -86,7 +89,9 @@ become a smart-TV browser. **One person** does the admin work.
 - **ADMIN-12** Breaks inside an event (presets: Break, Coffee break, Lunch break, or any name). While the
   event is live, its card on the sign shows the break under way, or else the next one.
 - **ADMIN-10** Logo library for each organizer: upload (file, drag and drop, paste), preview and
-  delete. Organizers can be renamed. Choosing an organizer preselects its first logo. A set of generic
+  delete. Before uploading, a dialog picks the square to keep (drag, zoom; the logo's edges snap to the
+  centre and the sides of the frame); what the frame shows is exactly the logo on the cards, where square
+  logos fill their tile. Uploading without cropping is still possible. Organizers can be renamed. Choosing an organizer preselects its first logo. A set of generic
   emblems (university, medicine, technology, associations…) is available for organizers without a logo.
 - **ADMIN-11** Uploaded logos are checked (type and size) and shrunk by the server. No third-party
   proxies.

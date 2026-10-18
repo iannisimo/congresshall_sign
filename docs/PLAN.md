@@ -137,8 +137,18 @@ Progress tracker for the rewrite. Requirement IDs refer to the README; design is
 - [x] One or two events on the featured day: big cards filling the column, with a large logo; titles wrap,
       shrink, then scroll upwards (SIGN-12)
 
+## Changes after the tenth review
+- [x] Month calendar in the admin area with a dot per booked main room and a legend (ADMIN-2)
+- [x] Long room lists scroll on the cards (SIGN-8)
+- [x] Separate preparation and clean-up times, and a minimum gap before same-day clean-up (ADMIN-3)
+- [x] Crop dialog for logos with snapping; square logos fill their tile (ADMIN-10)
+- [x] Logo and media ids are never reused, so cached images can't show the wrong logo
+- [x] Separate, slower speed for text scrolling upwards (SIGN-12)
+
 ## Log
 - 2026-10-17: requirements agreed, plan written; shared core, server, sign, admin, offline support,
   container setup, import and docs done; old code removed.
 - 2026-10-17: first review: scrolling long texts with superadmin settings, bigger logo, no live bar.
 - 2026-10-18: logout fix; commits; changeover margins for congresses, changeover time as a setting.
+- 2026-10-18: big cards for one or two events; month calendar; separate prep and clean-up times with a
+  same-day gap; logo crop dialog; ids never reused; vertical scroll speed.
