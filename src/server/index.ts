@@ -30,6 +30,8 @@ for (const username of usersWithoutPassword(db)) {
 }
 
 function shutdown() {
+  // Don't wait for browsers' keep-alive connections: they would hold the stop for seconds.
+  if ('closeIdleConnections' in server) server.closeIdleConnections();
   server.close(() => {
     db.close();
     process.exit(0);
