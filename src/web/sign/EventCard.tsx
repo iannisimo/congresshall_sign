@@ -2,7 +2,7 @@ import { Coffee, MapPin, Pause, UtensilsCrossed } from 'lucide-react';
 import type { EventBreak, ScheduledEvent } from '../../shared/model.ts';
 import { eventPhase } from '../../shared/status.ts';
 import { formatDay } from '../lib/format.ts';
-import { Marquee } from './Marquee.tsx';
+import { FitText, Marquee } from './Marquee.tsx';
 import { Logo, Time } from './parts.tsx';
 import { strings } from './strings.ts';
 
@@ -102,6 +102,95 @@ export function EventCard({
 
       {live && (
         <div className="absolute inset-x-0 bottom-0 h-[0.3rem] bg-brand-100">
+          <div className="h-full bg-brand-700 transition-[width] duration-1000" style={{ width: `${progress * 100}%` }} />
+        </div>
+      )}
+    </article>
+  );
+}
+
+/**
+ * Card that fills the space when the featured day has only one or two events: big logo, and a title
+ * that wraps, shrinks and, as a last resort, scrolls up (`FitText`). Alone (`pair` false), the times go
+ * under the title; as one of two, they stay on the right like on the smaller card.
+ */
+export function HeroCard({
+  event,
+  roomNames,
+  now,
+  showDay = false,
+  pair = false,
+}: {
+  event: ScheduledEvent;
+  roomNames: string[];
+  now: number;
+  showDay?: boolean;
+  pair?: boolean;
+}) {
+  const live = eventPhase(event, now) === 'live';
+  const progress = live ? (now - event.startAt) / (event.endAt - event.startAt) : 0;
+  const pause = live ? (event.breaks.find((b) => now < b.endAt) ?? null) : null;
+
+  const times = live ? (
+    <>
+      {!pair && pause && <BreakLine pause={pause} now={now} />}
+      <span className={`font-semibold text-slate-600 ${pair ? 'text-[2.2rem]' : 'ml-auto text-[3rem] leading-none'}`}>
+        → <Time at={event.endAt} />
+      </span>
+      {pair && pause && <BreakLine pause={pause} now={now} />}
+    </>
+  ) : (
+    <>
+      {showDay && (
+        <span className={`font-bold uppercase tracking-[0.12em] text-slate-500 ${pair ? 'text-[1.25rem]' : 'text-[1.4rem]'}`}>
+          {formatDay(event.startAt)}
+        </span>
+      )}
+      <Time at={event.startAt} className={`leading-none font-semibold text-brand-950 ${pair ? 'text-[3.2rem]' : 'text-[3.6rem]'}`} />
+      <span className={`font-medium text-slate-500 ${pair ? 'mt-[0.4rem] text-[1.6rem]' : 'ml-auto text-[1.9rem]'}`}>
+        – <Time at={event.endAt} />
+      </span>
+    </>
+  );
+
+  return (
+    <article
+      className={`relative flex min-h-0 flex-1 items-center overflow-hidden rounded-[1.25rem] bg-white shadow-[0_0.15rem_0.6rem_rgb(16_80_140/0.08)] ring-1 ring-slate-900/5 ${pair ? 'gap-[2rem] py-[1.25rem] pr-[2.25rem] pl-[1.5rem]' : 'gap-[2.5rem] py-[2rem] pr-[2.75rem] pl-[2.25rem]'}`}
+    >
+      <Logo logoId={event.logoId} name={event.organizerName} className={pair ? 'size-[10rem]' : 'size-[15rem]'} />
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className={`font-bold uppercase tracking-[0.12em] text-brand-800 ${pair ? 'text-[1.2rem]' : 'text-[1.3rem]'}`}>
+          <Marquee text={event.organizerName} />
+        </div>
+        <h3 className="mt-[0.4rem] font-semibold tracking-tight text-slate-900">
+          <FitText text={event.title} lines={pair ? 2 : 3} size={pair ? 2.4 : 3.2} minSize={pair ? 1.9 : 2.4} leading={1.12} />
+        </h3>
+        {event.subtitle && (
+          <p className="mt-[0.5rem] text-slate-500">
+            <FitText text={event.subtitle} lines={pair ? 1 : 2} size={pair ? 1.45 : 1.7} minSize={pair ? 1.2 : 1.35} leading={1.3} />
+          </p>
+        )}
+        <div className={`flex min-w-0 items-center gap-[0.5rem] font-medium text-slate-600 ${pair ? 'mt-[0.5rem] text-[1.4rem]' : 'mt-[0.9rem] text-[1.6rem]'}`}>
+          <MapPin className="size-[1.1em] shrink-0 text-brand-700" strokeWidth={2.25} />
+          <span className="truncate">{roomNames.join(' · ')}</span>
+        </div>
+        {!pair && <div className="mt-[1.25rem] flex flex-wrap items-baseline gap-x-[1rem] gap-y-[0.4rem]">{times}</div>}
+      </div>
+
+      {pair && <div className="flex shrink-0 flex-col items-end">{times}</div>}
+
+      {live && (
+        <span
+          className={`absolute flex items-center gap-[0.5rem] rounded-full bg-brand-900 px-[0.9rem] py-[0.3rem] text-[1.1rem] font-bold uppercase tracking-[0.14em] text-white ${pair ? 'top-[1rem] right-[1.25rem]' : 'top-[1.5rem] right-[1.75rem]'}`}
+        >
+          <span className="size-[0.55rem] animate-pulse rounded-full bg-white" />
+          {strings.now}
+        </span>
+      )}
+
+      {live && (
+        <div className="absolute inset-x-0 bottom-0 h-[0.35rem] bg-brand-100">
           <div className="h-full bg-brand-700 transition-[width] duration-1000" style={{ width: `${progress * 100}%` }} />
         </div>
       )}

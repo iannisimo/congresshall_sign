@@ -133,6 +133,10 @@ Progress tracker for the rewrite. Requirement IDs refer to the README; design is
 - [x] Carousel full screen without the header; items can be switched off; drag-and-drop ordering; fit,
       stretch or zoom, globally and per item
 
+## Changes after the ninth review
+- [x] One or two events on the featured day: big cards filling the column, with a large logo; titles wrap,
+      shrink, then scroll upwards (SIGN-12)
+
 ## Log
 - 2026-10-17: requirements agreed, plan written; shared core, server, sign, admin, offline support,
   container setup, import and docs done; old code removed.

@@ -36,6 +36,9 @@ become a smart-TV browser. **One person** does the admin work.
   cards, and the title and "organizer · rooms" line in the "Coming up" list. It waits at its start, then
   scrolls until it starts again. The superadmin sets the speed and the pause. A page of cards stays up
   until its texts have scrolled through.
+- **SIGN-12** With one or two events on the featured day (the usual case), their cards grow to fill the
+  space, with a large logo. Titles and subtitles wrap onto a few lines, shrink when they don't fit, and
+  only past a minimum size scroll upwards (same speed and pause as SIGN-8).
 
 ### Data sync and offline
 

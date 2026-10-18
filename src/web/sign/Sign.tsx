@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS } from '../../shared/settings.ts';
 import { HOUR, MINUTE } from '../../shared/time.ts';
 import { formatDay } from '../lib/format.ts';
 import { ComingUp } from './ComingUp.tsx';
-import { CARD_HEIGHT, EventCard } from './EventCard.tsx';
+import { CARD_HEIGHT, EventCard, HeroCard } from './EventCard.tsx';
 import { Header, StalePill } from './Header.tsx';
 import { useKiosk, useNow, useRemHeight, useSelfUpdate, useSignTheme, useThemeColors } from './hooks.ts';
 import { Carousel, NightClock, usePrefetchMedia } from './Carousel.tsx';
@@ -21,13 +21,36 @@ import { useSnapshot } from './useSnapshot.ts';
 const CARD_GAP = 1;
 /** Shortest time a page of cards stays up; longer while a text on it is still scrolling. */
 const PAGE_INTERVAL = 12_000;
+/** Up to this many events on the featured day, their cards grow to fill the column. */
+const HERO_MAX = 2;
 
-function Featured({ events, now, showDay, roomNames }: {
+type FeaturedProps = {
   events: ScheduledEvent[];
   now: number;
   showDay: boolean;
   roomNames: (ids: number[]) => string[];
-}) {
+};
+
+/** The featured day's events: big cards filling the column when there are few, pages of cards otherwise. */
+function Featured({ events, now, showDay, roomNames }: FeaturedProps) {
+  if (events.length > HERO_MAX) return <CardPages events={events} now={now} showDay={showDay} roomNames={roomNames} />;
+  return (
+    <div className="mt-[1rem] flex min-h-0 flex-1 flex-col" style={{ gap: `${CARD_GAP}rem` }}>
+      {events.map((event) => (
+        <HeroCard
+          key={event.id}
+          event={event}
+          now={now}
+          showDay={showDay}
+          pair={events.length > 1}
+          roomNames={roomNames(event.roomIds)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function CardPages({ events, now, showDay, roomNames }: FeaturedProps) {
   const [ref, height] = useRemHeight<HTMLDivElement>();
   const perPage = Math.max(1, Math.floor((height + CARD_GAP) / (CARD_HEIGHT + CARD_GAP)));
   const pages = Math.ceil(events.length / perPage);

@@ -175,12 +175,16 @@ reserved). The server answers 409 with the list of conflicts unless
 - The sign's wording lives in one file, `src/web/sign/strings.ts` (SIGN-4).
 - What goes where on the sign is a pure function, `buildSignView` in `src/web/sign/schedule.ts`: big cards
   for today's running and upcoming events (or the next day with events), and a compact list of the
-  following 3 days. Cards rotate in pages when they don't fit.
+  following 3 days. Cards rotate in pages when they don't fit. With one or two events on that day,
+  `HeroCard` (`EventCard.tsx`) takes the place of the cards and fills the column (SIGN-12).
 - Long texts scroll with `Marquee` (`src/web/sign/Marquee.tsx`, SIGN-8), built on the Web Animations API:
   a pause at the start, then the text moves left until a copy of it takes its place, so the loop has no
   jump. The speed is in pixels per second on a 1080p sign and scales with the rem, so it looks the same on
   every resolution. Each scrolling text reports its cycle length, and a page of cards stays up until the
   longest one has finished (at least 12 s). Browsers without the API cut the text with an ellipsis.
+  `FitText` (same file) is the multi-line version used by `HeroCard`: the text wraps within a set number
+  of lines at the largest size, shrinks in steps down to a minimum, and past that scrolls upwards the same
+  way.
 - Carousel (SIGN-11): `Carousel` in `src/web/sign/Carousel.tsx`. The sign downloads every item in the
   background so the service worker caches it whole; videos then play from the cache with range requests,
   offline included.
