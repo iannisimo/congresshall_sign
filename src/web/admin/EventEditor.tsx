@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { addDays, differenceInCalendarDays } from 'date-fns';
-import { AlertTriangle, ArrowLeft, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Eye, EyeOff, Printer, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { findConflicts } from '../../shared/conflicts.ts';
@@ -14,6 +14,7 @@ import { api, errorMessage, HttpError, refreshSchedule, useEvent, useEvents, use
 import { margins, shiftTime, type BookingErrors, type BookingFieldKey, type DraftBooking, type MarginMode } from './BookingFields.tsx';
 import { atTime, dateShortcut, dayLabel, fromDateValue, toDateValue, todayValue, toTimeValue } from './dates.ts';
 import { DayTab, type DayErrors, type DraftDay } from './DayTab.tsx';
+import { usePrintEvents } from './EventsPrint.tsx';
 import { LogoPicker, OrganizerPicker } from './OrganizerFields.tsx';
 import { SignCardPreview } from './SignPreview.tsx';
 import { Button, buttonClass, Card, ErrorNote, Field, inputClass, PageLoading, useFeedback } from './ui.tsx';
@@ -350,6 +351,9 @@ function EditorForm({
 }) {
   const navigate = useNavigate();
   const { confirm, toast } = useFeedback();
+  // Prints the event as saved, not the unsaved edits.
+  const saved = useEvent(mode === 'edit' ? eventId : undefined).data;
+  const printer = usePrintEvents();
   const [search, setSearch] = useSearchParams();
   const [draft, setDraft] = useState(initial);
   const [showErrors, setShowErrors] = useState(false);
@@ -698,7 +702,13 @@ function EditorForm({
                 <span className="block text-xs text-slate-500">Se nascosto è una bozza: non appare e non occupa le sale.</span>
               </span>
             </label>
-            {/* TASK 9: the "Stampa" button of the event goes here. */}
+            {saved && (
+              <Button variant="ghost" className="w-full" onClick={() => printer.print([saved])}>
+                <Printer className="size-4" />
+                Stampa
+              </Button>
+            )}
+            {printer.sheet}
             {conflictCount > 0 && (
               <div className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
                 <div className="flex items-center gap-2 font-medium">
