@@ -6,6 +6,8 @@ import { Link } from 'react-router';
 import type { Room, ScheduledEvent } from '../../shared/model.ts';
 import { eventDates } from '../../shared/events.ts';
 import { Logo } from '../sign/parts.tsx';
+import { printSheet } from './DayPrint.tsx';
+import { RestaurantPrint } from './RestaurantPrint.tsx';
 import { api, errorMessage, refreshSchedule, useRooms } from './api.ts';
 import { fromDateValue as parseDate, todayValue } from './dates.ts';
 import { Badge, Button, buttonClass, Card, ErrorNote, inputClass, PageLoading, useFeedback } from './ui.tsx';
@@ -128,7 +130,7 @@ function EventRow({
  * (restaurant, details) provide them.
  */
 export default function EventList({
-  onPrintRestaurant = () => {},
+  onPrintRestaurant,
   onPrintDetails = () => {},
 }: {
   onPrintRestaurant?: () => void;
@@ -141,6 +143,7 @@ export default function EventList({
   const rooms = useRooms();
   const [filter, setFilter] = useState('');
   const [hideDrafts, setHideDrafts] = useState(false);
+  const [restaurantShown, setRestaurantShown] = useState(false);
 
   const shown = useMemo(() => {
     const term = filter.trim().toLowerCase();
@@ -169,6 +172,7 @@ export default function EventList({
 
   return (
     <div className="space-y-5">
+      {restaurantShown && <RestaurantPrint events={events.data} now={Date.now()} />}
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="mr-auto text-xl font-semibold text-slate-900">Eventi</h1>
         <input
@@ -182,7 +186,7 @@ export default function EventList({
           <input type="checkbox" checked={hideDrafts} onChange={(e) => setHideDrafts(e.target.checked)} />
           Nascondi bozze
         </label>
-        <Button variant="secondary" onClick={onPrintRestaurant}>
+        <Button variant="secondary" onClick={onPrintRestaurant ?? (() => printSheet(setRestaurantShown))}>
           <Printer className="size-4" />
           Stampa ristorante (14 gg)
         </Button>
