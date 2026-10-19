@@ -34,29 +34,6 @@ function minutesLabel(m: number): string {
   return `${m} min`;
 }
 
-function MarginOption({
-  selected,
-  onSelect,
-  title,
-  description,
-}: {
-  selected: boolean;
-  onSelect: () => void;
-  title: string;
-  description: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`rounded-lg px-4 py-3 text-left ring-1 transition-colors ${selected ? 'bg-brand-50 ring-2 ring-brand-600' : 'bg-white ring-slate-300 hover:bg-slate-50'}`}
-    >
-      <span className="block text-sm font-semibold text-slate-900">{title}</span>
-      <span className="mt-0.5 block text-xs text-slate-600">{description}</span>
-    </button>
-  );
-}
-
 /** Preparation before the start or clean-up after the end: presets, or an exact time (e.g. the evening before). */
 function MarginField({
   label,
@@ -108,13 +85,23 @@ function MarginField({
   );
 }
 
-/** The event-level section: one preparation and clean-up for all the rooms of the event. */
+const MODE_LABELS: [MarginMode, string][] = [
+  ['changeover', 'Consueti'],
+  ['none', 'Nessuno'],
+  ['custom', 'Personalizzati'],
+];
+
+/**
+ * The event-level margins, compact: a segmented choice with the resulting span, and the explanation behind
+ * a "dettagli" toggle. One preparation and clean-up for all the rooms of the event.
+ */
 export function MarginsSection({
   value,
   onChange,
   changeover,
   span,
   errors,
+  help,
 }: {
   value: DraftMargins;
   onChange: (patch: Partial<DraftMargins>) => void;
@@ -122,55 +109,66 @@ export function MarginsSection({
   /** The resulting span with the first start and the last end, null while no booking time can be read. */
   span: { prepAt: number; releaseAt: number; firstStart: number; lastEnd: number } | null;
   errors: { prep?: string | undefined; cleanup?: string | undefined };
+  /** Extra explanation shown in the details (about the dates next to it). */
+  help?: string;
 }) {
   const { prepTime, cleanupTime, cleanupMinGapHours } = changeover;
+  const select = (mode: MarginMode) => {
+    if (mode !== 'custom') return onChange({ margins: mode });
+    // Start from what is shown now, so the times only change when edited.
+    onChange({
+      margins: 'custom',
+      ...(span && {
+        prepMinutes: Math.round((span.firstStart - span.prepAt) / MINUTE),
+        cleanupMinutes: Math.round((span.releaseAt - span.lastEnd) / MINUTE),
+      }),
+    });
+  };
   return (
-    <>
+    <div className="@container min-w-0 flex-1 basis-80">
       <Field
         label="Preparazione e riordino delle sale"
         error={value.margins === 'custom' ? undefined : (errors.prep ?? errors.cleanup)}
         hint={
           span && value.margins !== 'custom'
-            ? `Sala riservata dalle ${formatAdminTime(span.prepAt)} di ${formatAdminShortDay(span.prepAt)} alle ${formatAdminTime(span.releaseAt)} di ${formatAdminShortDay(span.releaseAt)}`
+            ? `Sale riservate dalle ${formatAdminTime(span.prepAt)} di ${formatAdminShortDay(span.prepAt)} alle ${formatAdminTime(span.releaseAt)} di ${formatAdminShortDay(span.releaseAt)}`
             : undefined
         }
       >
-        <p className="mb-2 text-sm text-slate-500">Tutte le sale dell’evento restano riservate per l’intera durata, tra un giorno e l’altro compreso.</p>
-        <div className="grid gap-2 sm:grid-cols-2">
-          <MarginOption
-            selected={value.margins === 'changeover'}
-            onSelect={() => onChange({ margins: 'changeover' })}
-            title={`Dalle ${prepTime} del giorno prima`}
-            description={`Fino alle ${cleanupTime} dopo la fine (lo stesso giorno se finisce almeno ${cleanupMinGapHours} ${cleanupMinGapHours === 1 ? 'ora' : 'ore'} prima).`}
-          />
-          <MarginOption
-            selected={value.margins === 'none'}
-            onSelect={() => onChange({ margins: 'none' })}
-            title="Nessuna preparazione né riordino"
-            description="Le sale sono riservate dal primo inizio all’ultima fine."
-          />
+        <div role="radiogroup" className="inline-flex rounded-lg bg-slate-100 p-0.5 text-sm font-medium">
+          {MODE_LABELS.map(([mode, label]) => (
+            <button
+              key={mode}
+              type="button"
+              role="radio"
+              aria-checked={value.margins === mode}
+              onClick={() => select(mode)}
+              className={`rounded-md px-3 py-1.5 ${value.margins === mode ? 'bg-white text-brand-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-        {value.margins !== 'custom' && (
-          <button
-            type="button"
-            className="mt-2 text-sm font-medium text-brand-800 hover:underline"
-            onClick={() =>
-              // Start from what is shown now, so the times only change when edited.
-              onChange({
-                margins: 'custom',
-                ...(span && {
-                  prepMinutes: Math.round((span.firstStart - span.prepAt) / MINUTE),
-                  cleanupMinutes: Math.round((span.releaseAt - span.lastEnd) / MINUTE),
-                }),
-              })
-            }
-          >
-            Orari personalizzati…
-          </button>
-        )}
       </Field>
+      <details className="mt-1 text-sm text-slate-600">
+        <summary className="cursor-pointer text-slate-500 select-none hover:text-slate-800">dettagli</summary>
+        <ul className="mt-1 list-disc space-y-1 pl-5">
+          <li>
+            <b>Consueti</b>: dalle {prepTime} del giorno prima fino alle {cleanupTime} dopo la fine (lo stesso giorno se finisce almeno {cleanupMinGapHours}{' '}
+            {cleanupMinGapHours === 1 ? 'ora' : 'ore'} prima).
+          </li>
+          <li>
+            <b>Nessuno</b>: le sale sono riservate dal primo inizio all’ultima fine.
+          </li>
+          <li>
+            <b>Personalizzati</b>: minuti prima del primo inizio e dopo l’ultima fine, oppure un orario esatto.
+          </li>
+          <li>Tutte le sale dell’evento restano riservate per l’intera durata, tra un giorno e l’altro compreso.</li>
+          {help && <li>{help}</li>}
+        </ul>
+      </details>
       {value.margins === 'custom' && (
-        <>
+        <div className="mt-3 grid gap-3 @lg:grid-cols-2">
           <MarginField
             label="Preparazione delle sale"
             minutes={value.prepMinutes}
@@ -189,11 +187,8 @@ export function MarginsSection({
             describe={(t) => `Le sale tornano libere alle ${formatAdminTime(t)} (${formatAdminShortDay(t)})`}
             error={errors.cleanup}
           />
-          <button type="button" className="text-sm font-medium text-brand-800 hover:underline" onClick={() => onChange({ margins: 'changeover' })}>
-            Torna alle impostazioni consuete
-          </button>
-        </>
+        </div>
       )}
-    </>
+    </div>
   );
 }

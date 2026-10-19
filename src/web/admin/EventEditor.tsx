@@ -597,6 +597,12 @@ function EditorForm({
         }
       : null;
   const titles: Record<Mode, string> = { new: 'Nuovo evento', edit: 'Modifica evento', clone: 'Duplica evento' };
+  /** "09:00–18:00": from the earliest start to the latest end of the day's bookings. */
+  const hours = (day: DraftDay) => {
+    const starts = day.bookings.map((b) => b.start).filter(Boolean).sort();
+    const ends = day.bookings.map((b) => b.end).filter(Boolean).sort();
+    return starts.length > 0 && ends.length > 0 ? `${starts[0]}–${ends[ends.length - 1]}` : '';
+  };
 
   return (
     <div className="space-y-6">
@@ -610,38 +616,39 @@ function EditorForm({
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,34rem)]">
         <div className="space-y-6">
-          <Section title="Organizzatore">
-            <Field label="Nome" error={shown('organizer')}>
-              <OrganizerPicker
-                organizers={organizers}
-                value={draft.organizerId}
-                onChange={(id) =>
-                  update({
-                    organizerId: id,
-                    // A newly chosen organizer starts with its first logo, if it has any.
-                    logoId: id === draft.organizerId ? draft.logoId : (organizers.find((o) => o.id === id)?.logoIds[0] ?? null),
-                  })
-                }
-              />
-            </Field>
-            {organizer && (
-              <Field label="Logo">
-                <LogoPicker organizer={organizer} value={draft.logoId} onChange={(logoId) => update({ logoId })} />
-              </Field>
-            )}
-          </Section>
-
           <Section title="Evento">
-            <Field label="Titolo" error={shown('title')}>
-              <input className={inputClass} value={draft.title} maxLength={200} onChange={(e) => update({ title: e.target.value })} />
-            </Field>
-            <Field label="Sottotitolo" error={shown('subtitle')} hint="Facoltativo">
-              <input className={inputClass} value={draft.subtitle} maxLength={300} onChange={(e) => update({ subtitle: e.target.value })} />
-            </Field>
+            <div className="grid gap-5 md:grid-cols-2">
+              <Field label="Organizzatore" error={shown('organizer')}>
+                <OrganizerPicker
+                  organizers={organizers}
+                  value={draft.organizerId}
+                  onChange={(id) =>
+                    update({
+                      organizerId: id,
+                      // A newly chosen organizer starts with its first logo, if it has any.
+                      logoId: id === draft.organizerId ? draft.logoId : (organizers.find((o) => o.id === id)?.logoIds[0] ?? null),
+                    })
+                  }
+                />
+              </Field>
+              {organizer && (
+                <Field label="Logo">
+                  <LogoPicker organizer={organizer} value={draft.logoId} onChange={(logoId) => update({ logoId })} />
+                </Field>
+              )}
+            </div>
+            <div className="grid gap-5 md:grid-cols-[3fr_2fr]">
+              <Field label="Titolo" error={shown('title')}>
+                <input className={inputClass} value={draft.title} maxLength={200} onChange={(e) => update({ title: e.target.value })} />
+              </Field>
+              <Field label="Sottotitolo" error={shown('subtitle')} hint="Facoltativo">
+                <input className={inputClass} value={draft.subtitle} maxLength={300} onChange={(e) => update({ subtitle: e.target.value })} />
+              </Field>
+            </div>
           </Section>
 
-          <Section title="Date">
-            <div className="flex flex-wrap items-start gap-4">
+          <Section title="Date e sale">
+            <div className="flex flex-wrap items-start gap-x-4 gap-y-5">
               <Field label="Dal">
                 <input
                   type="date"
@@ -667,60 +674,23 @@ function EditorForm({
                   }}
                 />
               </Field>
-            </div>
-            <p className="-mt-2 text-sm text-slate-500">
-              Cambiando «Dal» si sposta tutto l’evento; cambiando «Al» si aggiungono o si tolgono giorni in fondo. Tasti rapidi: o = oggi, d = domani.
-            </p>
-          </Section>
-
-          <Section title="Preparazione e riordino">
-            <MarginsSection
-              value={draft}
-              onChange={update}
-              changeover={changeover}
-              span={span}
-              errors={{ prep: shown('prep'), cleanup: shown('cleanup') }}
-            />
-          </Section>
-
-          <Section title="Reception (tutto l’evento)">
-            <Field label="Note per la reception" error={shown('receptionNotes')} hint="Facoltativo. Non appaiono sul cartello.">
-              <textarea
-                className={`${inputClass} min-h-24`}
-                value={draft.receptionNotes}
-                maxLength={4000}
-                onChange={(e) => update({ receptionNotes: e.target.value })}
+              <MarginsSection
+                value={draft}
+                onChange={update}
+                changeover={changeover}
+                span={span}
+                errors={{ prep: shown('prep'), cleanup: shown('cleanup') }}
+                help="Cambiando «Dal» si sposta tutto l’evento; cambiando «Al» si aggiungono o si tolgono giorni in fondo. Tasti rapidi nelle date: o = oggi, d = domani."
               />
-            </Field>
-          </Section>
-
-          <Section title="Dati interni">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Costo" error={shown('cost')} hint={costHint(draft.cost) ?? 'Facoltativo, in euro. Non appare sul cartello.'}>
-                <input
-                  className={inputClass}
-                  inputMode="decimal"
-                  placeholder="1.234,50"
-                  value={draft.cost}
-                  onChange={(e) => update({ cost: e.target.value })}
-                />
-              </Field>
-              <Field label="Numero prenotazione" error={shown('bookingNumber')} hint="Facoltativo. Non appare sul cartello.">
-                <input
-                  className={inputClass}
-                  value={draft.bookingNumber}
-                  maxLength={60}
-                  onChange={(e) => update({ bookingNumber: e.target.value })}
-                />
-              </Field>
             </div>
           </Section>
 
           <Card className="p-5">
             <h2 className="mb-4 text-sm font-semibold tracking-wide text-slate-500 uppercase">Giorni</h2>
-            <div role="tablist" className="mb-5 flex gap-1 overflow-x-auto border-b border-slate-200">
+            <div role="tablist" className="mb-5 flex gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1">
               {draft.days.map((day, i) => {
                 const flagged = (showErrors && dayHasErrors(errors, i)) || hasConflict(i);
+                const n = day.bookings.length;
                 return (
                   <button
                     key={day.date}
@@ -728,13 +698,14 @@ function EditorForm({
                     role="tab"
                     aria-selected={i === sel}
                     onClick={() => setSelected(i)}
-                    className={`relative -mb-px flex shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap ${i === sel ? 'border-brand-600 text-brand-900' : 'border-transparent text-slate-600 hover:text-slate-900'}`}
+                    className={`relative min-w-28 shrink-0 rounded-lg px-3 py-1.5 text-left transition-colors ${i === sel ? 'bg-white text-brand-900 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}
                   >
-                    {dayLabel(day.date)}
-                    <span className="rounded-full bg-slate-100 px-1.5 text-xs text-slate-600" title="Occupazioni">
-                      {day.bookings.length}
+                    <span className="block text-sm font-medium whitespace-nowrap">{dayLabel(day.date)}</span>
+                    <span className="block text-xs whitespace-nowrap text-slate-500">
+                      {n === 0 ? 'nessuna sala' : `${n} ${n === 1 ? 'occupazione' : 'occupazioni'}`}
+                      {hours(day) && ` · ${hours(day)}`}
                     </span>
-                    {flagged && <span className="size-2 rounded-full bg-amber-500" title="Da controllare" />}
+                    {flagged && <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-amber-500" title="Da controllare" />}
                   </button>
                 );
               })}
@@ -755,6 +726,37 @@ function EditorForm({
               onRemoveDay={draft.days.length > 1 && (sel === 0 || sel === draft.days.length - 1) ? () => void removeDay(sel) : undefined}
             />
           </Card>
+
+          <Section title="Dati interni (non appaiono sul cartello)">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Costo" error={shown('cost')} hint={costHint(draft.cost) ?? 'Facoltativo, in euro.'}>
+                <input
+                  className={inputClass}
+                  inputMode="decimal"
+                  placeholder="1.234,50"
+                  value={draft.cost}
+                  onChange={(e) => update({ cost: e.target.value })}
+                />
+              </Field>
+              <Field label="Numero prenotazione" error={shown('bookingNumber')} hint="Facoltativo.">
+                <input
+                  className={inputClass}
+                  value={draft.bookingNumber}
+                  maxLength={60}
+                  onChange={(e) => update({ bookingNumber: e.target.value })}
+                />
+              </Field>
+            </div>
+            <Field label="Note per la reception (tutto l’evento)" error={shown('receptionNotes')} hint="Facoltativo.">
+              <textarea
+                className={`${inputClass} min-h-20`}
+                rows={3}
+                value={draft.receptionNotes}
+                maxLength={4000}
+                onChange={(e) => update({ receptionNotes: e.target.value })}
+              />
+            </Field>
+          </Section>
         </div>
 
         <aside className="order-first space-y-4 lg:sticky lg:top-20 lg:order-last lg:self-start">
@@ -772,13 +774,6 @@ function EditorForm({
                 <span className="block text-xs text-slate-500">Se nascosto è una bozza: non appare e non occupa le sale.</span>
               </span>
             </label>
-            {saved && (
-              <Button variant="ghost" className="w-full" onClick={() => printer.print([saved])}>
-                <Printer className="size-4" />
-                Stampa
-              </Button>
-            )}
-            {printer.sheet}
             {conflictCount > 0 && (
               <div className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
                 <div className="flex items-center gap-2 font-medium">
@@ -788,6 +783,13 @@ function EditorForm({
                 <ConflictList conflicts={conflicts} rooms={roomMap} onSelectDay={setSelected} />
               </div>
             )}
+            {saved && (
+              <Button variant="ghost" className="w-full" onClick={() => printer.print([saved])}>
+                <Printer className="size-4" />
+                Stampa
+              </Button>
+            )}
+            {printer.sheet}
             {save.isError && !(save.error instanceof HttpError && save.error.status === 409) && <ErrorNote>{errorMessage(save.error)}</ErrorNote>}
             {showErrors && errors.any && (
               <ErrorNote>

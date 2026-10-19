@@ -66,19 +66,25 @@ export function DayTab({
   const placeholder = index > 0 ? 'Come il giorno precedente' : '';
   const dash = index > 0 ? ' Scrivi «—» per dire che questo giorno non ha note.' : '';
 
+  const noteFields = [
+    { field: 'receptionNotes', label: 'Reception' },
+    { field: 'housekeepingNotes', label: 'Housekeeping e preparazione sala' },
+    { field: 'restaurantNotes', label: 'Ristorante' },
+  ] as const;
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="text-base font-semibold text-slate-900">{dayLabel(day.date)}</h3>
-        <div className="ml-auto flex flex-wrap gap-2">
+        <div className="ml-auto flex flex-wrap gap-1">
           {index > 0 && (
-            <Button size="sm" onClick={onCopyPrevious}>
+            <Button size="sm" variant="ghost" onClick={onCopyPrevious}>
               <Copy className="size-4" />
               Copia dal giorno precedente
             </Button>
           )}
           {index < days.length - 1 && (
-            <Button size="sm" onClick={onApplyFollowing}>
+            <Button size="sm" variant="ghost" onClick={onApplyFollowing}>
               <CopyCheck className="size-4" />
               Applica ai giorni seguenti
             </Button>
@@ -92,8 +98,8 @@ export function DayTab({
         </div>
       </div>
 
-      <div className="space-y-4">
-        <div className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Occupazioni delle sale</div>
+      <div className="space-y-2">
+        <div className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Occupazioni delle sale</div>
         {day.bookings.length === 0 && <p className="text-sm text-slate-500">Nessuna sala occupata in questo giorno.</p>}
         {dayErrors.bookings && <ErrorNote>{dayErrors.bookings}</ErrorNote>}
         {day.bookings.map((booking, j) => (
@@ -113,35 +119,24 @@ export function DayTab({
         </Button>
       </div>
 
-      <div className="space-y-5">
-        <div className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Note per lo staff (non appaiono sul cartello)</div>
-        <Field label="Housekeeping e preparazione sala" error={dayErrors.housekeepingNotes} hint={`${noteHint('housekeepingNotes')}.${dash}`}>
-          <textarea
-            className={`${inputClass} min-h-24`}
-            value={day.housekeepingNotes}
-            maxLength={4000}
-            placeholder={placeholder}
-            onChange={(e) => onChange({ housekeepingNotes: e.target.value })}
-          />
-        </Field>
-        <Field label="Reception (questo giorno)" error={dayErrors.receptionNotes} hint={`${noteHint('receptionNotes')}.${dash}`}>
-          <textarea
-            className={`${inputClass} min-h-24`}
-            value={day.receptionNotes}
-            maxLength={4000}
-            placeholder={placeholder}
-            onChange={(e) => onChange({ receptionNotes: e.target.value })}
-          />
-        </Field>
-        <Field label="Ristorante" error={dayErrors.restaurantNotes} hint={`${noteHint('restaurantNotes')}.${dash}`}>
-          <textarea
-            className={`${inputClass} min-h-24`}
-            value={day.restaurantNotes}
-            maxLength={4000}
-            placeholder={placeholder}
-            onChange={(e) => onChange({ restaurantNotes: e.target.value })}
-          />
-        </Field>
+      <div>
+        <div className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Note per lo staff (non appaiono sul cartello)</div>
+        <div className="@container">
+          <div className="grid gap-4 @xl:grid-cols-3">
+            {noteFields.map(({ field, label }) => (
+              <Field key={field} label={label} error={dayErrors[field]} hint={`${noteHint(field)}.${dash}`}>
+                <textarea
+                  className={`${inputClass} min-h-20`}
+                  rows={3}
+                  value={day[field]}
+                  maxLength={4000}
+                  placeholder={placeholder}
+                  onChange={(e) => onChange({ [field]: e.target.value })}
+                />
+              </Field>
+            ))}
+        </div>
+        </div>
       </div>
     </div>
   );
