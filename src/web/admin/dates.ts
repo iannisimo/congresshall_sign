@@ -1,4 +1,5 @@
 import { addDays, format, isValid, parse, startOfDay } from 'date-fns';
+import { it } from 'date-fns/locale';
 import type { KeyboardEvent } from 'react';
 import { fromDateValue, toDateValue } from '../../shared/time.ts';
 
@@ -18,6 +19,12 @@ export const fromDateTimeValue = (value: string) => parsed(value, "yyyy-MM-dd'T'
 export const atTime = (date: string, time: string) => parsed(`${date} ${time}`, 'yyyy-MM-dd HH:mm');
 
 export const todayValue = () => toDateValue(Date.now());
+
+/** "lun 20 ott" for a 'YYYY-MM-DD' value. */
+export function dayLabel(date: string): string {
+  const t = fromDateValue(date);
+  return t === null ? date : format(t, 'EEE d MMM', { locale: it });
+}
 
 /** Date field shortcuts (ADMIN-5): "o" for today (oggi), "d" for tomorrow (domani). Returns the new value. */
 export function dateShortcut(e: KeyboardEvent<HTMLInputElement>): string | null {
