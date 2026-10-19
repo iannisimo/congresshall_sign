@@ -1,9 +1,11 @@
 import { addDays, format, isValid, parse, startOfDay } from 'date-fns';
 import type { KeyboardEvent } from 'react';
+import { fromDateValue, toDateValue } from '../../shared/time.ts';
+
+export { fromDateValue, toDateValue };
 
 // Values for <input type="date|time|datetime-local">, always in local time.
 
-export const toDateValue = (t: number) => format(t, 'yyyy-MM-dd');
 export const toTimeValue = (t: number) => format(t, 'HH:mm');
 export const toDateTimeValue = (t: number) => format(t, "yyyy-MM-dd'T'HH:mm");
 
@@ -12,7 +14,6 @@ function parsed(value: string, pattern: string): number | null {
   return isValid(date) ? date.getTime() : null;
 }
 
-export const fromDateValue = (value: string) => parsed(value, 'yyyy-MM-dd');
 export const fromDateTimeValue = (value: string) => parsed(value, "yyyy-MM-dd'T'HH:mm");
 export const atTime = (date: string, time: string) => parsed(`${date} ${time}`, 'yyyy-MM-dd HH:mm');
 

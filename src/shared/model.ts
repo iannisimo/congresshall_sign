@@ -25,9 +25,70 @@ export interface EventBreak {
 /** Labels offered as defaults; any other label is allowed. */
 export const BREAK_PRESETS = ['Break', 'Coffee break', 'Lunch break'] as const;
 
-/** An event as the sign gets it: only what can be shown in public. */
-export interface SignEvent {
+/**
+ * One room occupation on a day of an event: rooms, the period they are held and the pauses within it.
+ * Several can share a day (plenary in one room in the morning, workshops in two others in the afternoon).
+ */
+export interface EventBooking {
+  /** Changes every time the event is saved: don't keep it anywhere. */
   id: number;
+  /** Internal name ("Plenaria", "Workshop"), never on the sign. */
+  label: string | null;
+  /** Booked rooms, in display order. */
+  roomIds: number[];
+  /** The rooms are reserved from here... */
+  prepAt: number;
+  startAt: number;
+  /** May be past midnight. */
+  endAt: number;
+  /** ...until here, when they become free again. */
+  releaseAt: number;
+  /** Pauses within [startAt, endAt), in time order. The rooms stay occupied during them. */
+  breaks: EventBreak[];
+}
+
+/** One calendar date of an event. A day may have no bookings (an excursion): it still has notes. */
+export interface EventDay {
+  /** 'YYYY-MM-DD', local time of the server. */
+  date: string;
+  /** For the front desk; null on a day after the first means "same as the previous day". Never on the sign. */
+  receptionNotes: string | null;
+  /** For the cleaning staff, including how the room is prepared; same inheritance. Never on the sign. */
+  housekeepingNotes: string | null;
+  /** By start time. */
+  bookings: EventBooking[];
+}
+
+/** An event as the admin area gets it: one thing with a start and an end date, and its days. */
+export interface ScheduledEvent {
+  id: number;
+  organizerId: number;
+  organizerName: string;
+  logoId: number | null;
+  title: string;
+  subtitle: string | null;
+  /** Hidden events are drafts: not on the sign and no effect on room status. */
+  visible: boolean;
+  /** = days[0].date */
+  startDate: string;
+  /** = the last day's date */
+  endDate: string;
+  /** For the front desk, whole event. Never on the sign. */
+  receptionNotes: string | null;
+  /** Consecutive dates from startDate to endDate. */
+  days: EventDay[];
+}
+
+/**
+ * One booking with its event's public fields: what the sign gets, and what the timeline, the status
+ * engine and the conflict check work on. Carries no notes and no labels.
+ */
+export interface SignEvent {
+  /** The booking's id. */
+  id: number;
+  eventId: number;
+  /** The booking's day, 'YYYY-MM-DD'. */
+  date: string;
   organizerId: number;
   organizerName: string;
   logoId: number | null;
@@ -35,28 +96,13 @@ export interface SignEvent {
   subtitle: string | null;
   /** Booked rooms, in display order. */
   roomIds: number[];
-  /** The room is reserved from here... */
   prepAt: number;
   startAt: number;
   endAt: number;
-  /** ...until here, when it becomes free again. */
   releaseAt: number;
-  /** Pauses within [startAt, endAt), in time order. The room stays occupied during them. */
   breaks: EventBreak[];
-  /** Hidden events are drafts: not on the sign and no effect on room status. */
   visible: boolean;
 }
-
-/** An event as the admin area gets it, with the venue staff's internal notes. */
-export interface ScheduledEvent extends SignEvent {
-  /** For the front desk: never on the sign. */
-  receptionNotes: string | null;
-  /** For the cleaning staff: never on the sign. */
-  housekeepingNotes: string | null;
-}
-
-/** Fields of ScheduledEvent left out of the sign's snapshot. */
-export const INTERNAL_EVENT_FIELDS = ['receptionNotes', 'housekeepingNotes'] as const satisfies readonly (keyof ScheduledEvent)[];
 
 export type RoomStatusKind = 'free' | 'occupied' | 'reserved';
 
@@ -153,7 +199,7 @@ export interface DisplaySnapshot {
 }
 
 export interface Conflict {
-  event: ScheduledEvent;
-  /** Rooms booked by both events. */
+  booking: SignEvent;
+  /** Rooms booked by both. */
   roomIds: number[];
 }

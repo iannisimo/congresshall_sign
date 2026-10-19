@@ -1,4 +1,4 @@
-import { addDays, set, startOfDay } from 'date-fns';
+import { addDays, format, isValid, parse, set, startOfDay } from 'date-fns';
 import type { Settings } from './model.ts';
 
 export const MINUTE = 60_000;
@@ -54,4 +54,13 @@ export const DISPLAY_WINDOW_DAYS = 8;
 export function displayWindow(now: number): { from: number; to: number } {
   const from = startOfDay(now);
   return { from: from.getTime(), to: addDays(from, DISPLAY_WINDOW_DAYS).getTime() };
+}
+
+/** Local 'YYYY-MM-DD' of a time. */
+export const toDateValue = (t: number) => format(t, 'yyyy-MM-dd');
+
+/** Start of the local day of a 'YYYY-MM-DD', or null if it is not a valid date. */
+export function fromDateValue(value: string): number | null {
+  const date = parse(value, 'yyyy-MM-dd', new Date());
+  return isValid(date) ? date.getTime() : null;
 }
