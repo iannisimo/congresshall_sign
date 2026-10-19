@@ -36,6 +36,10 @@ become a smart-TV browser. **One person** does the admin work.
   the hour, to preview it (`/carousel?preset=bar` for a preset).
 - **SIGN-13** `/big` is the sign without the "Coming up" list: the featured day's events (today's, or
   those of the next day with events) take the whole screen.
+- **SIGN-14** `?header=0` hides the sign's header (logo, clock, date) and `?footer=0` the room strip at the
+  bottom (also `false`, `no`, `off`); both are shown by default and combine with `?preset=` and `?mode=`.
+  The rest of the screen takes the freed space; with the header hidden, the "last update" note moves to a
+  corner of the content, so an offline sign is still noticeable.
 - **SIGN-9** Dark colours at night (20:00–07:00 by default). The superadmin can change the hours or force
   light or dark; a single screen can force its own with `?mode=dark` or `?mode=light` in its URL.
 - **SIGN-8** Text too long for its space scrolls instead of being cut: titles and subtitles of the event
