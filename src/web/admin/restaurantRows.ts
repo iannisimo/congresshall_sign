@@ -1,4 +1,5 @@
 import { addDays, format, startOfDay } from 'date-fns';
+import { effectiveDayNotes } from '../../shared/events.ts';
 import type { ScheduledEvent } from '../../shared/model.ts';
 import { toDateValue } from '../../shared/time.ts';
 
@@ -11,6 +12,8 @@ export interface RestaurantDay {
   hours: string;
   /** Deduplicated "Coffee break 10:30–11:00"; empty when none. */
   breaks: string[];
+  /** The day's restaurant note, inherited ones included; null when none ("—" counts as none). */
+  notes: string | null;
 }
 
 export interface RestaurantEvent {
@@ -51,7 +54,7 @@ export function restaurantRows(events: ScheduledEvent[], now: number): Restauran
   const out: RestaurantEvent[] = [];
   for (const event of events) {
     const days: RestaurantDay[] = [];
-    for (const day of event.days) {
+    for (const [index, day] of event.days.entries()) {
       if (day.date < first || day.date > last || day.bookings.length === 0) continue;
       const seen = new Set<string>();
       const breaks = day.bookings
@@ -62,7 +65,8 @@ export function restaurantRows(events: ScheduledEvent[], now: number): Restauran
       const hours = mergeRanges(day.bookings)
         .map((r) => range(r.startAt, r.endAt))
         .join(', ');
-      days.push({ date: day.date, hours, breaks });
+      const note = effectiveDayNotes(event, index).restaurantNotes?.trim() ?? '';
+      days.push({ date: day.date, hours, breaks, notes: note === '' || note === '—' ? null : note });
     }
     if (days.length > 0) out.push({ id: event.id, organizerName: event.organizerName, title: event.title, draft: !event.visible, days });
   }

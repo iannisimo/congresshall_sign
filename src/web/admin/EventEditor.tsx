@@ -14,6 +14,7 @@ import { api, errorMessage, HttpError, refreshSchedule, useEvent, useEvents, use
 import { shiftTime, type BookingErrors, type BookingFieldKey, type DraftBooking } from './BookingFields.tsx';
 import { atTime, dateShortcut, dayLabel, fromDateValue, toDateValue, todayValue, toTimeValue } from './dates.ts';
 import { DayTab, type DayErrors, type DraftDay } from './DayTab.tsx';
+import { centsToInput, formatEuros, parseEuros } from '../../shared/money.ts';
 import { margins, MarginsSection, type DraftMargins, type MarginMode } from './EventMargins.tsx';
 import { usePrintEvents } from './EventsPrint.tsx';
 import { LogoPicker, OrganizerPicker } from './OrganizerFields.tsx';
@@ -32,6 +33,9 @@ interface Draft extends DraftMargins {
   visible: boolean;
   /** Whole event. */
   receptionNotes: string;
+  /** Euro amount as typed. */
+  cost: string;
+  bookingNumber: string;
   days: DraftDay[];
 }
 
@@ -74,10 +78,12 @@ function newDraft(search: URLSearchParams): Draft {
     subtitle: '',
     visible: true,
     receptionNotes: '',
+    cost: '',
+    bookingNumber: '',
     margins: 'changeover',
     prepMinutes: 30,
     cleanupMinutes: 30,
-    days: [{ date, receptionNotes: '', housekeepingNotes: '', bookings: [newBooking({ start, roomIds: room > 0 ? [room] : [] })] }],
+    days: [{ date, receptionNotes: '', housekeepingNotes: '', restaurantNotes: '', bookings: [newBooking({ start, roomIds: room > 0 ? [room] : [] })] }],
   };
 }
 
@@ -99,6 +105,8 @@ function draftFrom(event: ScheduledEvent, changeover: Changeover): Draft {
     subtitle: event.subtitle ?? '',
     visible: event.visible,
     receptionNotes: event.receptionNotes ?? '',
+    cost: centsToInput(event.costCents),
+    bookingNumber: event.bookingNumber ?? '',
     margins: mode,
     prepMinutes: Math.round((firstStart - event.prepAt) / MINUTE),
     cleanupMinutes: Math.round((event.releaseAt - lastEnd) / MINUTE),
@@ -106,6 +114,7 @@ function draftFrom(event: ScheduledEvent, changeover: Changeover): Draft {
       date: day.date,
       receptionNotes: day.receptionNotes ?? '',
       housekeepingNotes: day.housekeepingNotes ?? '',
+      restaurantNotes: day.restaurantNotes ?? '',
       bookings: day.bookings.map((b) => ({
         key: nextKey++,
         label: b.label ?? '',
@@ -161,7 +170,7 @@ function buildInput(
       unreadable[i]!.push(bad);
       if (!bad) bookings.push({ label: b.label.trim() || null, roomIds: b.roomIds, startAt, endAt, breaks });
     }
-    return { date: day.date, receptionNotes: day.receptionNotes, housekeepingNotes: day.housekeepingNotes, bookings };
+    return { date: day.date, receptionNotes: day.receptionNotes, housekeepingNotes: day.housekeepingNotes, restaurantNotes: day.restaurantNotes, bookings };
   });
   const readable = built.flat().filter((b): b is BuiltBooking => b !== null);
   let span: Span | null = null;
@@ -179,6 +188,9 @@ function buildInput(
     subtitle: draft.subtitle.trim() || null,
     visible: draft.visible,
     receptionNotes: draft.receptionNotes,
+    // An unreadable amount is NaN, which the schema rejects (shown under the field).
+    costCents: parseEuros(draft.cost),
+    bookingNumber: draft.bookingNumber,
     prepAt: span?.prepAt ?? placeholder,
     releaseAt: span?.releaseAt ?? placeholder,
     days,
@@ -186,7 +198,7 @@ function buildInput(
   return { input, built, unreadable, span };
 }
 
-type EventFieldKey = 'organizer' | 'title' | 'subtitle' | 'receptionNotes' | 'prep' | 'cleanup';
+type EventFieldKey = 'organizer' | 'title' | 'subtitle' | 'receptionNotes' | 'cost' | 'bookingNumber' | 'prep' | 'cleanup';
 
 interface Errors {
   event: Partial<Record<EventFieldKey, string>>;
@@ -202,6 +214,8 @@ const EVENT_FIELD_OF: Record<string, EventFieldKey> = {
   title: 'title',
   subtitle: 'subtitle',
   receptionNotes: 'receptionNotes',
+  costCents: 'cost',
+  bookingNumber: 'bookingNumber',
   prepAt: 'prep',
   releaseAt: 'cleanup',
 };
@@ -246,7 +260,7 @@ function validate(draft: Draft, input: EventInput, unreadable: boolean[][]): Err
             else errors.general.push(issue.message);
           } else if (second === 'bookings') {
             errors.days[i]!.bookings ??= issue.message;
-          } else if (second === 'receptionNotes' || second === 'housekeepingNotes') {
+          } else if (second === 'receptionNotes' || second === 'housekeepingNotes' || second === 'restaurantNotes') {
             errors.days[i]![second] ??= issue.message;
           } else errors.general.push(issue.message);
         } else {
@@ -265,12 +279,18 @@ function validate(draft: Draft, input: EventInput, unreadable: boolean[][]): Err
   return errors;
 }
 
+/** "= 1.234,50 €" under the field once the amount is readable. */
+function costHint(text: string): string | undefined {
+  const cents = parseEuros(text);
+  return cents === null || Number.isNaN(cents) ? undefined : `= ${formatEuros(cents)}`;
+}
+
 function dayHasErrors(errors: Errors, i: number): boolean {
   return Object.keys(errors.days[i] ?? {}).length > 0 || (errors.bookings[i] ?? []).some((b) => Object.keys(b).length > 0);
 }
 
 function dayHasContent(day: DraftDay): boolean {
-  return day.bookings.length > 0 || day.receptionNotes.trim() !== '' || day.housekeepingNotes.trim() !== '';
+  return day.bookings.length > 0 || day.receptionNotes.trim() !== '' || day.housekeepingNotes.trim() !== '' || day.restaurantNotes.trim() !== '';
 }
 
 /** Conflicts of one booking with other events. */
@@ -531,6 +551,7 @@ function EditorForm({
         date: toDateValue(addDays(from, n).getTime()),
         receptionNotes: '',
         housekeepingNotes: '',
+        restaurantNotes: '',
         bookings: cloneBookings(previous.bookings),
       };
       added.push(day);
@@ -671,6 +692,28 @@ function EditorForm({
                 onChange={(e) => update({ receptionNotes: e.target.value })}
               />
             </Field>
+          </Section>
+
+          <Section title="Dati interni">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Costo" error={shown('cost')} hint={costHint(draft.cost) ?? 'Facoltativo, in euro. Non appare sul cartello.'}>
+                <input
+                  className={inputClass}
+                  inputMode="decimal"
+                  placeholder="1.234,50"
+                  value={draft.cost}
+                  onChange={(e) => update({ cost: e.target.value })}
+                />
+              </Field>
+              <Field label="Numero prenotazione" error={shown('bookingNumber')} hint="Facoltativo. Non appare sul cartello.">
+                <input
+                  className={inputClass}
+                  value={draft.bookingNumber}
+                  maxLength={60}
+                  onChange={(e) => update({ bookingNumber: e.target.value })}
+                />
+              </Field>
+            </div>
           </Section>
 
           <Card className="p-5">

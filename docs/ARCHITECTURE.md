@@ -39,11 +39,11 @@ server's time zone (`TZ`, `Europe/Rome` in the container).
 - **organizers**: `id`, `name` (unique, case-insensitive).
 - **logos**: `id`, `organizer_id`, `mime`, `data` (normalized PNG), `width`, `height`, `created_at`.
 - **events**: `id`, `organizer_id`, `logo_id?`, `title`, `subtitle?`, `visible`, `reception_notes?`
-  (whole event), `start_date`, `end_date` (`'YYYY-MM-DD'`, local), `prep_at`, `release_at` (all the event's rooms are
+  (whole event), `cost_cents?` (internal, euro cents), `booking_number?` (internal, free text, max 60), `start_date`, `end_date` (`'YYYY-MM-DD'`, local), `prep_at`, `release_at` (all the event's rooms are
   reserved in `[prep_at, release_at)`, `prep_at ≤ release_at`), `created_at`, `updated_at`.
-- **event_days**: `id`, `event_id` (cascade), `date`, `reception_notes?`, `housekeeping_notes?`,
+- **event_days**: `id`, `event_id` (cascade), `date`, `reception_notes?`, `housekeeping_notes?`, `restaurant_notes?`,
   unique `(event_id, date)`. One row per date from `start_date` to `end_date`, no gaps; a day may have no
-  bookings. A `NULL` note on a day after the first means "same as the previous day"; `—` means nothing.
+  bookings. A `NULL` note (reception, housekeeping, restaurant) on a day after the first means "same as the previous day"; `—` means nothing.
 - **event_bookings**: `id`, `day_id` (cascade), `label?` (internal), `start_at`, `end_at`. Rules:
   `start_at < end_at`, `start_at` on the day's date, and for the event `prep_at ≤` every `start_at`,
   `release_at ≥` every `end_at` (checked by the schema).
@@ -53,7 +53,7 @@ server's time zone (`TZ`, `Europe/Rome` in the container).
 
   Saving an event replaces all its days and bookings in one transaction: the event id is stable (ADMIN-9),
   booking ids are not. The notes and labels are for the venue staff: the sign gets `SignEvent`s, one per
-  booking, built by `flattenEvents` (`src/shared/events.ts`), which don't carry them and give every booking
+  booking, built by `flattenEvents` (`src/shared/events.ts`), which don't carry them (nor the cost and booking number) and give every booking
   the event's `prep_at`/`release_at`.
 - **overrides**: `room_id` (one per room), `status`, `message?`, `created_at`, `expires_at?`,
   `until_next_change`.

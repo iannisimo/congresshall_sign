@@ -94,6 +94,8 @@ function eventInput(t: Setup, organizerId: number, roomIds: number[], startInHou
     subtitle: '',
     visible: true,
     receptionNotes: null as string | null,
+    costCents: null as number | null,
+    bookingNumber: null as string | null,
     prepAt: startAt - 30 * MINUTE,
     releaseAt: endAt + 30 * MINUTE,
     days: [
@@ -101,6 +103,7 @@ function eventInput(t: Setup, organizerId: number, roomIds: number[], startInHou
         date: toDateValue(startAt),
         receptionNotes: null as string | null,
         housekeepingNotes: null as string | null,
+        restaurantNotes: null as string | null,
         bookings: [{ label: null as string | null, roomIds, startAt, endAt, breaks: [] as { label: string; startAt: number; endAt: number }[] }],
       },
     ],
@@ -215,17 +218,20 @@ describe('events', () => {
     input.receptionNotes = ' Badge al banco 2 ';
     input.days[0]!.housekeepingNotes = ' Platea ';
     input.days[0]!.receptionNotes = '';
+    input.days[0]!.restaurantNotes = ' Menu vegano ';
+    input.costCents = 987654;
+    input.bookingNumber = ' PR-4242 ';
     input.days[0]!.bookings[0]!.label = 'Plenaria';
     const { id } = await json<{ id: number }>(await admin.req('POST', '/api/events', { event: input }));
 
     const saved = await json<ScheduledEvent>(await admin.req('GET', `/api/events/${id}`));
-    expect(saved).toMatchObject({ receptionNotes: 'Badge al banco 2' });
-    expect(saved.days[0]).toMatchObject({ receptionNotes: null, housekeepingNotes: 'Platea' });
+    expect(saved).toMatchObject({ receptionNotes: 'Badge al banco 2', costCents: 987654, bookingNumber: 'PR-4242' });
+    expect(saved.days[0]).toMatchObject({ receptionNotes: null, housekeepingNotes: 'Platea', restaurantNotes: 'Menu vegano' });
     expect(saved.days[0]!.bookings[0]!.label).toBe('Plenaria');
 
     const snapshot = await json<DisplaySnapshot>(await t.app.request('/api/display'));
     expect(snapshot.events.map((e) => e.eventId)).toEqual([id]);
-    expect(JSON.stringify(snapshot)).not.toMatch(/Badge|Platea|Plenaria/);
+    expect(JSON.stringify(snapshot)).not.toMatch(/Badge|Platea|Plenaria|Menu vegano|PR-4242|987654/);
   });
 
   it('keeps breaks with their booking', async () => {
@@ -306,7 +312,7 @@ describe('events', () => {
       ...eventInput(t, org.id, [rooms.a.id], 1),
       prepAt: new Date('2026-10-17T08:30').getTime(),
       releaseAt: new Date('2026-10-19T14:00').getTime(),
-      days: dates.map((date) => ({ date, receptionNotes: null as string | null, housekeepingNotes: null as string | null, bookings: [] as ReturnType<typeof bookingOn>[] })),
+      days: dates.map((date) => ({ date, receptionNotes: null as string | null, housekeepingNotes: null as string | null, restaurantNotes: null as string | null, bookings: [] as ReturnType<typeof bookingOn>[] })),
     };
     input.days[0]!.bookings = [bookingOn('2026-10-17', '09:00', '13:00', [rooms.a.id])];
     // Sent out of order: the afternoon workshops first.
@@ -346,9 +352,9 @@ describe('events', () => {
       prepAt: new Date('2026-10-17T08:30').getTime(),
       releaseAt: new Date('2026-10-19T14:00').getTime(),
       days: [
-        { date: '2026-10-17', receptionNotes: null, housekeepingNotes: null, bookings: [bookingOn('2026-10-17', '09:00', '13:00', [rooms.a.id]), bookingOn('2026-10-17', '14:00', '18:00', [rooms.b.id])] },
-        { date: '2026-10-18', receptionNotes: null, housekeepingNotes: null, bookings: [bookingOn('2026-10-18', '09:00', '13:00', [rooms.a.id])] },
-        { date: '2026-11-17', receptionNotes: null, housekeepingNotes: null, bookings: [] },
+        { date: '2026-10-17', receptionNotes: null, housekeepingNotes: null, restaurantNotes: null, bookings: [bookingOn('2026-10-17', '09:00', '13:00', [rooms.a.id]), bookingOn('2026-10-17', '14:00', '18:00', [rooms.b.id])] },
+        { date: '2026-10-18', receptionNotes: null, housekeepingNotes: null, restaurantNotes: null, bookings: [bookingOn('2026-10-18', '09:00', '13:00', [rooms.a.id])] },
+        { date: '2026-11-17', receptionNotes: null, housekeepingNotes: null, restaurantNotes: null, bookings: [] },
       ],
     };
     // Not consecutive: refused.

@@ -12,6 +12,8 @@ interface EventRow {
   subtitle: string | null;
   visible: number;
   reception_notes: string | null;
+  cost_cents: number | null;
+  booking_number: string | null;
   start_date: string;
   end_date: string;
   prep_at: number;
@@ -24,6 +26,7 @@ interface DayRow {
   date: string;
   reception_notes: string | null;
   housekeeping_notes: string | null;
+  restaurant_notes: string | null;
 }
 
 interface BookingRow {
@@ -90,6 +93,7 @@ function loadEvents(db: Db, ids: number[]): ScheduledEvent[] {
     date: row.date,
     receptionNotes: row.reception_notes,
     housekeepingNotes: row.housekeeping_notes,
+    restaurantNotes: row.restaurant_notes,
     bookings: (bookings.get(row.id) ?? []).map(toBooking),
   });
 
@@ -109,6 +113,8 @@ function loadEvents(db: Db, ids: number[]): ScheduledEvent[] {
         startDate: row.start_date,
         endDate: row.end_date,
         receptionNotes: row.reception_notes,
+        costCents: row.cost_cents,
+        bookingNumber: row.booking_number,
         prepAt: row.prep_at,
         releaseAt: row.release_at,
         days: (days.get(row.id) ?? []).map(toDay),
@@ -159,9 +165,15 @@ function setDays(db: Db, eventId: number, input: EventInput): void {
   for (const day of input.days) {
     const { lastInsertRowid: dayId } = run(
       db,
-      `INSERT INTO event_days (event_id, date, reception_notes, housekeeping_notes)
-       VALUES (:eventId, :date, :receptionNotes, :housekeepingNotes)`,
-      { eventId, date: day.date, receptionNotes: day.receptionNotes, housekeepingNotes: day.housekeepingNotes },
+      `INSERT INTO event_days (event_id, date, reception_notes, housekeeping_notes, restaurant_notes)
+       VALUES (:eventId, :date, :receptionNotes, :housekeepingNotes, :restaurantNotes)`,
+      {
+        eventId,
+        date: day.date,
+        receptionNotes: day.receptionNotes,
+        housekeepingNotes: day.housekeepingNotes,
+        restaurantNotes: day.restaurantNotes,
+      },
     );
     for (const booking of [...day.bookings].sort((a, b) => a.startAt - b.startAt)) {
       const { lastInsertRowid: bookingId } = run(
@@ -197,6 +209,8 @@ function columns(input: EventInput) {
     subtitle: input.subtitle,
     visible: input.visible ? 1 : 0,
     receptionNotes: input.receptionNotes,
+    costCents: input.costCents,
+    bookingNumber: input.bookingNumber,
     startDate: input.days[0]!.date,
     endDate: input.days.at(-1)!.date,
     prepAt: input.prepAt,
@@ -208,8 +222,8 @@ function columns(input: EventInput) {
 export function insertEvent(db: Db, input: EventInput, now: number): number {
   const { lastInsertRowid: id } = run(
     db,
-    `INSERT INTO events (organizer_id, logo_id, title, subtitle, visible, reception_notes, start_date, end_date, prep_at, release_at, created_at, updated_at)
-     VALUES (:organizerId, :logoId, :title, :subtitle, :visible, :receptionNotes, :startDate, :endDate, :prepAt, :releaseAt, :now, :now)`,
+    `INSERT INTO events (organizer_id, logo_id, title, subtitle, visible, reception_notes, cost_cents, booking_number, start_date, end_date, prep_at, release_at, created_at, updated_at)
+     VALUES (:organizerId, :logoId, :title, :subtitle, :visible, :receptionNotes, :costCents, :bookingNumber, :startDate, :endDate, :prepAt, :releaseAt, :now, :now)`,
     { ...columns(input), now },
   );
   setDays(db, id, input);
@@ -221,7 +235,7 @@ export function updateEvent(db: Db, id: number, input: EventInput, now: number):
   run(
     db,
     `UPDATE events SET organizer_id = :organizerId, logo_id = :logoId, title = :title, subtitle = :subtitle,
-       visible = :visible, reception_notes = :receptionNotes, start_date = :startDate, end_date = :endDate, prep_at = :prepAt, release_at = :releaseAt, updated_at = :now
+       visible = :visible, reception_notes = :receptionNotes, cost_cents = :costCents, booking_number = :bookingNumber, start_date = :startDate, end_date = :endDate, prep_at = :prepAt, release_at = :releaseAt, updated_at = :now
      WHERE id = :id`,
     { ...columns(input), id, now },
   );

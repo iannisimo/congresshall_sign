@@ -53,6 +53,7 @@ export const dayInputSchema = z.object({
   date: dateValue,
   receptionNotes: optionalText(4000).default(null),
   housekeepingNotes: optionalText(4000).default(null),
+  restaurantNotes: optionalText(4000).default(null),
   bookings: z.array(bookingInputSchema).max(20, { error: 'Massimo 20 occupazioni al giorno' }).default([]),
 });
 export type DayInput = z.output<typeof dayInputSchema>;
@@ -65,6 +66,15 @@ export const eventInputSchema = z
     subtitle: optionalText(300),
     visible: z.boolean(),
     receptionNotes: optionalText(4000).default(null),
+    /** Internal, in euro cents. */
+    costCents: z
+      .number()
+      .int({ error: 'Importo non valido' })
+      .min(0, { error: 'Importo non valido' })
+      .max(100_000_000_000, { error: 'Importo troppo alto' })
+      .nullable()
+      .default(null),
+    bookingNumber: optionalText(60).default(null),
     /** All the event's rooms are reserved from prepAt to releaseAt. */
     prepAt: time,
     releaseAt: time,

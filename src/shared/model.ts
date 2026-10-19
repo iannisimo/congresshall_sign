@@ -51,6 +51,8 @@ export interface EventDay {
   receptionNotes: string | null;
   /** For the cleaning staff, including how the room is prepared; same inheritance. Never on the sign. */
   housekeepingNotes: string | null;
+  /** For the restaurant; same inheritance. Never on the sign. */
+  restaurantNotes: string | null;
   /** By start time. */
   bookings: EventBooking[];
 }
@@ -71,6 +73,10 @@ export interface ScheduledEvent {
   endDate: string;
   /** For the front desk, whole event. Never on the sign. */
   receptionNotes: string | null;
+  /** Internal: total cost in euro cents. Never on the sign. */
+  costCents: number | null;
+  /** Internal: free-text booking number. Never on the sign. */
+  bookingNumber: string | null;
   /** Every room the event uses on any day is reserved from here... */
   prepAt: number;
   /** ...until here, when they become free again. */
