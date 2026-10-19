@@ -159,12 +159,30 @@ export const settingsSchema = z.object({
 /** The part of the settings the media account can change. */
 export const carouselSettingsSchema = settingsSchema.pick({ carouselImageSeconds: true, carouselFit: true });
 
-export const mediaPatchSchema = z.object({
-  enabled: z.boolean().optional(),
-  fit: z.enum(['contain', 'fill', 'cover']).nullable().optional(),
+const mediaFit = z.enum(['contain', 'fill', 'cover']);
+const presetName = z.string().regex(/^[a-z0-9-]{1,40}$/, { error: 'Usa da 1 a 40 lettere minuscole, cifre o trattini' });
+const presetLabel = z.string().trim().min(1, { error: 'Scrivi un nome' }).max(60, { error: 'Massimo 60 caratteri' });
+
+export const mediaPresetCreateSchema = z.object({
+  name: presetName,
+  label: presetLabel,
+  copyFrom: z.number().int().positive().optional(),
 });
 
-export const mediaOrderSchema = z.object({ ids: z.array(z.number().int().positive()).refine(unique) });
+export const mediaPresetPatchSchema = z.object({
+  name: presetName.optional(),
+  label: presetLabel.optional(),
+  imageSeconds: z.number().int({ error: 'Usa un numero intero' }).min(2, { error: 'Minimo 2 secondi' }).max(600, { error: 'Massimo 600 secondi' }).nullable().optional(),
+  fit: mediaFit.nullable().optional(),
+});
+
+/** The whole ordered list of a preset's items. */
+export const mediaPresetItemsSchema = z.object({
+  items: z
+    .array(z.object({ mediaId: z.number().int().positive(), enabled: z.boolean(), fit: mediaFit.nullable() }))
+    .max(500)
+    .refine((items) => new Set(items.map((i) => i.mediaId)).size === items.length, { error: 'File ripetuto' }),
+});
 
 export const loginSchema = z.object({
   username: z.string().trim().min(1).max(64),

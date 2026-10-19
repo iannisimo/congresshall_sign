@@ -150,4 +150,33 @@ export const migrations: string[] = [
   INSERT INTO sessions SELECT * FROM sessions_kept;
   DROP TABLE sessions_kept;
   `,
+  `
+  -- Carousel presets: named, ordered selections of the media library, picked by the sign with ?preset=.
+  -- On/off, fit and order move from the media row to the preset's items.
+  CREATE TABLE media_presets (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE CHECK (length(name) BETWEEN 1 AND 40),
+    label TEXT NOT NULL,
+    sort_order INTEGER NOT NULL,
+    image_seconds INTEGER,
+    fit TEXT CHECK (fit IN ('contain', 'fill', 'cover')),
+    is_default INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE UNIQUE INDEX media_presets_default ON media_presets(is_default) WHERE is_default = 1;
+  CREATE TABLE media_preset_items (
+    preset_id INTEGER NOT NULL REFERENCES media_presets(id) ON DELETE CASCADE,
+    media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    fit TEXT CHECK (fit IN ('contain', 'fill', 'cover')),
+    PRIMARY KEY (preset_id, media_id)
+  );
+  CREATE INDEX media_preset_items_media ON media_preset_items(media_id);
+  INSERT INTO media_presets (name, label, sort_order, is_default) VALUES ('default', 'Predefinito', 0, 1);
+  INSERT INTO media_preset_items (preset_id, media_id, position, enabled, fit)
+    SELECT (SELECT id FROM media_presets WHERE is_default = 1), id, sort_order, enabled, fit FROM media;
+  ALTER TABLE media DROP COLUMN enabled;
+  ALTER TABLE media DROP COLUMN fit;
+  ALTER TABLE media DROP COLUMN sort_order;
+  `,
 ];

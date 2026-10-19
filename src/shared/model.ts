@@ -133,10 +133,26 @@ export interface MediaItem {
   name: string;
   mime: string;
   size: number;
-  /** Disabled items stay in the list but are not shown. */
-  enabled: boolean;
-  /** Overrides the global fit when set. */
+}
+
+/** A named, ordered selection of the media library; a sign picks one with ?preset=<name>. */
+export interface MediaPreset {
+  id: number;
+  /** URL slug, `^[a-z0-9-]{1,40}$`. */
+  name: string;
+  label: string;
+  isDefault: boolean;
+  /** Seconds per image; null: the global carouselImageSeconds. */
+  imageSeconds: number | null;
+  /** null: the global carouselFit. */
   fit: MediaFit | null;
+  items: {
+    mediaId: number;
+    /** Disabled items stay in the list but are not shown. */
+    enabled: boolean;
+    /** Overrides the preset's fit when set. */
+    fit: MediaFit | null;
+  }[];
 }
 
 /** Everything the sign needs, from GET /api/display. */
@@ -147,6 +163,8 @@ export interface DisplaySnapshot {
   venueLogo: string | null;
   /** The carousel, in order (GET /api/media/:id). */
   media: { id: number; kind: MediaKind; fit: MediaFit | null }[];
+  /** The preset `media` comes from, its overrides already resolved against the global settings. */
+  mediaPreset: { name: string; isDefault: boolean; imageSeconds: number; fit: MediaFit };
   rooms: Room[];
   events: SignEvent[];
   overrides: Override[];

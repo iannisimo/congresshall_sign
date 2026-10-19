@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { INTERNAL_EVENT_FIELDS, type DisplaySnapshot, type ScheduledEvent, type SignEvent } from '../../shared/model.ts';
 import { displayWindow } from '../../shared/time.ts';
 import { listEvents } from '../data/events.ts';
-import { listMedia } from '../data/media.ts';
+import { getMedia, presetByNameOrDefault } from '../data/media.ts';
 import { activeOverrides } from '../data/overrides.ts';
 import { listRooms } from '../data/rooms.ts';
 import { getSettings, getVenueLogo } from '../data/settings.ts';
@@ -25,13 +25,22 @@ export function displayRoutes(deps: AppDeps) {
 
   app.get('/display', (c) => {
     const now = deps.clock();
+    const settings = getSettings(deps.db);
+    const preset = presetByNameOrDefault(deps.db, c.req.query('preset'));
     const snapshot: DisplaySnapshot = {
       version: deps.version,
-      settings: getSettings(deps.db),
+      settings,
       venueLogo: getVenueLogo(deps.db)?.version ?? null,
-      media: listMedia(deps.db)
-        .filter((m) => m.enabled)
-        .map((m) => ({ id: m.id, kind: m.kind, fit: m.fit })),
+      media: preset.items.flatMap((item) => {
+        const media = item.enabled ? getMedia(deps.db, item.mediaId) : undefined;
+        return media ? [{ id: media.id, kind: media.kind, fit: item.fit }] : [];
+      }),
+      mediaPreset: {
+        name: preset.name,
+        isDefault: preset.isDefault,
+        imageSeconds: preset.imageSeconds ?? settings.carouselImageSeconds,
+        fit: preset.fit ?? settings.carouselFit,
+      },
       rooms: listRooms(deps.db),
       events: listEvents(deps.db, { ...displayWindow(now), visibleOnly: true }).map(forSign),
       overrides: activeOverrides(deps.db, now),

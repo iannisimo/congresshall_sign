@@ -4,7 +4,10 @@ import { readStored, writeStored } from '../lib/storage.ts';
 
 export const POLL_INTERVAL = 60_000;
 
-const SNAPSHOT_KEY = 'sign.snapshot';
+/** The carousel preset from the URL (?preset=bar); null for the default one. */
+const PRESET = new URLSearchParams(location.search).get('preset') || null;
+// A screen whose URL changes must not start from another preset's snapshot; the default keeps the old key.
+const SNAPSHOT_KEY = PRESET ? `sign.snapshot:${PRESET}` : 'sign.snapshot';
 const CONTACT_KEY = 'sign.lastContactAt';
 const OFFSET_KEY = 'sign.clockOffset';
 
@@ -53,7 +56,7 @@ export function useSnapshot(): SnapshotState {
       inFlight = true;
       try {
         const sentAt = Date.now();
-        const response = await fetch('/api/display', {
+        const response = await fetch(PRESET ? `/api/display?preset=${encodeURIComponent(PRESET)}` : '/api/display', {
           cache: 'no-store',
           headers: etag.current ? { 'If-None-Match': etag.current } : {},
         });

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { beforeAll, describe, expect, it } from 'vitest';
-import type { DisplaySnapshot, Organizer, Room, ScheduledEvent } from '../shared/model.ts';
+import type { DisplaySnapshot, MediaFit, MediaPreset, Organizer, Room, ScheduledEvent } from '../shared/model.ts';
 import { changeoverMargins, DAY, HOUR, MINUTE } from '../shared/time.ts';
 import { createApp } from './app.ts';
 import { hashPassword } from './auth/password.ts';
@@ -497,21 +497,89 @@ describe('media', () => {
     expect(part.headers.get('content-range')).toBe(`bytes 4-11/${mp4.length}`);
     expect(Buffer.from(await part.arrayBuffer()).toString('latin1')).toBe('ftypisom');
 
-    expect((await json<DisplaySnapshot>(await t.app.request('/api/display'))).media).toEqual([
+    const display = async (query = '') => json<DisplaySnapshot>(await t.app.request(`/api/display${query}`));
+    expect((await display()).media).toEqual([
       { id: imageId, kind: 'image', fit: null },
       { id: videoId, kind: 'video', fit: null },
     ]);
-    // Disabled items leave the sign; an item can have its own fit.
-    await superadmin.req('PATCH', `/api/media/${imageId}`, { enabled: false });
-    await superadmin.req('PATCH', `/api/media/${videoId}`, { fit: 'cover' });
-    expect((await json<DisplaySnapshot>(await t.app.request('/api/display'))).media).toEqual([{ id: videoId, kind: 'video', fit: 'cover' }]);
-    expect((await superadmin.req('PATCH', `/api/media/${videoId}`, { fit: 'zoom' })).status).toBe(400);
-    await superadmin.req('PATCH', `/api/media/${imageId}`, { enabled: true });
-    await superadmin.req('PUT', '/api/media/order', { ids: [videoId, imageId] });
-    expect((await json<{ id: number }[]>(await superadmin.req('GET', '/api/media'))).map((m) => m.id)).toEqual([videoId, imageId]);
+    expect((await json<{ id: number }[]>(await superadmin.req('GET', '/api/media'))).map((m) => m.id)).toEqual([videoId, imageId]); // newest first
+
+    // Disabled items leave the sign; an item can have its own fit; the order is the preset's.
+    const [preset] = await json<MediaPreset[]>(await superadmin.req('GET', '/api/media-presets'));
+    const put = (items: MediaPreset['items']) => superadmin.req('PUT', `/api/media-presets/${preset!.id}/items`, { items });
+    await put([{ mediaId: imageId, enabled: false, fit: null }, { mediaId: videoId, enabled: true, fit: 'cover' }]);
+    expect((await display()).media).toEqual([{ id: videoId, kind: 'video', fit: 'cover' }]);
+    expect((await put([{ mediaId: videoId, enabled: true, fit: 'zoom' as MediaFit }])).status).toBe(400);
+    expect((await put([{ mediaId: 999, enabled: true, fit: null }])).status).toBe(400);
+    await put([{ mediaId: videoId, enabled: true, fit: null }, { mediaId: imageId, enabled: true, fit: null }]);
+    expect((await display()).media.map((m) => m.id)).toEqual([videoId, imageId]);
 
     expect((await superadmin.req('DELETE', `/api/media/${imageId}`)).status).toBe(204);
     expect((await t.app.request(`/api/media/${imageId}`)).status).toBe(404);
+    expect((await display()).media.map((m) => m.id)).toEqual([videoId]);
+  });
+});
+
+describe('media presets', () => {
+  it('serves each preset its own carousel and always keeps one default', async () => {
+    const t = setup();
+    const superadmin = t.client();
+    await superadmin.login('superadmin');
+    const upload = async (name: string, presetId?: number) => {
+      const png = await sharp({ create: { width: 40, height: 30, channels: 3, background: '#336699' } }).png().toBuffer();
+      const headers: Record<string, string> = { 'content-type': 'image/png', 'x-file-name': name, cookie: superadmin.cookie() };
+      if (presetId !== undefined) headers['x-preset-id'] = String(presetId);
+      return (await json<{ id: number }>(await t.app.request('/api/media', { method: 'POST', body: png, headers }))).id;
+    };
+    const display = async (query = '') => json<DisplaySnapshot>(await t.app.request(`/api/display${query}`));
+    const presets = async () => json<MediaPreset[]>(await superadmin.req('GET', '/api/media-presets'));
+
+    const [initial] = await presets();
+    expect(initial).toMatchObject({ name: 'default', label: 'Predefinito', isDefault: true, imageSeconds: null, fit: null });
+    const a = await upload('a');
+    const b = await upload('b');
+    expect((await display()).mediaPreset).toEqual({ name: 'default', isDefault: true, imageSeconds: 10, fit: 'contain' });
+
+    // A new preset can start empty or as a copy; an upload with X-Preset-Id lands in that preset only.
+    const created = await superadmin.req('POST', '/api/media-presets', { name: 'bar', label: 'Bar' });
+    expect(created.status).toBe(201);
+    const bar = await json<MediaPreset>(created);
+    expect(bar.items).toEqual([]);
+    expect((await superadmin.req('POST', '/api/media-presets', { name: 'bar', label: 'Altro' })).status).toBe(409);
+    expect((await superadmin.req('POST', '/api/media-presets', { name: 'Bad Name', label: 'x' })).status).toBe(400);
+    const c = await upload('c', bar.id);
+    expect((await display('?preset=bar')).media.map((m) => m.id)).toEqual([c]);
+    expect((await display()).media.map((m) => m.id)).toEqual([a, b]);
+    const copy = await json<MediaPreset>(await superadmin.req('POST', '/api/media-presets', { name: 'copia', label: 'Copia', copyFrom: initial!.id }));
+    expect(copy.items.map((i) => i.mediaId)).toEqual([a, b]);
+
+    // Overrides are resolved against the global settings; an unknown name falls back to the default.
+    await superadmin.req('PATCH', `/api/media-presets/${bar.id}`, { imageSeconds: 30, fit: 'cover' });
+    expect((await display('?preset=bar')).mediaPreset).toEqual({ name: 'bar', isDefault: false, imageSeconds: 30, fit: 'cover' });
+    expect((await display('?preset=nope')).media.map((m) => m.id)).toEqual([a, b]);
+    expect((await display('?preset=nope')).mediaPreset.name).toBe('default');
+    const etags = await Promise.all(['', '?preset=bar'].map(async (q) => (await t.app.request(`/api/display${q}`)).headers.get('etag')));
+    expect(etags[0]).not.toBe(etags[1]);
+    expect((await superadmin.req('PATCH', `/api/media-presets/${bar.id}`, { imageSeconds: 1 })).status).toBe(400);
+
+    // Renaming: not the default's, not to a taken name.
+    expect((await superadmin.req('PATCH', `/api/media-presets/${initial!.id}`, { name: 'main' })).status).toBe(409);
+    expect((await superadmin.req('PATCH', `/api/media-presets/${bar.id}`, { name: 'copia' })).status).toBe(409);
+    expect(await json(await superadmin.req('PATCH', `/api/media-presets/${bar.id}`, { name: 'bar-2', label: 'Bar 2' }))).toMatchObject({ name: 'bar-2', label: 'Bar 2' });
+
+    // Exactly one default, and it can't be deleted.
+    expect((await superadmin.req('DELETE', `/api/media-presets/${initial!.id}`)).status).toBe(409);
+    await superadmin.req('PUT', `/api/media-presets/${bar.id}/default`);
+    expect((await presets()).filter((p) => p.isDefault).map((p) => p.id)).toEqual([bar.id]);
+    expect((await presets())[0]!.id).toBe(bar.id);
+    expect((await display()).media.map((m) => m.id)).toEqual([c]);
+    expect((await superadmin.req('DELETE', `/api/media-presets/${initial!.id}`)).status).toBe(204);
+    expect((await superadmin.req('DELETE', `/api/media-presets/${bar.id}`)).status).toBe(409);
+    expect((await superadmin.req('PUT', '/api/media-presets/999/default')).status).toBe(404);
+
+    // Deleting a file takes it out of every preset.
+    await superadmin.req('DELETE', `/api/media/${c}`);
+    expect((await presets()).flatMap((p) => p.items.map((i) => i.mediaId))).toEqual([a, b]); // the copy
   });
 });
 
@@ -522,6 +590,8 @@ describe('media account', () => {
     await media.login('media');
     expect(await json(await media.req('GET', '/api/auth/me'))).toMatchObject({ username: 'media', role: 'media' });
     expect((await media.req('GET', '/api/media')).status).toBe(200);
+    expect((await media.req('GET', '/api/media-presets')).status).toBe(200);
+    expect((await media.req('POST', '/api/media-presets', { name: 'bar', label: 'Bar' })).status).toBe(201);
     const saved = await media.req('PUT', '/api/settings/carousel', { carouselImageSeconds: 20, carouselFit: 'cover' });
     expect(await json(saved)).toMatchObject({ carouselImageSeconds: 20, carouselFit: 'cover' });
 
@@ -533,5 +603,6 @@ describe('media account', () => {
     const admin = t.client();
     await admin.login();
     expect((await admin.req('GET', '/api/media')).status).toBe(403);
+    expect((await admin.req('GET', '/api/media-presets')).status).toBe(403);
   });
 });

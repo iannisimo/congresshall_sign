@@ -8,7 +8,7 @@ import { authRoutes } from './routes/auth.ts';
 import { displayRoutes } from './routes/display.ts';
 import { eventRoutes } from './routes/events.ts';
 import { genericLogoRoutes, logoRoutes, organizerRoutes } from './routes/organizers.ts';
-import { mediaRoutes } from './routes/media.ts';
+import { mediaPresetRoutes, mediaRoutes } from './routes/media.ts';
 import { roomRoutes } from './routes/rooms.ts';
 import { settingsRoutes, venueLogoRoutes } from './routes/settings.ts';
 import { webRoutes } from './web.ts';
@@ -72,6 +72,7 @@ export function createApp(deps: AppDeps, options: { serveWeb?: boolean } = {}) {
   app.route('/api/settings', settingsRoutes(deps));
   app.route('/api/venue-logo', venueLogoRoutes(deps));
   app.route('/api/media', mediaRoutes(deps));
+  app.route('/api/media-presets', mediaPresetRoutes(deps));
   app.all('/api/*', (c) => c.json({ error: 'Non trovato' }, 404));
 
   if (options.serveWeb) app.route('/', webRoutes(deps.config.webDir));

@@ -7,9 +7,22 @@ import { pipeline } from 'node:stream/promises';
 import { Hono } from 'hono';
 import sharp from 'sharp';
 import type { MediaKind } from '../../shared/model.ts';
-import { mediaOrderSchema, mediaPatchSchema } from '../../shared/schemas.ts';
+import { mediaPresetCreateSchema, mediaPresetItemsSchema, mediaPresetPatchSchema } from '../../shared/schemas.ts';
 import { requireRole } from '../auth/session.ts';
-import { deleteMedia, getMedia, insertMedia, listMedia, reorderMedia, updateMedia } from '../data/media.ts';
+import {
+  deleteMedia,
+  deletePreset,
+  getMedia,
+  getPreset,
+  insertMedia,
+  insertPreset,
+  listMedia,
+  listPresets,
+  makeDefaultPreset,
+  presetNameTaken,
+  setPresetItems,
+  updatePreset,
+} from '../data/media.ts';
 import { ApiError, idParam, notFound, readJson, type AppDeps, type AppEnv } from '../http.ts';
 
 const MAX_IMAGE_BYTES = 30 * 1024 * 1024;
@@ -92,6 +105,10 @@ export function mediaRoutes(deps: AppDeps) {
     const kind: MediaKind | null = type.startsWith('image/') ? 'image' : VIDEO_TYPES[type] ? 'video' : null;
     if (!kind) throw new ApiError(400, 'Formato non supportato: immagini, o video MP4 (H.264) e WebM');
     if (!c.req.raw.body) throw new ApiError(400, 'Nessun file ricevuto');
+    // The preset being edited gets the new item; without the header it goes to the default one.
+    const presetHeader = c.req.header('x-preset-id');
+    const presetId = presetHeader ? Number(presetHeader) : undefined;
+    if (presetId !== undefined && !(Number.isInteger(presetId) && getPreset(db, presetId))) throw new ApiError(400, 'Preset inesistente');
     const name = decodeURIComponent(c.req.header('x-file-name') ?? '').slice(0, 200) || (kind === 'image' ? 'Immagine' : 'Video');
 
     await mkdir(dir, { recursive: true });
@@ -134,7 +151,7 @@ export function mediaRoutes(deps: AppDeps) {
         await rename(upload, join(dir, file));
       }
 
-      const id = insertMedia(db, { kind, name, mime, file, size }, deps.clock());
+      const id = insertMedia(db, { kind, name, mime, file, size }, deps.clock(), presetId);
       const { file: _file, ...item } = getMedia(db, id)!;
       return c.json(item, 201);
     } finally {
@@ -142,31 +159,64 @@ export function mediaRoutes(deps: AppDeps) {
     }
   });
 
-  app.put('/order', requireRole('superadmin', 'media'), async (c) => {
-    const { ids } = await readJson(c, mediaOrderSchema);
-    const existing = listMedia(db).map((m) => m.id);
-    if (ids.length !== existing.length || !existing.every((id) => ids.includes(id))) {
-      throw new ApiError(400, 'L’ordine deve contenere tutti i file');
-    }
-    reorderMedia(db, ids);
-    return c.json(listMedia(db).map(({ file: _file, ...item }) => item));
-  });
-
-  /** Switch an item on or off, or set its own fit (null: the global one). */
-  app.patch('/:id', requireRole('superadmin', 'media'), async (c) => {
-    const id = idParam(c);
-    const patch = await readJson(c, mediaPatchSchema);
-    if (!getMedia(db, id)) throw notFound();
-    updateMedia(db, id, patch);
-    const { file: _file, ...item } = getMedia(db, id)!;
-    return c.json(item);
-  });
-
   app.delete('/:id', requireRole('superadmin', 'media'), async (c) => {
     const media = getMedia(db, idParam(c));
     if (!media) throw notFound();
     deleteMedia(db, media.id);
     await rm(join(dir, media.file), { force: true });
+    return c.body(null, 204);
+  });
+
+  return app;
+}
+
+/** Named selections of the library, one per screen: the sign picks one with ?preset=<name>. */
+export function mediaPresetRoutes(deps: AppDeps) {
+  const app = new Hono<AppEnv>();
+  const { db } = deps;
+  app.use('*', requireRole('superadmin', 'media'));
+
+  const find = (id: number) => getPreset(db, id) ?? (() => { throw notFound(); })();
+
+  app.get('/', (c) => c.json(listPresets(db)));
+
+  app.post('/', async (c) => {
+    const { name, label, copyFrom } = await readJson(c, mediaPresetCreateSchema);
+    if (presetNameTaken(db, name)) throw new ApiError(409, 'Esiste già un preset con questo nome nell’indirizzo');
+    const source = copyFrom === undefined ? undefined : find(copyFrom);
+    return c.json(getPreset(db, insertPreset(db, { name, label }, source)), 201);
+  });
+
+  app.patch('/:id', async (c) => {
+    const preset = find(idParam(c));
+    const patch = await readJson(c, mediaPresetPatchSchema);
+    if (patch.name !== undefined && patch.name !== preset.name) {
+      if (preset.isDefault) throw new ApiError(409, 'Il nome del preset predefinito non si può cambiare');
+      if (presetNameTaken(db, patch.name, preset.id)) throw new ApiError(409, 'Esiste già un preset con questo nome nell’indirizzo');
+    }
+    updatePreset(db, preset.id, patch);
+    return c.json(getPreset(db, preset.id));
+  });
+
+  app.put('/:id/items', async (c) => {
+    const preset = find(idParam(c));
+    const { items } = await readJson(c, mediaPresetItemsSchema);
+    const known = new Set(listMedia(db).map((m) => m.id));
+    if (!items.every((i) => known.has(i.mediaId))) throw new ApiError(400, 'File inesistente');
+    setPresetItems(db, preset.id, items);
+    return c.json(getPreset(db, preset.id));
+  });
+
+  app.put('/:id/default', (c) => {
+    const preset = find(idParam(c));
+    makeDefaultPreset(db, preset.id);
+    return c.json(listPresets(db));
+  });
+
+  app.delete('/:id', (c) => {
+    const preset = find(idParam(c));
+    if (preset.isDefault) throw new ApiError(409, 'Il preset predefinito non si può eliminare: rendine predefinito un altro');
+    deletePreset(db, preset.id);
     return c.body(null, 204);
   });
 

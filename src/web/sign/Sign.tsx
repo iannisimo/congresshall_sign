@@ -160,7 +160,7 @@ function SignScreen({ layout }: { layout: SignLayout }) {
   if (forceCarousel && media.length === 0) {
     return (
       <div className="grid h-screen place-items-center bg-canvas text-center text-[2rem] font-semibold text-slate-400">
-        Nessun media attivo: attivane almeno uno nella pagina Media.
+        Nessun media attivo{snapshot.mediaPreset && !snapshot.mediaPreset.isDefault ? ` nel preset «${snapshot.mediaPreset.name}»` : ''}: attivane almeno uno nella pagina Media.
       </div>
     );
   }
@@ -168,7 +168,7 @@ function SignScreen({ layout }: { layout: SignLayout }) {
     return (
       <div className="flex h-screen w-screen flex-col overflow-hidden bg-canvas">
         <main className="relative flex min-h-0 flex-1">
-          <Carousel items={media} imageSeconds={settings.carouselImageSeconds} defaultFit={settings.carouselFit} />
+          <Carousel items={media} imageSeconds={snapshot.mediaPreset?.imageSeconds ?? settings.carouselImageSeconds} defaultFit={snapshot.mediaPreset?.fit ?? settings.carouselFit} />
           {staleSince !== null && <StalePill since={staleSince} now={now} className="absolute top-[1rem] right-[1.5rem] bg-white/90" />}
           {outdated && <OutdatedWarning since={lastContactAt!} />}
         </main>
