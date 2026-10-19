@@ -1,0 +1,53 @@
+import { describe, expect, it } from 'vitest';
+import type { EventBooking, ScheduledEvent } from '../../shared/model.ts';
+import { mergeRanges, restaurantRows, restaurantWindow } from './restaurantRows.ts';
+
+const at = (date: string, time: string) => new Date(`${date}T${time}`).getTime();
+const now = at('2026-10-19', '15:30');
+
+function booking(date: string, from: string, to: string, breaks: EventBooking['breaks'] = []): EventBooking {
+  return { id: 1, label: null, roomIds: [1], prepAt: at(date, from), startAt: at(date, from), endAt: at(date, to), releaseAt: at(date, to), breaks };
+}
+function event(id: number, visible: boolean, days: [string, EventBooking[]][]): ScheduledEvent {
+  return {
+    id, organizerId: 1, organizerName: `Org ${id}`, logoId: null, title: `Titolo ${id}`, subtitle: null, visible,
+    startDate: days[0]![0], endDate: days[days.length - 1]![0], receptionNotes: null,
+    days: days.map(([date, bookings]) => ({ date, receptionNotes: null, housekeepingNotes: null, bookings })),
+  };
+}
+
+describe('restaurantRows', () => {
+  it('spans 14 days from today', () => {
+    expect(restaurantWindow(now)).toEqual({ first: '2026-10-19', last: '2026-11-01' });
+  });
+
+  it('merges touching and overlapping ranges only', () => {
+    expect(mergeRanges([{ startAt: 5, endAt: 8 }, { startAt: 1, endAt: 5 }, { startAt: 10, endAt: 12 }])).toEqual([
+      { startAt: 1, endAt: 8 },
+      { startAt: 10, endAt: 12 },
+    ]);
+  });
+
+  it('builds rows: window, hours, deduplicated breaks, drafts, order', () => {
+    const coffee = (d: string) => ({ label: 'Coffee break', startAt: at(d, '10:30'), endAt: at(d, '11:00') });
+    const lunch = (d: string) => ({ label: 'Lunch break', startAt: at(d, '13:00'), endAt: at(d, '14:00') });
+    const rows = restaurantRows(
+      [
+        event(2, false, [['2026-10-25', [booking('2026-10-25', '09:00', '13:00'), booking('2026-10-25', '15:00', '18:00')]]]),
+        event(1, true, [
+          ['2026-10-18', [booking('2026-10-18', '09:00', '18:00')]],
+          ['2026-10-20', [booking('2026-10-20', '09:00', '13:00', [coffee('2026-10-20'), lunch('2026-10-20')]), booking('2026-10-20', '13:00', '18:00', [coffee('2026-10-20')])]],
+          ['2026-10-21', []],
+        ]),
+        event(3, true, [['2026-11-02', [booking('2026-11-02', '09:00', '10:00')]]]),
+      ],
+      now,
+    );
+    expect(rows.map((r) => r.id)).toEqual([1, 2]);
+    expect(rows[0]!.days).toEqual([
+      { date: '2026-10-20', hours: '09:00–18:00', breaks: ['Coffee break 10:30–11:00', 'Lunch break 13:00–14:00'] },
+    ]);
+    expect(rows[1]).toMatchObject({ draft: true });
+    expect(rows[1]!.days[0]).toEqual({ date: '2026-10-25', hours: '09:00–13:00, 15:00–18:00', breaks: [] });
+  });
+});
