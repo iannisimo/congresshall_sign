@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import type { SignEvent, Settings } from '../../shared/model.ts';
 import { settingsSchema } from '../../shared/schemas.ts';
 import { BRAND_PRESETS, DEFAULT_SETTINGS } from '../../shared/settings.ts';
-import { HOUR, MINUTE } from '../../shared/time.ts';
+import { HOUR, MINUTE, toDateValue } from '../../shared/time.ts';
 import { VenueLogo } from '../sign/parts.tsx';
 import { api, errorMessage, keys, queryClient, useDisplay, useSettings } from './api.ts';
 import { SignCardPreview } from './SignPreview.tsx';
@@ -15,6 +15,8 @@ function sampleEvent(): SignEvent {
   const startAt = startOfDay(Date.now()).getTime() + 14 * HOUR;
   return {
     id: 0,
+    eventId: 0,
+    date: toDateValue(startAt),
     organizerId: 0,
     organizerName: 'Società Italiana di Cardiologia',
     logoId: null,

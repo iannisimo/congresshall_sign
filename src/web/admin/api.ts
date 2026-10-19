@@ -52,7 +52,7 @@ export const keys = {
   organizers: ['organizers'] as const,
   display: ['display'] as const,
   settings: ['settings'] as const,
-  events: (from: number, to: number) => ['events', from, to] as const,
+  events: (from: number, to?: number) => ['events', from, to] as const,
   event: (id: number) => ['event', id] as const,
 };
 
@@ -100,10 +100,10 @@ export const useRooms = () => useQuery({ queryKey: keys.rooms, queryFn: () => ap
 export const useOrganizers = () => useQuery({ queryKey: keys.organizers, queryFn: () => api<Organizer[]>('/organizers') });
 
 /** `keepPrevious` shows the previous range while the next loads, e.g. while times are being typed. */
-export const useEvents = (from: number, to: number, options: { enabled?: boolean; keepPrevious?: boolean } = {}) =>
+export const useEvents = (from: number, to?: number, options: { enabled?: boolean; keepPrevious?: boolean } = {}) =>
   useQuery({
     queryKey: keys.events(from, to),
-    queryFn: () => api<ScheduledEvent[]>(`/events?from=${from}&to=${to}`),
+    queryFn: () => api<ScheduledEvent[]>(`/events?from=${from}${to === undefined ? '' : `&to=${to}`}`),
     enabled: options.enabled ?? true,
     placeholderData: options.keepPrevious ? keepPreviousData : undefined,
   });

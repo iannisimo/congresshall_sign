@@ -2,6 +2,7 @@ import { addDays, addMonths, endOfMonth, endOfWeek, isSameMonth, isToday, startO
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router';
+import { flattenEvents } from '../../shared/events.ts';
 import { errorMessage, useEvents, useRooms } from './api.ts';
 import { fromDateValue, toDateValue } from './dates.ts';
 import { Button, Card, ErrorNote, PageLoading } from './ui.tsx';
@@ -30,12 +31,12 @@ export default function MonthView() {
   const colors = useMemo(() => new Map(mainRooms.map((r, i) => [r.id, ROOM_COLORS[i % ROOM_COLORS.length]!])), [mainRooms]);
 
   /**
-   * Rooms used on each day (keyed by date value), true when a visible event books them and false when
-   * only drafts do; events spanning days count on each.
+   * Rooms used on each day (keyed by date value), true when a visible booking holds them and false when
+   * only drafts do; bookings past midnight count on each day.
    */
   const booked = useMemo(() => {
     const map = new Map<string, Map<number, boolean>>();
-    for (const event of events.data ?? []) {
+    for (const event of flattenEvents(events.data ?? [])) {
       for (let d = startOfDay(event.startAt).getTime(); d < event.endAt; d = addDays(d, 1).getTime()) {
         const key = toDateValue(d);
         const rooms = map.get(key) ?? new Map<number, boolean>();
