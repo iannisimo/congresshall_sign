@@ -27,10 +27,13 @@ become a smart-TV browser. **One person** does the admin work.
 - **SIGN-10** The logo in the header is the venue's own SVG, uploaded by the superadmin (the built-in logo
   otherwise).
 - **SIGN-11** When no event is planned, the sign shows a full-screen carousel of images and videos (no
-  header; the room strip stays visible). The superadmin or the media account uploads them, orders them by
-  drag and drop, switches them on and off, and sets how long images stay up and how items fit the screen
-  (fit, stretch, zoom), globally or per item. At night, a setting replaces the carousel with a dim clock.
-  `/carousel` shows the carousel whatever the events and the hour, to preview it.
+  header; the room strip stays visible). The superadmin or the media account uploads them to a library
+  and builds **presets** from it: named selections with their own order, on/off switches and fit
+  (fit, stretch, zoom) per item, and optionally their own image duration and fit. A screen picks its
+  preset with `?preset=<name>` in its URL (`/?preset=bar`); without it, or with an unknown name, it
+  shows the default preset. The global duration and fit apply wherever a preset has none. At night, a
+  setting replaces the carousel with a dim clock. `/carousel` shows the carousel whatever the events and
+  the hour, to preview it (`/carousel?preset=bar` for a preset).
 - **SIGN-13** `/big` is the sign without the "Coming up" list: the featured day's events (today's, or
   those of the next day with events) take the whole screen.
 - **SIGN-9** Dark colours at night (20:00–07:00 by default). The superadmin can change the hours or force
@@ -39,7 +42,8 @@ become a smart-TV browser. **One person** does the admin work.
   cards and their list of rooms, and the title and "organizer · rooms" line in the "Coming up" list. It waits at its start, then
   scrolls until it starts again. The superadmin sets the speed and the pause. A page of cards stays up
   until its texts have scrolled through.
-- **SIGN-12** With one or two events on the featured day (the usual case), their cards grow to fill the
+- **SIGN-12** With one or two events on the featured day (the usual case; room bookings are what is
+  counted, so a congress with a morning and an afternoon booking makes two cards), their cards grow to fill the
   space, with a large logo. Titles and subtitles wrap onto a few lines, shrink when they don't fit, and
   only past a minimum size scroll upwards, at a separate, slower speed set by the superadmin (same pause
   as SIGN-8).
@@ -59,9 +63,9 @@ become a smart-TV browser. **One person** does the admin work.
 
 - **ROOM-1** Room status (free, occupied, reserved) is calculated from the events, the manual overrides
   and the current time, by the same code on the server and in the browser.
-- **ROOM-2** Event lifecycle for each room: reserved from the start of preparation, occupied from start
+- **ROOM-2** Lifecycle of each room booking: reserved from the start of preparation, occupied from start
   to end, reserved during clean-up, then free again on its own. The preparation start and the clean-up
-  time are set on each event.
+  time are set on each booking.
 - **ROOM-3** Sub-rooms show as reserved, with their own message, while an event is running in one of
   their parent rooms.
 - **ROOM-4** Manual overrides: the admin can force a room's status, with an optional message, until the
@@ -73,26 +77,45 @@ become a smart-TV browser. **One person** does the admin work.
 
 - **ADMIN-1** Separate admin area at `/admin`, usable on desktop, tablet and phone.
 - **ADMIN-2** Weekly programme (Monday to Sunday): for each day, a timeline of the rooms showing
-  preparation, event and clean-up, and the list of that day's events. A month calendar (*Calendario*)
+  preparation, bookings and clean-up, and the list of the events that have that day, one row per event
+  ("giorno 2 di 3" for multi-day ones) with a line per room booking of the day. A month calendar (*Calendario*)
   shows a coloured dot for each main room booked on each day, with a legend; clicking a day opens its week.
-- **ADMIN-3** Event form with defaults for the two usual set-ups: the room is reserved from the preparation
+- **ADMIN-3** Each room booking has defaults for the two usual set-ups: the room is reserved from the preparation
   time (14:00, set by the superadmin) of the day before until the next clean-up time (also 14:00) after the
   end, or there is no preparation and clean-up at all. Clean-up is the same day only when the event ends at
   least a set number of hours (1 by default) before the clean-up time; otherwise it moves to the next day. Custom times are still possible. With the first set-up, the days of a
-  congress keep the room reserved in between.
+  congress keep the room reserved in between (the bookings of consecutive days overlap their margins).
 - **ADMIN-4** Live preview of how the event will look on the sign.
 - **ADMIN-5** Keyboard shortcuts in date fields: `o` for today (*oggi*), `d` for tomorrow (*domani*).
 - **ADMIN-6** Times are checked (preparation ≤ start < end ≤ free again) in both the browser and the
   server.
-- **ADMIN-7** Warning when two events run in the same room at the same time. Saving anyway needs
+- **ADMIN-7** Warning when two bookings of different events run in the same room at the same time
+  (the conflict list says the day, and selects its tab). Two bookings of the same event can't. Saving anyway needs
   confirmation. Overlapping preparation and clean-up are normal and don't warn.
-- **ADMIN-8** Multi-day congresses: create the same event on several days at once, and clone existing
-  events.
+- **ADMIN-8** An event is one thing with a start and an end date. Each of its days lists the **room
+  bookings** of that day (rooms, preparation, start, end, clean-up, breaks, an optional internal label such
+  as "Plenaria"): several per day, in different rooms and times, or none (an excursion day). The editor has
+  one tab per day (`?day=` in the URL, so the programme opens the right one); changing *Dal* shifts the
+  whole event, changing *Al* adds days (copies of the previous one) or removes them from the end; days can
+  be copied from the previous one or to all the following. Existing events can be cloned (all days shift
+  with the start date).
 - **ADMIN-9** Events are edited in place and keep their identity.
 - **ADMIN-12** Breaks inside an event (presets: Break, Coffee break, Lunch break, or any name). While the
   event is live, its card on the sign shows the break under way, or else the next one.
-- **ADMIN-13** Staff notes on each event, one for the reception and one for housekeeping. They are never
-  shown on the sign or sent to it.
+- **ADMIN-13** Staff notes at two levels: *Reception (tutto l’evento)* on the event, and on each day
+  *Reception (questo giorno)* and *Housekeeping e preparazione sala* (which also covers how the room is set
+  up). On days after the first, an empty note means "same as the previous day": the field shows that as
+  its placeholder and hint, and the prints show the inherited text. To say "nothing today" after a day with
+  notes, write `—`. Notes are never shown on the sign or sent to it.
+- **ADMIN-14** *Eventi* tab: every event ending today or later, grouped by month, with logo, organizer,
+  title, dates and number of days, rooms used, and *In corso* / *Bozza* badges. Filter by organizer or
+  title, hide drafts; edit (opens today's tab if the event is live), clone, print, delete.
+- **ADMIN-15** Prints (`printSheet`, like the day sheet). *Stampa ristorante (14 gg)*: the next 14 days
+  (today included), per event, one line per day with bookings showing hours and breaks, no rooms and no
+  notes; drafts are included and framed "DA CONFERMARE"; it ignores the list's filters. *Stampa dettagli*:
+  one event per page with dates, reception notes and, per day, the bookings (rooms, preparation, hours,
+  clean-up, breaks) and the resolved day notes; from the list it prints the events shown (after the
+  filters) or, with a row's button, that event; the editor's *Stampa* prints the saved event.
 - **ADMIN-10** Logo library for each organizer: upload (file, drag and drop, paste), preview and
   delete. Before uploading, a dialog picks the square to keep (drag, zoom; the logo's edges snap to the
   centre and the sides of the frame); what the frame shows is exactly the logo on the cards, where every
@@ -104,7 +127,7 @@ become a smart-TV browser. **One person** does the admin work.
 ### Accounts
 
 - **AUTH-1** Three predefined accounts: `admin` (events, organizers, logos, overrides), `media` (only the
-  carousel: its images and videos, and its settings) and `superadmin` (everything, plus rooms and
+  carousel: its library, presets and settings) and `superadmin` (everything, plus rooms and
   settings). There is no sign-up.
 - **AUTH-2** Passwords are set and changed from the command line. Changing a password logs that account
   out everywhere.
@@ -141,6 +164,14 @@ npm run typecheck
 npm run build       # web app into dist/web; `npm start` then serves everything on :3000
 ```
 
+Delete every event (organizers, logos, rooms and media stay), for example after trying things out. Without
+`--yes` it only says how many would go; take a `backup` first:
+
+```sh
+npm run cli -- delete-events          # how many events would be deleted
+npm run cli -- delete-events --yes
+```
+
 Code layout: `src/shared` (status logic, schemas, types used by both sides), `src/server` (API, SQLite,
 CLI), `src/web/sign` (the sign), `src/web/admin` (the admin area).
 
@@ -175,7 +206,8 @@ docker compose exec app node src/server/cli.ts backup /data/backup-$(date +%F).d
 ```
 
 **Data from the old version:** export the old MongoDB collections, then import them into a new, empty
-database. Preparation times are kept, and clean-up is set to 30 minutes.
+database. Preparation times are kept, and clean-up is set to 30 minutes. Each old event becomes a
+one-day event with one booking.
 
 ```sh
 # On the old deployment

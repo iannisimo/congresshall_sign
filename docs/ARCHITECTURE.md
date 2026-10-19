@@ -38,18 +38,29 @@ server's time zone (`TZ`, `Europe/Rome` in the container).
 - **room_parents**: `room_id`, `parent_id`. Links a sub-room to the main rooms it belongs to.
 - **organizers**: `id`, `name` (unique, case-insensitive).
 - **logos**: `id`, `organizer_id`, `mime`, `data` (normalized PNG), `width`, `height`, `created_at`.
-- **events**: `id`, `organizer_id`, `logo_id?`, `title`, `subtitle?`, `prep_at`, `start_at`, `end_at`,
-  `release_at`, `visible`, `reception_notes?`, `housekeeping_notes?`, `created_at`, `updated_at`.
-  The notes are for the venue staff: `/api/display` leaves them out (`INTERNAL_EVENT_FIELDS`).
-  Rule: `prep_at ≤ start_at < end_at ≤ release_at`.
-- **event_rooms**: `event_id`, `room_id`, `position`.
-- **event_breaks**: `event_id`, `label`, `start_at`, `end_at`. Pauses inside `[start_at, end_at)`, not
-  overlapping; the room stays occupied during them.
+- **events**: `id`, `organizer_id`, `logo_id?`, `title`, `subtitle?`, `visible`, `reception_notes?`
+  (whole event), `start_date`, `end_date` (`'YYYY-MM-DD'`, local), `created_at`, `updated_at`.
+- **event_days**: `id`, `event_id` (cascade), `date`, `reception_notes?`, `housekeeping_notes?`,
+  unique `(event_id, date)`. One row per date from `start_date` to `end_date`, no gaps; a day may have no
+  bookings. A `NULL` note on a day after the first means "same as the previous day"; `—` means nothing.
+- **event_bookings**: `id`, `day_id` (cascade), `label?` (internal), `prep_at`, `start_at`, `end_at`,
+  `release_at`. Rule: `prep_at ≤ start_at < end_at ≤ release_at`, `start_at` on the day's date.
+- **event_booking_rooms**: `booking_id` (cascade), `room_id`, `position`.
+- **event_booking_breaks**: `booking_id` (cascade), `label`, `start_at`, `end_at`. Pauses inside
+  `[start_at, end_at)`, not overlapping; the room stays occupied during them.
+
+  Saving an event replaces all its days and bookings in one transaction: the event id is stable (ADMIN-9),
+  booking ids are not. The notes and labels are for the venue staff: the sign gets `SignEvent`s, one per
+  booking, built by `flattenEvents` (`src/shared/events.ts`), which don't carry them.
 - **overrides**: `room_id` (one per room), `status`, `message?`, `created_at`, `expires_at?`,
   `until_next_change`.
-- **media**: `id`, `kind` (`image` | `video`), `name`, `mime`, `file`, `size`, `sort_order`, `enabled`, `fit`
-  (`contain` | `fill` | `cover`, or null for the global `carouselFit` setting). The files are in
-  `DATA_DIR/media` under random names and never change, so they are cached forever.
+- **media**: the library. `id`, `kind` (`image` | `video`), `name`, `mime`, `file`, `size`, upload date.
+  The files are in `DATA_DIR/media` under random names and never change, so they are cached forever.
+- **media_presets**: `id`, `name` (URL slug, `^[a-z0-9-]{1,40}$`, unique), `label`, `sort_order`,
+  `image_seconds?` and `fit?` (null = the global `carouselImageSeconds` / `carouselFit`), `is_default`
+  (exactly one row, enforced by a partial unique index).
+- **media_preset_items**: `preset_id`, `media_id` (both cascade), `position`, `enabled`, `fit?` (null = the
+  preset's fit). Primary key `(preset_id, media_id)`.
 - **id_sequences**: `name` (`logos` | `media`), `next`. Logos and media are cached forever under their id,
   so a deleted id must never be given out again (SQLite would reuse the highest one): inserts take `next`,
   and triggers keep it ahead of every id used.
@@ -60,12 +71,16 @@ server's time zone (`TZ`, `Europe/Rome` in the container).
 - **users**: `username` (`admin` | `superadmin` | `media`), `password_hash?`, `password_changed_at`.
 - **sessions**: `token_hash`, `username`, `created_at`, `expires_at`.
 
-Migrations are a list of SQL scripts applied in order, tracked with `PRAGMA user_version`.
+Migrations are a list of SQL scripts applied in order, tracked with `PRAGMA user_version`. Migration 9
+moves the carousel's order, switches and fit from `media` to the default preset (nothing is lost).
+Migration 10 introduces days and bookings and **drops the existing events** instead of converting them
+(decision 17); organizers, logos and rooms stay.
 
 ## Room status (ROOM-1 … ROOM-4)
 
 One pure function, `computeRoomStatuses(rooms, events, overrides, now)` in `src/shared/status.ts`, used
-by the sign, the admin area and the tests.
+by the sign, the admin area and the tests. It works on `SignEvent[]`, i.e. on room **bookings** with their
+event's public fields (`eventId`, `date`); "event" below means such a booking.
 
 For each room, with only **visible** events taken into account:
 
@@ -97,14 +112,20 @@ statuses at the right times while offline (SYNC-3), and the server needs no time
 { "version": "build id", "settings": {...}, "venueLogo": "version or null", "rooms": [...], "events": [...], "overrides": [...] }
 ```
 
-- Events: visible events overlapping `[start of today, start of today + 8 days)`. The body therefore only
-  changes when data changes or the day changes.
+- Events: the bookings of visible events overlapping `[start of today, start of today + 8 days)`,
+  flattened (`SignEvent[]`, one per booking). The body therefore only changes when data changes or the day
+  changes.
+- `?preset=<name>` selects the carousel: `media` holds the enabled items of that preset (or of the default
+  one when the name is missing or unknown), and `mediaPreset` (`name`, `isDefault`, `imageSeconds`, `fit`)
+  its settings with the overrides already resolved against the global ones. The ETag follows the body, so
+  it differs by preset.
 - The response has a strong `ETag` (hash of the body). The sign sends `If-None-Match` and gets
   `304 Not Modified` when nothing changed.
 - The sign polls every 60 s, and immediately when the browser comes back online.
 - The `Date` header of every response (200 or 304) gives the server time, which the sign uses to correct
   its clock (SIGN-7).
-- The last snapshot, its ETag and when it was received are stored in `localStorage`. On start, the sign
+- The last snapshot, its ETag and when it was received are stored in `localStorage`, under keys suffixed
+  with the preset (`…:bar`; none for the default, so existing screens keep theirs). On start, the sign
   draws from the snapshot first, then polls.
 - If `version` differs from the version built into the page, the sign updates its service worker and
   reloads (SIGN-6). A guard stops reload loops.
@@ -116,16 +137,16 @@ All under `/api`, JSON unless stated otherwise. 🔓 public · 🔑 admin or sup
 | Method & path | | Purpose |
 |---|---|---|
 | `GET /health` | 🔓 | Liveness check |
-| `GET /display` | 🔓 | Sign snapshot (see above) |
+| `GET /display` | 🔓 | Sign snapshot (see above); `?preset=` picks the carousel |
 | `GET /logos/:id` | 🔓 | Logo image, cached forever (logos never change) |
 | `POST /auth/login` | 🔓 | `{username, password}`, sets the session cookie |
 | `POST /auth/logout` | 👤 | Ends the session |
 | `GET /auth/me` | 👤 | `{username, role}` |
-| `GET /events?from=&to=` | 🔑 | All events, hidden ones included, overlapping the range |
-| `GET /events/:id` | 🔑 | One event |
-| `POST /events` | 🔑 | `{events: EventInput[], allowConflicts?}`. Creates one or more events in one transaction (ADMIN-8) |
-| `PUT /events/:id` | 🔑 | `{event: EventInput, allowConflicts?}`. Edits in place (ADMIN-9) |
-| `DELETE /events/:id` | 🔑 | |
+| `GET /events?from=&to=` | 🔑 | Whole events, hidden ones included, for which a booking holds a room in `[from, to)` or a day's date falls in it; `to` is optional. Ordered by start date, first start, id |
+| `GET /events/:id` | 🔑 | One event with its days and bookings |
+| `POST /events` | 🔑 | `{event: EventInput, allowConflicts?}`. Creates one (multi-day) event (ADMIN-8) |
+| `PUT /events/:id` | 🔑 | `{event: EventInput, allowConflicts?}`. Edits in place, replacing days and bookings (ADMIN-9) |
+| `DELETE /events/:id` | 🔑 | With all its days |
 | `GET /organizers` | 🔑 | Organizers with their logo ids and event counts |
 | `POST /organizers` | 🔑 | `{name}` |
 | `PATCH /organizers/:id` | 🔑 | `{name}`. Rename |
@@ -140,20 +161,27 @@ All under `/api`, JSON unless stated otherwise. 🔓 public · 🔑 admin or sup
 | `DELETE /rooms/:id/override` | 🔑 | Back to the calculated status |
 | `GET /venue-logo` | 🔓 | The uploaded venue logo (SVG, strict CSP); `?v=` versions are cached forever |
 | `PUT /venue-logo`, `DELETE /venue-logo` | 👑 | Upload an SVG (multipart `file`, max 1 MB, no scripts), or go back to the built-in logo |
-| `GET /media` | 🖼️ | Carousel items, in order |
+| `GET /media` | 🖼️ | The library, newest first |
 | `GET /media/:id` | 🔓 | The file, with Range support (video playback) |
-| `POST /media` | 🖼️ | Raw file as the body, `Content-Type` and `X-File-Name`; streamed to disk. Images (max 30 MB) shrunk to Full HD; MP4/WebM videos (max 500 MB) kept as they are |
-| `PATCH /media/:id` | 🖼️ | `{enabled?, fit?}` |
-| `PUT /media/order`, `DELETE /media/:id` | 🖼️ | Reorder, delete |
+| `POST /media` | 🖼️ | Raw file as the body, `Content-Type` and `X-File-Name`; streamed to disk. Images (max 30 MB) shrunk to Full HD; MP4/WebM videos (max 500 MB) kept as they are. `X-Preset-Id` adds it, enabled and last, to that preset; otherwise to the default one |
+| `DELETE /media/:id` | 🖼️ | Deletes the file; it leaves every preset |
+| `GET /media-presets` | 🖼️ | Presets with their items, default first, then by `sort_order` |
+| `POST /media-presets` | 🖼️ | `{name, label, copyFrom?}`. Empty, or a copy of another preset's items |
+| `PATCH /media-presets/:id` | 🖼️ | `{name?, label?, imageSeconds?, fit?}`; the default's name can't change (409) |
+| `PUT /media-presets/:id/items` | 🖼️ | `{items: {mediaId, enabled, fit}[]}`: the whole ordered list (add, remove, reorder, switch in one call) |
+| `PUT /media-presets/:id/default` | 🖼️ | Makes it the default preset |
+| `DELETE /media-presets/:id` | 🖼️ | 409 for the default one |
 | `GET /settings` | 👤 | Sign settings (the admin preview uses them too) |
 | `PUT /settings` | 👑 | Every key of `Settings` (`src/shared/model.ts`) |
 | `PUT /settings/carousel` | 🖼️ | `{carouselImageSeconds, carouselFit}` only |
 
-Saving events checks for **conflicts**: another event running in the same room at the same time
-(overlapping `[start_at, end_at)`). Preparation and clean-up don't count: the default ones span about a
+Saving events checks for **conflicts**: a booking running in the same room at the same time as a booking of
+*another* event (overlapping `[start_at, end_at)`, drafts included; `findConflicts` skips the candidate's own
+`eventId`). Bookings of the same event can't share a room at overlapping times: the shared schema rejects
+that, together with gaps or repeated days, a booking off its day and an event without bookings. Preparation and clean-up don't count: the default ones span about a
 day and routinely overlap neighbouring events, and the status rules already resolve that (occupied beats
-reserved). The server answers 409 with the list of conflicts unless
-`allowConflicts` is true (ADMIN-7). The admin area runs the same shared check while the form is edited.
+reserved). The server answers 409 with `conflicts: {date, bookingIndex, conflicts}[]` (the `Conflict`s of
+each booking) unless `allowConflicts` is true (ADMIN-7). The admin area runs the same shared check while the form is edited.
 
 ## Auth (AUTH-1 … AUTH-3)
 
@@ -171,7 +199,19 @@ reserved). The server answers 409 with the list of conflicts unless
 
 - `/`: the sign. Lightweight bundle. The admin code is split into its own lazily loaded chunk.
 - `/admin/*`: the admin area. The programme page shows a week, one day under the other (timeline and
-  event list per day), and scrolls to the selected day (`?d=`), so the editor returns where it started. Italian wording, like the old app. It uses TanStack Query against the API.
+  event list per day, one row per event with a line per booking), and scrolls to the selected day (`?d=`),
+  so the editor returns where it started. Italian wording, like the old app. It uses TanStack Query against
+  the API. `useEvents` returns whole `ScheduledEvent`s; the timeline, calendar and status work on
+  `flattenEvents(...)`.
+- Editor: `/admin/events/:id?day=YYYY-MM-DD&d=…`, one tab per day (`EventEditor.tsx`, `DayTab.tsx`,
+  `BookingFields.tsx`); `day` selects the tab (default: today's if the event runs today, else the first),
+  `d` is where "back" returns. Zod issue paths (`days.2.bookings.0.roomIds`) mark the tab and booking.
+  `/admin/events/:id/clone` copies all days; changing the start date shifts them (`shiftEvent`).
+- Events list (`/admin/events`, `EventList.tsx`) and prints: `printSheet` (`DayPrint.tsx`) renders a sheet
+  and calls `window.print()`; `RestaurantPrint.tsx` (rows built by the pure `restaurantRows.ts`) and
+  `EventsPrint.tsx` use it. Day notes are always resolved with `effectiveDayNotes`.
+- Media page: a preset bar (the selected preset is in `?preset=`), the preset's settings and sign URL, its
+  items (drag to reorder) and the library items not in it.
 - The sign's sizes are in `rem`, with the root font size tied to the viewport height, so a 16:9 screen
   of any resolution looks the same (SIGN-3).
 - Dark mode (SIGN-9): `html.sign-dark` redefines the colour variables the Tailwind utilities read
@@ -181,8 +221,9 @@ reserved). The server answers 409 with the list of conflicts unless
 - The sign's wording lives in one file, `src/web/sign/strings.ts` (SIGN-4).
 - What goes where on the sign is a pure function, `buildSignView` in `src/web/sign/schedule.ts`: big cards
   for today's running and upcoming events (or the next day with events), and a compact list of the
-  following 3 days. Cards rotate in pages when they don't fit. With one or two events on that day,
-  `HeroCard` (`EventCard.tsx`) takes the place of the cards and fills the column (SIGN-12).
+  following 3 days, where the bookings of one event on one day are merged into one line (earliest start,
+  rooms in display order). Cards rotate in pages when they don't fit. With one or two bookings on that
+  day (`HERO_MAX = 2` counts bookings, not events), `HeroCard` (`EventCard.tsx`) takes the place of the cards and fills the column (SIGN-12).
 - Long texts scroll with `Marquee` (`src/web/sign/Marquee.tsx`, SIGN-8), built on the Web Animations API:
   a pause at the start, then the text moves left until a copy of it takes its place, so the loop has no
   jump. The speed is in pixels per second on a 1080p sign and scales with the rem, so it looks the same on
@@ -191,8 +232,9 @@ reserved). The server answers 409 with the list of conflicts unless
   `FitText` (same file) is the multi-line version used by `HeroCard`: the text wraps within a set number
   of lines at the largest size, shrinks in steps down to a minimum, and past that scrolls upwards the same
   way, at its own speed (`marqueeVerticalSpeed`).
-- Carousel (SIGN-11): `Carousel` in `src/web/sign/Carousel.tsx`. The sign downloads every item in the
-  background so the service worker caches it whole; videos then play from the cache with range requests,
+- Carousel (SIGN-11): `Carousel` in `src/web/sign/Carousel.tsx`, using the duration and fit of
+  `snapshot.mediaPreset`; `/carousel` names the preset in its "no media" message when it isn't the default.
+  The sign downloads every item of its preset in the background so the service worker caches it whole; videos then play from the cache with range requests,
   offline included.
 - Service worker updates: the sign installs a new version as soon as it's ready. The admin area shows an
   "Aggiorna" banner instead, so a half-filled form is never lost.
@@ -234,6 +276,27 @@ These are assumptions. Each one is easy to change.
     the sign's snapshot.
 12. **Sessions** are stored server-side (revocable) rather than as JWTs.
 
+Multi-day events and media presets:
+
+13. **Event, day, booking.** An event has consecutive days (a day may be empty); a day has room bookings
+    (several, in different rooms and times); breaks belong to a booking. Booking ids change at every save.
+14. **Notes.** Housekeeping (including room preparation) and reception per day, plus reception for the
+    whole event; no event-level housekeeping and no separate set-up note. On days after the first, a
+    `NULL` note means "same as the previous day" (resolved recursively by `effectiveDayNotes`); `—` means
+    nothing. The prints show the inherited text.
+15. **Sign.** One featured card per booking (a morning and an afternoon booking of one congress make two
+    cards with the same title; hero mode counts bookings); the coming-up list merges bookings per event
+    and day.
+16. **Prints.** The restaurant print covers today plus 13 days, ignores the list filters, includes drafts
+    marked "DA CONFERMARE" and merges breaks per day; the day sheet still leaves drafts out. The detailed
+    print takes the events shown in the list (filtered), one row's event, or the editor's saved event
+    (unsaved changes aren't printed).
+17. **No legacy data.** The app hadn't been used in production, so migration 10 drops the events, and
+    `delete-events` empties them from the command line.
+18. **Media presets.** Each preset has its own order, switches and fit per item, plus optional image
+    duration and fit. An unknown `?preset=` silently falls back to the default; the admin page shows each
+    preset's URL. The default preset can't be deleted and its name can't change.
+
 ## Command line
 
 `node src/server/cli.ts <command>` (or `npm run cli -- <command>` in development):
@@ -241,4 +304,6 @@ These are assumptions. Each one is easy to change.
 - `passwd <admin|superadmin>`: set a password; logs that user out everywhere.
 - `backup <file>`: consistent copy of the database (`VACUUM INTO`), also while the server runs.
 - `import-mongo <dir>`: import `rooms.json`, `events.json`, `logos.json` from the old app into an empty
-  database.
+  database (each event becomes a one-day event with one booking).
+- `delete-events [--yes]`: delete every event with its days, bookings and breaks in one transaction;
+  organizers, logos, rooms, media and settings stay. Without `--yes` it only counts. Run `backup` first.

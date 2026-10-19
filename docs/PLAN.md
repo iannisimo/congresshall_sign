@@ -145,6 +145,16 @@ Progress tracker for the rewrite. Requirement IDs refer to the README; design is
 - [x] Logo and media ids are never reused, so cached images can't show the wrong logo
 - [x] Separate, slower speed for text scrolling upwards (SIGN-12)
 
+## Changes after the eleventh review
+- [x] Multi-day events: an event has days, a day has room bookings; shared model, schemas, helpers and
+      migration 10 (existing events dropped); `delete-events` command (ADMIN-8)
+- [x] Event editor with a tab per day, per-booking times and breaks; clone shifts all days
+- [x] Programme, calendar, timeline and day sheet on events with days and bookings (ADMIN-2)
+- [x] Notes per event and per day, "same as previous day" (ADMIN-13)
+- [x] Sign: coming-up line merged per event and day (SIGN-12)
+- [x] Events list tab (ADMIN-14); restaurant print for 14 days and detailed print (ADMIN-15)
+- [x] Media presets chosen with `?preset=` (SIGN-11, migration 9)
+
 ## Log
 - 2026-10-17: requirements agreed, plan written; shared core, server, sign, admin, offline support,
   container setup, import and docs done; old code removed.
@@ -153,3 +163,4 @@ Progress tracker for the rewrite. Requirement IDs refer to the README; design is
 - 2026-10-18: big cards for one or two events; month calendar; separate prep and clean-up times with a
   same-day gap; logo crop dialog; ids never reused; vertical scroll speed.
 - 2026-10-18: scheduling focus begins: reception and housekeeping notes on events, kept off the sign.
+- 2026-10-19: multi-day events with day tabs, events list, restaurant and detailed prints, media presets.
