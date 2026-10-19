@@ -42,6 +42,26 @@ export function buildSignView(events: SignEvent[], now: number): SignView {
   return {
     featuredDay,
     featured,
-    comingUp: [...groups].map(([day, list]) => ({ day, events: list })),
+    comingUp: [...groups].map(([day, list]) => ({ day, events: mergeByEvent(list) })),
   };
+}
+
+/** One line per event: its bookings of the day become one, starting at the earliest, rooms deduplicated. */
+function mergeByEvent(bookings: SignEvent[]): SignEvent[] {
+  const merged = new Map<number, SignEvent>();
+  for (const b of bookings) {
+    const seen = merged.get(b.eventId);
+    merged.set(
+      b.eventId,
+      seen
+        ? {
+            ...seen,
+            roomIds: [...new Set([...seen.roomIds, ...b.roomIds])],
+            endAt: Math.max(seen.endAt, b.endAt),
+            releaseAt: Math.max(seen.releaseAt, b.releaseAt),
+          }
+        : b,
+    );
+  }
+  return [...merged.values()];
 }
