@@ -32,21 +32,11 @@ export const bookingInputSchema = z
   .object({
     label: optionalText(80).default(null),
     roomIds: z.array(id).min(1, { error: 'Scegli almeno una sala' }).max(50).refine(unique, { error: 'Sala ripetuta' }),
-    prepAt: time,
     startAt: time,
     endAt: time,
-    releaseAt: time,
     breaks: z.array(breakInput).max(20).default([]),
   })
-  .refine((e) => e.prepAt <= e.startAt, {
-    path: ['prepAt'],
-    error: "La preparazione non può iniziare dopo l'inizio dell'evento",
-  })
   .refine((e) => e.startAt < e.endAt, { path: ['endAt'], error: "La fine deve essere dopo l'inizio" })
-  .refine((e) => e.endAt <= e.releaseAt, {
-    path: ['releaseAt'],
-    error: "La sala non può liberarsi prima della fine dell'evento",
-  })
   .refine((e) => e.breaks.every((b) => b.startAt >= e.startAt && b.endAt <= e.endAt), {
     path: ['breaks'],
     error: "Le pause devono stare dentro l'orario dell'evento",
@@ -75,6 +65,9 @@ export const eventInputSchema = z
     subtitle: optionalText(300),
     visible: z.boolean(),
     receptionNotes: optionalText(4000).default(null),
+    /** All the event's rooms are reserved from prepAt to releaseAt. */
+    prepAt: time,
+    releaseAt: time,
     days: z.array(dayInputSchema).min(1, { error: 'Aggiungi almeno un giorno' }).max(60, { error: 'Massimo 60 giorni' }),
   })
   .superRefine((event, ctx) => {
@@ -103,6 +96,16 @@ export const eventInputSchema = z
         }
       }),
     );
+
+    // The reservation covers every booking.
+    const starts = event.days.flatMap((day) => day.bookings.map((b) => b.startAt));
+    const ends = event.days.flatMap((day) => day.bookings.map((b) => b.endAt));
+    if (starts.length > 0 && event.prepAt > Math.min(...starts)) {
+      ctx.addIssue({ code: 'custom', path: ['prepAt'], message: 'La preparazione non può iniziare dopo la prima occupazione' });
+    }
+    if (ends.length > 0 && event.releaseAt < Math.max(...ends)) {
+      ctx.addIssue({ code: 'custom', path: ['releaseAt'], message: 'Le sale non possono liberarsi prima della fine dell’ultima occupazione' });
+    }
 
     // Two bookings of the same event never hold the same room at the same time.
     const all = event.days.flatMap((day, i) => day.bookings.map((booking, j) => ({ booking, i, j })));

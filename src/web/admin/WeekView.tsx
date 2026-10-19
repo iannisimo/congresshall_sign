@@ -3,7 +3,7 @@ import { addDays, isSameDay, isSameWeek, isToday, startOfDay, startOfWeek } from
 import { ChevronLeft, ChevronRight, Copy, Eye, EyeOff, MapPin, Pencil, Plus, Printer, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import type { EventBooking, Room, ScheduledEvent } from '../../shared/model.ts';
+import type { Room, ScheduledEvent } from '../../shared/model.ts';
 import { eventToInput, flattenEvents } from '../../shared/events.ts';
 import { formatAdminDay, formatAdminShortDay, formatAdminTime, formatAdminWeek } from '../lib/format.ts';
 import { Logo } from '../sign/parts.tsx';
@@ -14,11 +14,11 @@ import { RoomStatusPanel } from './RoomStatusPanel.tsx';
 import { Timeline } from './Timeline.tsx';
 import { Badge, Button, buttonClass, Card, ErrorNote, inputClass, PageLoading, useFeedback } from './ui.tsx';
 
-/** When the room is held around the booking, with the day when it isn't the booking's. */
-function heldText(b: EventBooking): string {
-  if (b.prepAt === b.startAt && b.releaseAt === b.endAt) return 'nessuna preparazione né riordino';
-  const at = (t: number) => (isSameDay(t, b.startAt) ? formatAdminTime(t) : `${formatAdminTime(t)} di ${formatAdminShortDay(t)}`);
-  return `sala riservata dalle ${at(b.prepAt)} alle ${at(b.releaseAt)}`;
+/** When the event's rooms are held: from preparation to release, with the day when it isn't the viewed one. */
+function heldText(event: ScheduledEvent, date: string): string {
+  const day = fromDateValue(date) ?? event.prepAt;
+  const at = (t: number) => (isSameDay(t, day) ? formatAdminTime(t) : `${formatAdminTime(t)} di ${formatAdminShortDay(t)}`);
+  return `sale riservate dalle ${at(event.prepAt)} alle ${at(event.releaseAt)}`;
 }
 
 /** One event on one of its days: its bookings of that day, one line each. */
@@ -72,13 +72,13 @@ function EventRow({ event, rooms, date }: { event: ScheduledEvent; rooms: Map<nu
           {event.subtitle && <div className="truncate text-sm text-slate-500">{event.subtitle}</div>}
           <div className="mt-1 space-y-0.5 text-sm text-slate-600">
             {bookings.length === 0 && <div className="text-slate-500">Nessuna sala questo giorno</div>}
+            {bookings.length > 0 && <div className="text-xs text-slate-500 tabular-nums">{heldText(event, date)}</div>}
             {bookings.map((b) => (
               <div key={b.id} className="flex flex-wrap gap-x-4 gap-y-0.5">
                 {b.label && <span className="font-medium text-slate-700">{b.label}</span>}
                 <span className="font-medium tabular-nums">
                   {formatAdminTime(b.startAt)}–{formatAdminTime(b.endAt)}
                 </span>
-                <span className="text-slate-500 tabular-nums">{heldText(b)}</span>
                 <span className="flex items-center gap-1">
                   <MapPin className="size-3.5 text-slate-400" />
                   {b.roomIds.map((id) => rooms.get(id)?.name ?? '?').join(', ')}

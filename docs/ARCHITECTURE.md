@@ -39,19 +39,22 @@ server's time zone (`TZ`, `Europe/Rome` in the container).
 - **organizers**: `id`, `name` (unique, case-insensitive).
 - **logos**: `id`, `organizer_id`, `mime`, `data` (normalized PNG), `width`, `height`, `created_at`.
 - **events**: `id`, `organizer_id`, `logo_id?`, `title`, `subtitle?`, `visible`, `reception_notes?`
-  (whole event), `start_date`, `end_date` (`'YYYY-MM-DD'`, local), `created_at`, `updated_at`.
+  (whole event), `start_date`, `end_date` (`'YYYY-MM-DD'`, local), `prep_at`, `release_at` (all the event's rooms are
+  reserved in `[prep_at, release_at)`, `prep_at ≤ release_at`), `created_at`, `updated_at`.
 - **event_days**: `id`, `event_id` (cascade), `date`, `reception_notes?`, `housekeeping_notes?`,
   unique `(event_id, date)`. One row per date from `start_date` to `end_date`, no gaps; a day may have no
   bookings. A `NULL` note on a day after the first means "same as the previous day"; `—` means nothing.
-- **event_bookings**: `id`, `day_id` (cascade), `label?` (internal), `prep_at`, `start_at`, `end_at`,
-  `release_at`. Rule: `prep_at ≤ start_at < end_at ≤ release_at`, `start_at` on the day's date.
+- **event_bookings**: `id`, `day_id` (cascade), `label?` (internal), `start_at`, `end_at`. Rules:
+  `start_at < end_at`, `start_at` on the day's date, and for the event `prep_at ≤` every `start_at`,
+  `release_at ≥` every `end_at` (checked by the schema).
 - **event_booking_rooms**: `booking_id` (cascade), `room_id`, `position`.
 - **event_booking_breaks**: `booking_id` (cascade), `label`, `start_at`, `end_at`. Pauses inside
   `[start_at, end_at)`, not overlapping; the room stays occupied during them.
 
   Saving an event replaces all its days and bookings in one transaction: the event id is stable (ADMIN-9),
   booking ids are not. The notes and labels are for the venue staff: the sign gets `SignEvent`s, one per
-  booking, built by `flattenEvents` (`src/shared/events.ts`), which don't carry them.
+  booking, built by `flattenEvents` (`src/shared/events.ts`), which don't carry them and give every booking
+  the event's `prep_at`/`release_at`.
 - **overrides**: `room_id` (one per room), `status`, `message?`, `created_at`, `expires_at?`,
   `until_next_change`.
 - **media**: the library. `id`, `kind` (`image` | `video`), `name`, `mime`, `file`, `size`, upload date.
@@ -85,7 +88,9 @@ event's public fields (`eventId`, `date`); "event" below means such a booking.
 For each room, with only **visible** events taken into account:
 
 1. **Own events** (the room is booked by the event):
-   - `prep_at ≤ now < start_at` → **reserved** (preparation)
+   - `prep_at ≤ now < start_at` → **reserved** (preparation; `prep_at` and `release_at` are the event's, so
+     a room used only on day 3 is reserved from the event's preparation, and one used only on day 1 stays
+     reserved until the event's release)
    - `start_at ≤ now < end_at` → **occupied**
    - `end_at ≤ now < release_at` → **reserved** (clean-up)
 2. **Parent events** (an event running in one of the room's parent rooms, `start_at ≤ now < end_at`) →
@@ -178,7 +183,7 @@ All under `/api`, JSON unless stated otherwise. 🔓 public · 🔑 admin or sup
 Saving events checks for **conflicts**: a booking running in the same room at the same time as a booking of
 *another* event (overlapping `[start_at, end_at)`, drafts included; `findConflicts` skips the candidate's own
 `eventId`). Bookings of the same event can't share a room at overlapping times: the shared schema rejects
-that, together with gaps or repeated days, a booking off its day and an event without bookings. Preparation and clean-up don't count: the default ones span about a
+that, together with gaps or repeated days, a booking off its day and an event without bookings. Preparation and clean-up don't count (they are the event's): the default ones span about a
 day and routinely overlap neighbouring events, and the status rules already resolve that (occupied beats
 reserved). The server answers 409 with `conflicts: {date, bookingIndex, conflicts}[]` (the `Conflict`s of
 each booking) unless `allowConflicts` is true (ADMIN-7). The admin area runs the same shared check while the form is edited.
@@ -250,7 +255,8 @@ These are assumptions. Each one is easy to change.
    from overrides, as in the old app.
 2. **Hidden events are drafts.** They don't appear on the sign and don't affect room status, as in the
    old app. They still count for conflict warnings in the admin area.
-3. **Preparation and clean-up** are stored as absolute times. The form offers the two usual congress
+3. **Preparation and clean-up** are per event, not per booking: every room the event uses is reserved for
+   the whole span, even on days it isn't booked. They are stored as absolute times. The form offers the two usual congress
    set-ups (from the preparation time of the day before to the next clean-up time after the end, see
    `changeoverMargins` in `src/shared/time.ts`; or none), plus custom times. Clean-up stays on the same day
    only if the event ends at least `cleanupMinGapHours` before the clean-up time. Both times and the gap
@@ -269,7 +275,7 @@ These are assumptions. Each one is easy to change.
 8. **No venue name on the sign:** the header shows the venue logo on the left and the clock on the right;
    a name would break the mostly-English wording.
 9. **Data from the old app** can be brought over with an import command that reads `mongoexport` files.
-   The old app had no clean-up time, so imported events get the default 30 minutes.
+   The old app had no clean-up time, so imported events get the default clean-up.
 10. **Rooms in an event follow the display order**, not the order they were clicked.
 11. **"Until next change" overrides** end when the calculated status changes cause (a different event or
     phase), not merely its look. Overrides that no longer apply are deleted by the server when it builds

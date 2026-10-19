@@ -63,9 +63,9 @@ become a smart-TV browser. **One person** does the admin work.
 
 - **ROOM-1** Room status (free, occupied, reserved) is calculated from the events, the manual overrides
   and the current time, by the same code on the server and in the browser.
-- **ROOM-2** Lifecycle of each room booking: reserved from the start of preparation, occupied from start
-  to end, reserved during clean-up, then free again on its own. The preparation start and the clean-up
-  time are set on each booking.
+- **ROOM-2** Lifecycle of the rooms of an event: every room it uses on any day is reserved from the start of
+  preparation, occupied during its own bookings, reserved otherwise (also between days), then free again
+  on its own after the clean-up. The preparation start and the clean-up time are set once per event.
 - **ROOM-3** Sub-rooms show as reserved, with their own message, while an event is running in one of
   their parent rooms.
 - **ROOM-4** Manual overrides: the admin can force a room's status, with an optional message, until the
@@ -80,20 +80,20 @@ become a smart-TV browser. **One person** does the admin work.
   preparation, bookings and clean-up, and the list of the events that have that day, one row per event
   ("giorno 2 di 3" for multi-day ones) with a line per room booking of the day. A month calendar (*Calendario*)
   shows a coloured dot for each main room booked on each day, with a legend; clicking a day opens its week.
-- **ADMIN-3** Each room booking has defaults for the two usual set-ups: the room is reserved from the preparation
+- **ADMIN-3** The event has defaults for the two usual set-ups: all its rooms are reserved from the preparation
   time (14:00, set by the superadmin) of the day before until the next clean-up time (also 14:00) after the
   end, or there is no preparation and clean-up at all. Clean-up is the same day only when the event ends at
-  least a set number of hours (1 by default) before the clean-up time; otherwise it moves to the next day. Custom times are still possible. With the first set-up, the days of a
-  congress keep the room reserved in between (the bookings of consecutive days overlap their margins).
+  least a set number of hours (1 by default) before the clean-up time; otherwise it moves to the next day. Custom times are still possible. The span is computed from the
+  earliest start and the latest end of the event's bookings, so the rooms stay reserved in between days.
 - **ADMIN-4** Live preview of how the event will look on the sign.
 - **ADMIN-5** Keyboard shortcuts in date fields: `o` for today (*oggi*), `d` for tomorrow (*domani*).
-- **ADMIN-6** Times are checked (preparation ≤ start < end ≤ free again) in both the browser and the
+- **ADMIN-6** Times are checked (preparation ≤ every start < end ≤ free again) in both the browser and the
   server.
 - **ADMIN-7** Warning when two bookings of different events run in the same room at the same time
   (the conflict list says the day, and selects its tab). Two bookings of the same event can't. Saving anyway needs
   confirmation. Overlapping preparation and clean-up are normal and don't warn.
 - **ADMIN-8** An event is one thing with a start and an end date. Each of its days lists the **room
-  bookings** of that day (rooms, preparation, start, end, clean-up, breaks, an optional internal label such
+  bookings** of that day (rooms, start, end, breaks, an optional internal label such
   as "Plenaria"): several per day, in different rooms and times, or none (an excursion day). The editor has
   one tab per day (`?day=` in the URL, so the programme opens the right one); changing *Dal* shifts the
   whole event, changing *Al* adds days (copies of the previous one) or removes them from the end; days can
@@ -113,8 +113,8 @@ become a smart-TV browser. **One person** does the admin work.
 - **ADMIN-15** Prints (`printSheet`, like the day sheet). *Stampa ristorante (14 gg)*: the next 14 days
   (today included), per event, one line per day with bookings showing hours and breaks, no rooms and no
   notes; drafts are included and framed "DA CONFERMARE"; it ignores the list's filters. *Stampa dettagli*:
-  one event per page with dates, reception notes and, per day, the bookings (rooms, preparation, hours,
-  clean-up, breaks) and the resolved day notes; from the list it prints the events shown (after the
+  one event per page with dates, reception notes and, per day, the room reservation span once and the bookings (rooms, hours,
+  breaks) and the resolved day notes; from the list it prints the events shown (after the
   filters) or, with a row's button, that event; the editor's *Stampa* prints the saved event.
 - **ADMIN-10** Logo library for each organizer: upload (file, drag and drop, paste), preview and
   delete. Before uploading, a dialog picks the square to keep (drag, zoom; the logo's edges snap to the
@@ -206,7 +206,7 @@ docker compose exec app node src/server/cli.ts backup /data/backup-$(date +%F).d
 ```
 
 **Data from the old version:** export the old MongoDB collections, then import them into a new, empty
-database. Preparation times are kept, and clean-up is set to 30 minutes. Each old event becomes a
+database. The event's preparation time is kept, and clean-up is set to 30 minutes. Each old event becomes a
 one-day event with one booking.
 
 ```sh

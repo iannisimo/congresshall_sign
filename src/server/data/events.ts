@@ -14,6 +14,8 @@ interface EventRow {
   reception_notes: string | null;
   start_date: string;
   end_date: string;
+  prep_at: number;
+  release_at: number;
 }
 
 interface DayRow {
@@ -28,10 +30,8 @@ interface BookingRow {
   id: number;
   day_id: number;
   label: string | null;
-  prep_at: number;
   start_at: number;
   end_at: number;
-  release_at: number;
 }
 
 /** Ids as a JSON array, so one prepared query can take any number of them. */
@@ -82,10 +82,8 @@ function loadEvents(db: Db, ids: number[]): ScheduledEvent[] {
     id: row.id,
     label: row.label,
     roomIds: (rooms.get(row.id) ?? []).map((r) => r.room_id),
-    prepAt: row.prep_at,
     startAt: row.start_at,
     endAt: row.end_at,
-    releaseAt: row.release_at,
     breaks: (breaks.get(row.id) ?? []).map((k): EventBreak => ({ label: k.label, startAt: k.start_at, endAt: k.end_at })),
   });
   const toDay = (row: DayRow): EventDay => ({
@@ -111,6 +109,8 @@ function loadEvents(db: Db, ids: number[]): ScheduledEvent[] {
         startDate: row.start_date,
         endDate: row.end_date,
         receptionNotes: row.reception_notes,
+        prepAt: row.prep_at,
+        releaseAt: row.release_at,
         days: (days.get(row.id) ?? []).map(toDay),
       },
     ];
@@ -118,24 +118,24 @@ function loadEvents(db: Db, ids: number[]): ScheduledEvent[] {
 }
 
 /**
- * Events with a booking holding a room at some point in [from, to), from preparation to release, or with a
+ * Events holding rooms at some point in [from, to), from preparation to release, or with a
  * day whose date falls in that range. `to` is optional: no upper bound. Ordered by start date, then first
  * booking, then id.
  */
 export function listEvents(db: Db, range: { from: number; to?: number; visibleOnly?: boolean }): ScheduledEvent[] {
   const params: Record<string, number | string> = { from: range.from, fromDate: toDateValue(range.from) };
-  let held = 'b.release_at > :from';
+  let held = 'e.release_at > :from';
   let dated = 'd.date >= :fromDate';
   if (range.to !== undefined) {
     params['to'] = range.to;
     params['toDate'] = toDateValue(range.to - 1);
-    held += ' AND b.prep_at < :to';
+    held += ' AND e.prep_at < :to';
     dated += ' AND d.date <= :toDate';
   }
   const ids = all<{ id: number }>(
     db,
     `SELECT e.id FROM events e
-     WHERE (EXISTS (SELECT 1 FROM event_days d JOIN event_bookings b ON b.day_id = d.id WHERE d.event_id = e.id AND ${held})
+     WHERE (${held}
        OR EXISTS (SELECT 1 FROM event_days d WHERE d.event_id = e.id AND ${dated}))
        ${range.visibleOnly ? 'AND e.visible = 1' : ''}
      ORDER BY e.start_date,
@@ -166,16 +166,9 @@ function setDays(db: Db, eventId: number, input: EventInput): void {
     for (const booking of [...day.bookings].sort((a, b) => a.startAt - b.startAt)) {
       const { lastInsertRowid: bookingId } = run(
         db,
-        `INSERT INTO event_bookings (day_id, label, prep_at, start_at, end_at, release_at)
-         VALUES (:dayId, :label, :prepAt, :startAt, :endAt, :releaseAt)`,
-        {
-          dayId,
-          label: booking.label,
-          prepAt: booking.prepAt,
-          startAt: booking.startAt,
-          endAt: booking.endAt,
-          releaseAt: booking.releaseAt,
-        },
+        `INSERT INTO event_bookings (day_id, label, start_at, end_at)
+         VALUES (:dayId, :label, :startAt, :endAt)`,
+        { dayId, label: booking.label, startAt: booking.startAt, endAt: booking.endAt },
       );
       booking.roomIds.forEach((roomId, position) =>
         run(db, 'INSERT INTO event_booking_rooms (booking_id, room_id, position) VALUES (:bookingId, :roomId, :position)', {
@@ -206,6 +199,8 @@ function columns(input: EventInput) {
     receptionNotes: input.receptionNotes,
     startDate: input.days[0]!.date,
     endDate: input.days.at(-1)!.date,
+    prepAt: input.prepAt,
+    releaseAt: input.releaseAt,
   };
 }
 
@@ -213,8 +208,8 @@ function columns(input: EventInput) {
 export function insertEvent(db: Db, input: EventInput, now: number): number {
   const { lastInsertRowid: id } = run(
     db,
-    `INSERT INTO events (organizer_id, logo_id, title, subtitle, visible, reception_notes, start_date, end_date, created_at, updated_at)
-     VALUES (:organizerId, :logoId, :title, :subtitle, :visible, :receptionNotes, :startDate, :endDate, :now, :now)`,
+    `INSERT INTO events (organizer_id, logo_id, title, subtitle, visible, reception_notes, start_date, end_date, prep_at, release_at, created_at, updated_at)
+     VALUES (:organizerId, :logoId, :title, :subtitle, :visible, :receptionNotes, :startDate, :endDate, :prepAt, :releaseAt, :now, :now)`,
     { ...columns(input), now },
   );
   setDays(db, id, input);
@@ -226,7 +221,7 @@ export function updateEvent(db: Db, id: number, input: EventInput, now: number):
   run(
     db,
     `UPDATE events SET organizer_id = :organizerId, logo_id = :logoId, title = :title, subtitle = :subtitle,
-       visible = :visible, reception_notes = :receptionNotes, start_date = :startDate, end_date = :endDate, updated_at = :now
+       visible = :visible, reception_notes = :receptionNotes, start_date = :startDate, end_date = :endDate, prep_at = :prepAt, release_at = :releaseAt, updated_at = :now
      WHERE id = :id`,
     { ...columns(input), id, now },
   );

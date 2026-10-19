@@ -1,7 +1,6 @@
 import { Copy, CopyCheck, Plus, Trash2 } from 'lucide-react';
 import { effectiveDayNotes } from '../../shared/events.ts';
 import type { Room } from '../../shared/model.ts';
-import type { ChangeoverSettings as Changeover } from '../../shared/time.ts';
 import { BookingCard, type BookingErrors, type DraftBooking } from './BookingFields.tsx';
 import { dayLabel } from './dates.ts';
 import { Button, ErrorNote, Field, inputClass } from './ui.tsx';
@@ -31,8 +30,6 @@ export function DayTab({
   index,
   days,
   bookable,
-  changeover,
-  built,
   bookingErrors,
   dayErrors,
   onChange,
@@ -46,9 +43,6 @@ export function DayTab({
   index: number;
   days: DraftDay[];
   bookable: Room[];
-  changeover: Changeover;
-  /** Resulting times of each booking of this day, null where they can't be read. */
-  built: ({ prepAt: number; startAt: number; endAt: number; releaseAt: number } | null)[];
   bookingErrors: BookingErrors[];
   dayErrors: DayErrors;
   onChange: (patch: Partial<DraftDay>) => void;
@@ -108,8 +102,6 @@ export function DayTab({
             onChange={(patch) => onChangeBooking(j, patch)}
             onRemove={() => onRemoveBooking(j)}
             bookable={bookable}
-            changeover={changeover}
-            built={built[j] ?? null}
             errors={bookingErrors[j] ?? {}}
           />
         ))}

@@ -1,15 +1,8 @@
 import { Plus, Trash2, X } from 'lucide-react';
 import { BREAK_PRESETS, type Room } from '../../shared/model.ts';
-import { changeoverMargins, type ChangeoverSettings as Changeover, DAY, DEFAULT_DURATION_MINUTES, MINUTE } from '../../shared/time.ts';
-import { formatAdminShortDay, formatAdminTime } from '../lib/format.ts';
-import { atTime, fromDateTimeValue, toDateTimeValue, todayValue, toTimeValue } from './dates.ts';
+import { DAY, DEFAULT_DURATION_MINUTES, MINUTE } from '../../shared/time.ts';
+import { atTime, todayValue, toTimeValue } from './dates.ts';
 import { Field, inputClass } from './ui.tsx';
-
-/**
- * How the preparation and clean-up of a booking are chosen: the usual ones from the settings, none, or
- * custom minutes before the start and after the end.
- */
-export type MarginMode = 'changeover' | 'none' | 'custom';
 
 export interface DraftBreak {
   label: string;
@@ -17,7 +10,7 @@ export interface DraftBreak {
   end: string;
 }
 
-/** One room occupation of a day, as times of day (on the day's date) plus the margin mode. */
+/** One room occupation of a day, as times of day (on the day's date). */
 export interface DraftBooking {
   /** Only for React keys. */
   key: number;
@@ -25,38 +18,17 @@ export interface DraftBooking {
   roomIds: number[];
   start: string;
   end: string;
-  margins: MarginMode;
-  /** Used with custom margins. */
-  prepMinutes: number;
-  cleanupMinutes: number;
   /** Pauses as times of day. */
   breaks: DraftBreak[];
 }
 
-export type BookingFieldKey = 'rooms' | 'times' | 'prep' | 'cleanup' | 'breaks' | 'label';
+export type BookingFieldKey = 'rooms' | 'times' | 'breaks' | 'label';
 
 export type BookingErrors = Partial<Record<BookingFieldKey, string>>;
-
-export function margins(booking: DraftBooking, startAt: number, endAt: number, changeover: Changeover): { prepAt: number; releaseAt: number } {
-  switch (booking.margins) {
-    case 'changeover':
-      return changeoverMargins(startAt, endAt, changeover);
-    case 'none':
-      return { prepAt: startAt, releaseAt: endAt };
-    case 'custom':
-      return { prepAt: startAt - booking.prepMinutes * MINUTE, releaseAt: endAt + booking.cleanupMinutes * MINUTE };
-  }
-}
 
 export function shiftTime(time: string, minutes: number): string {
   const t = atTime(todayValue(), time);
   return t === null ? time : toTimeValue(t + minutes * MINUTE);
-}
-
-function minutesLabel(m: number): string {
-  if (m === 0) return 'Nessuna';
-  if (m % 60 === 0) return m === 60 ? '1 ora' : `${m / 60} ore`;
-  return `${m} min`;
 }
 
 const BREAK_MINUTES: Record<string, number> = { Break: 15, 'Coffee break': 30, 'Lunch break': 60 };
@@ -144,89 +116,13 @@ function BreaksEditor({
   );
 }
 
-function MarginOption({
-  selected,
-  onSelect,
-  title,
-  description,
-}: {
-  selected: boolean;
-  onSelect: () => void;
-  title: string;
-  description: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`rounded-lg px-4 py-3 text-left ring-1 transition-colors ${selected ? 'bg-brand-50 ring-2 ring-brand-600' : 'bg-white ring-slate-300 hover:bg-slate-50'}`}
-    >
-      <span className="block text-sm font-semibold text-slate-900">{title}</span>
-      <span className="mt-0.5 block text-xs text-slate-600">{description}</span>
-    </button>
-  );
-}
-
-/** Preparation before the start or clean-up after the end: presets, or an exact time (e.g. the evening before). */
-function MarginField({
-  label,
-  minutes,
-  onChange,
-  anchor,
-  direction,
-  describe,
-  error,
-}: {
-  label: string;
-  minutes: number;
-  onChange: (minutes: number) => void;
-  anchor: number | null;
-  direction: 'before' | 'after';
-  describe: (t: number) => string;
-  error: string | undefined;
-}) {
-  const presets = [0, 15, 30, 60, 120];
-  const exact = anchor === null ? null : anchor + (direction === 'before' ? -1 : 1) * minutes * MINUTE;
-  return (
-    <Field label={label} error={error} hint={exact !== null ? describe(exact) : undefined}>
-      <div className="flex flex-wrap items-center gap-1.5">
-        {presets.map((m) => (
-          <button
-            key={m}
-            type="button"
-            onClick={() => onChange(m)}
-            className={`rounded-full px-3 py-1 text-sm ring-1 ${m === minutes ? 'bg-brand-900 text-white ring-brand-900' : 'bg-white text-slate-700 ring-slate-300 hover:bg-slate-50'}`}
-          >
-            {minutesLabel(m)}
-          </button>
-        ))}
-        <input
-          type="datetime-local"
-          className={`${inputClass} w-auto! py-1!`}
-          disabled={exact === null}
-          value={exact === null ? '' : toDateTimeValue(exact)}
-          onChange={(e) => {
-            const t = fromDateTimeValue(e.target.value);
-            if (t === null || anchor === null) return;
-            const m = Math.round((direction === 'before' ? anchor - t : t - anchor) / MINUTE);
-            if (m >= 0) onChange(m);
-          }}
-          title="Orario esatto"
-        />
-      </div>
-    </Field>
-  );
-}
-
-/** One room occupation: label, rooms, times, breaks and the preparation/clean-up of the room. */
+/** One room occupation: label, rooms, times and breaks. */
 export function BookingCard({
   index,
   booking,
   onChange,
   onRemove,
   bookable,
-  changeover,
-  built,
   errors,
 }: {
   index: number;
@@ -234,13 +130,9 @@ export function BookingCard({
   onChange: (patch: Partial<DraftBooking>) => void;
   onRemove: () => void;
   bookable: Room[];
-  changeover: Changeover;
-  /** The booking's resulting times, null while the times can't be read. */
-  built: { prepAt: number; startAt: number; endAt: number; releaseAt: number } | null;
   /** Errors to show (empty until the first save attempt). */
   errors: BookingErrors;
 }) {
-  const { prepTime, cleanupTime, cleanupMinGapHours } = changeover;
   const overnight = booking.start !== '' && booking.end !== '' && booking.end <= booking.start;
   return (
     <div className="space-y-5 rounded-xl bg-slate-50/60 p-4 ring-1 ring-slate-200">
@@ -315,74 +207,6 @@ export function BookingCard({
       >
         <BreaksEditor breaks={booking.breaks} onChange={(breaks) => onChange({ breaks })} eventStart={booking.start} eventEnd={booking.end} />
       </Field>
-
-      <Field
-        label="Preparazione e riordino della sala"
-        error={booking.margins === 'custom' ? undefined : (errors.prep ?? errors.cleanup)}
-        hint={
-          built && booking.margins !== 'custom'
-            ? `Sala riservata dalle ${formatAdminTime(built.prepAt)} di ${formatAdminShortDay(built.prepAt)} alle ${formatAdminTime(built.releaseAt)} di ${formatAdminShortDay(built.releaseAt)}`
-            : undefined
-        }
-      >
-        <div className="grid gap-2 sm:grid-cols-2">
-          <MarginOption
-            selected={booking.margins === 'changeover'}
-            onSelect={() => onChange({ margins: 'changeover' })}
-            title={`Dalle ${prepTime} del giorno prima`}
-            description={`Fino alle ${cleanupTime} dopo la fine (lo stesso giorno se finisce almeno ${cleanupMinGapHours} ${cleanupMinGapHours === 1 ? 'ora' : 'ore'} prima). Tra i giorni di un congresso la sala resta riservata.`}
-          />
-          <MarginOption
-            selected={booking.margins === 'none'}
-            onSelect={() => onChange({ margins: 'none' })}
-            title="Nessuna preparazione né riordino"
-            description="La sala è riservata solo durante l’evento."
-          />
-        </div>
-        {booking.margins !== 'custom' && (
-          <button
-            type="button"
-            className="mt-2 text-sm font-medium text-brand-800 hover:underline"
-            onClick={() =>
-              // Start from what is shown now, so the times only change when edited.
-              onChange({
-                margins: 'custom',
-                ...(built && {
-                  prepMinutes: Math.round((built.startAt - built.prepAt) / MINUTE),
-                  cleanupMinutes: Math.round((built.releaseAt - built.endAt) / MINUTE),
-                }),
-              })
-            }
-          >
-            Orari personalizzati…
-          </button>
-        )}
-      </Field>
-      {booking.margins === 'custom' && (
-        <>
-          <MarginField
-            label="Preparazione della sala"
-            minutes={booking.prepMinutes}
-            onChange={(prepMinutes) => onChange({ prepMinutes })}
-            anchor={built?.startAt ?? null}
-            direction="before"
-            describe={(t) => `Sala riservata dalle ${formatAdminTime(t)} (${formatAdminShortDay(t)})`}
-            error={errors.prep}
-          />
-          <MarginField
-            label="Riordino dopo l’evento"
-            minutes={booking.cleanupMinutes}
-            onChange={(cleanupMinutes) => onChange({ cleanupMinutes })}
-            anchor={built?.endAt ?? null}
-            direction="after"
-            describe={(t) => `La sala torna libera alle ${formatAdminTime(t)} (${formatAdminShortDay(t)})`}
-            error={errors.cleanup}
-          />
-          <button type="button" className="text-sm font-medium text-brand-800 hover:underline" onClick={() => onChange({ margins: 'changeover' })}>
-            Torna alle impostazioni consuete
-          </button>
-        </>
-      )}
     </div>
   );
 }

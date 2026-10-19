@@ -66,8 +66,8 @@ describe('importMongo', () => {
       visible: true,
     });
     expect(event!.days).toHaveLength(1);
-    expect(event!.days[0]!.bookings[0]).toMatchObject({
-      roomIds: [salaA.id],
+    expect(event!.days[0]!.bookings[0]).toMatchObject({ roomIds: [salaA.id] });
+    expect(event).toMatchObject({
       prepAt: Date.parse('2026-10-17T07:30:00Z'),
       releaseAt: changeoverMargins(Date.parse('2026-10-17T08:00:00Z'), Date.parse('2026-10-17T10:00:00Z'), { prepTime: '14:00', cleanupTime: '14:00', cleanupMinGapHours: 0 }).releaseAt,
     });

@@ -240,4 +240,51 @@ export const migrations: string[] = [
   );
   CREATE INDEX event_booking_breaks_booking ON event_booking_breaks(booking_id);
   `,
+  `
+  -- Preparation and clean-up become per event: every room the event uses is reserved from the event's prep_at
+  -- to its release_at. Filled from the widest margins of its bookings. event_bookings has a CHECK on the old
+  -- columns, so it is rebuilt; with foreign keys on, dropping a parent runs an implicit DELETE, so the
+  -- children are copied and dropped first and the new tables renamed in.
+  ALTER TABLE events ADD COLUMN prep_at INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE events ADD COLUMN release_at INTEGER NOT NULL DEFAULT 0 CHECK (prep_at <= release_at);
+  UPDATE events SET
+    prep_at = COALESCE((SELECT min(b.prep_at) FROM event_days d JOIN event_bookings b ON b.day_id = d.id WHERE d.event_id = events.id),
+      CAST(strftime('%s', start_date) AS INTEGER) * 1000),
+    release_at = COALESCE((SELECT max(b.release_at) FROM event_days d JOIN event_bookings b ON b.day_id = d.id WHERE d.event_id = events.id),
+      CAST(strftime('%s', end_date) AS INTEGER) * 1000 + 86400000);
+  CREATE INDEX events_time ON events(release_at, prep_at);
+
+  CREATE TABLE event_bookings_new (
+    id INTEGER PRIMARY KEY,
+    day_id INTEGER NOT NULL REFERENCES event_days(id) ON DELETE CASCADE,
+    label TEXT,
+    start_at INTEGER NOT NULL,
+    end_at INTEGER NOT NULL,
+    CHECK (start_at < end_at)
+  );
+  CREATE TABLE event_booking_rooms_new (
+    booking_id INTEGER NOT NULL REFERENCES event_bookings_new(id) ON DELETE CASCADE,
+    room_id INTEGER NOT NULL REFERENCES rooms(id),
+    position INTEGER NOT NULL,
+    PRIMARY KEY (booking_id, room_id)
+  );
+  CREATE TABLE event_booking_breaks_new (
+    booking_id INTEGER NOT NULL REFERENCES event_bookings_new(id) ON DELETE CASCADE,
+    label TEXT NOT NULL,
+    start_at INTEGER NOT NULL,
+    end_at INTEGER NOT NULL
+  );
+  INSERT INTO event_bookings_new (id, day_id, label, start_at, end_at) SELECT id, day_id, label, start_at, end_at FROM event_bookings;
+  INSERT INTO event_booking_rooms_new SELECT booking_id, room_id, position FROM event_booking_rooms;
+  INSERT INTO event_booking_breaks_new SELECT booking_id, label, start_at, end_at FROM event_booking_breaks;
+  DROP TABLE event_booking_breaks;
+  DROP TABLE event_booking_rooms;
+  DROP TABLE event_bookings;
+  ALTER TABLE event_bookings_new RENAME TO event_bookings;
+  ALTER TABLE event_booking_rooms_new RENAME TO event_booking_rooms;
+  ALTER TABLE event_booking_breaks_new RENAME TO event_booking_breaks;
+  CREATE INDEX event_bookings_day ON event_bookings(day_id);
+  CREATE INDEX event_booking_rooms_room ON event_booking_rooms(room_id);
+  CREATE INDEX event_booking_breaks_booking ON event_booking_breaks(booking_id);
+  `,
 ];

@@ -38,9 +38,7 @@ function BookingsTable({ bookings, rooms }: { bookings: EventBooking[]; rooms: M
         <tr className="border-b border-slate-400 text-xs uppercase">
           <th className="py-1 pr-2">Nome</th>
           <th className="py-1 pr-2">Sale</th>
-          <th className="py-1 pr-2">Preparazione da</th>
           <th className="py-1 pr-2">Orario</th>
-          <th className="py-1 pr-2">Libera dalle</th>
           <th className="py-1">Pause</th>
         </tr>
       </thead>
@@ -49,11 +47,9 @@ function BookingsTable({ bookings, rooms }: { bookings: EventBooking[]; rooms: M
           <tr key={b.id} className="border-b border-slate-200 align-top">
             <td className="py-1 pr-2">{b.label ?? '—'}</td>
             <td className="py-1 pr-2">{b.roomIds.map((id) => rooms.get(id)?.name ?? '?').join(', ')}</td>
-            <td className="py-1 pr-2">{timeAfter(b.prepAt, b.startAt)}</td>
             <td className="py-1 pr-2">
               {formatAdminTime(b.startAt)}–{timeAfter(b.endAt, b.startAt)}
             </td>
-            <td className="py-1 pr-2">{timeAfter(b.releaseAt, b.startAt)}</td>
             <td className="py-1">
               {b.breaks.length === 0
                 ? '—'
@@ -93,6 +89,10 @@ export function EventsPrint({ events, rooms }: { events: ScheduledEvent[]; rooms
                 : `${formatAdminShortDay(first)} – ${formatAdminShortDay(last)}`}
               {' · '}
               {event.days.length === 1 ? '1 giorno' : `${event.days.length} giorni`}
+              <div>
+                Sale riservate dalle {formatAdminTime(event.prepAt)} ({formatAdminShortDay(event.prepAt)}) alle {formatAdminTime(event.releaseAt)} (
+                {formatAdminShortDay(event.releaseAt)})
+              </div>
             </div>
             {reception && (
               <div className="mb-3">

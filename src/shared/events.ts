@@ -18,10 +18,10 @@ export function flattenEvent(event: ScheduledEvent): SignEvent[] {
       title: event.title,
       subtitle: event.subtitle,
       roomIds: booking.roomIds,
-      prepAt: booking.prepAt,
+      prepAt: event.prepAt,
       startAt: booking.startAt,
       endAt: booking.endAt,
-      releaseAt: booking.releaseAt,
+      releaseAt: event.releaseAt,
       breaks: booking.breaks,
       visible: event.visible,
     })),
@@ -41,6 +41,8 @@ export function eventToInput(event: ScheduledEvent): EventInput {
     subtitle: event.subtitle,
     visible: event.visible,
     receptionNotes: event.receptionNotes,
+    prepAt: event.prepAt,
+    releaseAt: event.releaseAt,
     days: event.days.map((day) => ({
       date: day.date,
       receptionNotes: day.receptionNotes,
@@ -48,10 +50,8 @@ export function eventToInput(event: ScheduledEvent): EventInput {
       bookings: day.bookings.map((b) => ({
         label: b.label,
         roomIds: [...b.roomIds],
-        prepAt: b.prepAt,
         startAt: b.startAt,
         endAt: b.endAt,
-        releaseAt: b.releaseAt,
         breaks: b.breaks.map((br) => ({ ...br })),
       })),
     })),
@@ -105,15 +105,15 @@ export function shiftEvent(input: EventInput, days: number): EventInput {
   const move = (t: number) => addDays(t, days).getTime();
   return {
     ...input,
+    prepAt: move(input.prepAt),
+    releaseAt: move(input.releaseAt),
     days: input.days.map((day) => ({
       ...day,
       date: toDateValue(addDays(fromDateValue(day.date) ?? 0, days).getTime()),
       bookings: day.bookings.map((b) => ({
         ...b,
-        prepAt: move(b.prepAt),
         startAt: move(b.startAt),
         endAt: move(b.endAt),
-        releaseAt: move(b.releaseAt),
         breaks: b.breaks.map((br) => ({ ...br, startAt: move(br.startAt), endAt: move(br.endAt) })),
       })),
     })),

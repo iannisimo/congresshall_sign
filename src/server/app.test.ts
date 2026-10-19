@@ -77,10 +77,10 @@ async function seed(t: Setup) {
   return { superadmin, admin, rooms: { a, b, a1 }, org };
 }
 
-/** A booking on a date (local time), from "HH:MM" to "HH:MM", with 30 minutes of preparation and clean-up. */
+/** A booking on a date (local time), from "HH:MM" to "HH:MM". */
 function bookingOn(date: string, from: string, to: string, roomIds: number[], label: string | null = null) {
   const at = (time: string) => new Date(`${date}T${time}`).getTime();
-  return { label, roomIds, prepAt: at(from) - 30 * MINUTE, startAt: at(from), endAt: at(to), releaseAt: at(to) + 30 * MINUTE, breaks: [] as { label: string; startAt: number; endAt: number }[] };
+  return { label, roomIds, startAt: at(from), endAt: at(to), breaks: [] as { label: string; startAt: number; endAt: number }[] };
 }
 
 /** A one-day event with one booking, starting `startInHours` after the test clock. */
@@ -94,12 +94,14 @@ function eventInput(t: Setup, organizerId: number, roomIds: number[], startInHou
     subtitle: '',
     visible: true,
     receptionNotes: null as string | null,
+    prepAt: startAt - 30 * MINUTE,
+    releaseAt: endAt + 30 * MINUTE,
     days: [
       {
         date: toDateValue(startAt),
         receptionNotes: null as string | null,
         housekeepingNotes: null as string | null,
-        bookings: [{ label: null as string | null, roomIds, prepAt: startAt - 30 * MINUTE, startAt, endAt, releaseAt: endAt + 30 * MINUTE, breaks: [] as { label: string; startAt: number; endAt: number }[] }],
+        bookings: [{ label: null as string | null, roomIds, startAt, endAt, breaks: [] as { label: string; startAt: number; endAt: number }[] }],
       },
     ],
   };
@@ -281,13 +283,16 @@ describe('events', () => {
     const t = setup();
     const { admin, rooms, org } = await seed(t);
     const days = [24, 48].map((h) => {
-      const day = eventInput(t, org.id, [rooms.a.id], h, 9).days[0]!;
-      const booking = day.bookings[0]!;
-      Object.assign(booking, changeoverMargins(booking.startAt, booking.endAt, { prepTime: '14:00', cleanupTime: '14:00', cleanupMinGapHours: 0 }));
-      return day;
+      return eventInput(t, org.id, [rooms.a.id], h, 9).days[0]!;
     });
-    // Day 1 is cleaned up until 14:00 of day 2, day 2 is prepared from 14:00 of day 1: no problem.
-    const congress = { ...eventInput(t, org.id, [rooms.a.id], 24), days };
+    // The room is held for the whole span, but only the bookings count as conflicts.
+    const first = days[0]!.bookings[0]!;
+    const last = days[1]!.bookings[0]!;
+    const congress = {
+      ...eventInput(t, org.id, [rooms.a.id], 24),
+      ...changeoverMargins(first.startAt, last.endAt, { prepTime: '14:00', cleanupTime: '14:00', cleanupMinGapHours: 0 }),
+      days,
+    };
     expect((await admin.req('POST', '/api/events', { event: congress })).status).toBe(201);
     // Another event during day 2 is a conflict.
     expect((await admin.req('POST', '/api/events', { event: eventInput(t, org.id, [rooms.a.id], 50) })).status).toBe(409);
@@ -299,6 +304,8 @@ describe('events', () => {
     const dates = ['2026-10-17', '2026-10-18', '2026-10-19'];
     const input = {
       ...eventInput(t, org.id, [rooms.a.id], 1),
+      prepAt: new Date('2026-10-17T08:30').getTime(),
+      releaseAt: new Date('2026-10-19T14:00').getTime(),
       days: dates.map((date) => ({ date, receptionNotes: null as string | null, housekeepingNotes: null as string | null, bookings: [] as ReturnType<typeof bookingOn>[] })),
     };
     input.days[0]!.bookings = [bookingOn('2026-10-17', '09:00', '13:00', [rooms.a.id])];
@@ -336,6 +343,8 @@ describe('events', () => {
     const { admin, rooms, org } = await seed(t);
     const congress = {
       ...eventInput(t, org.id, [rooms.a.id], 1),
+      prepAt: new Date('2026-10-17T08:30').getTime(),
+      releaseAt: new Date('2026-10-19T14:00').getTime(),
       days: [
         { date: '2026-10-17', receptionNotes: null, housekeepingNotes: null, bookings: [bookingOn('2026-10-17', '09:00', '13:00', [rooms.a.id]), bookingOn('2026-10-17', '14:00', '18:00', [rooms.b.id])] },
         { date: '2026-10-18', receptionNotes: null, housekeepingNotes: null, bookings: [bookingOn('2026-10-18', '09:00', '13:00', [rooms.a.id])] },

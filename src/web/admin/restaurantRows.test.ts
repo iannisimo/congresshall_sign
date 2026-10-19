@@ -6,12 +6,12 @@ const at = (date: string, time: string) => new Date(`${date}T${time}`).getTime()
 const now = at('2026-10-19', '15:30');
 
 function booking(date: string, from: string, to: string, breaks: EventBooking['breaks'] = []): EventBooking {
-  return { id: 1, label: null, roomIds: [1], prepAt: at(date, from), startAt: at(date, from), endAt: at(date, to), releaseAt: at(date, to), breaks };
+  return { id: 1, label: null, roomIds: [1], startAt: at(date, from), endAt: at(date, to), breaks };
 }
 function event(id: number, visible: boolean, days: [string, EventBooking[]][]): ScheduledEvent {
   return {
     id, organizerId: 1, organizerName: `Org ${id}`, logoId: null, title: `Titolo ${id}`, subtitle: null, visible,
-    startDate: days[0]![0], endDate: days[days.length - 1]![0], receptionNotes: null,
+    startDate: days[0]![0], endDate: days[days.length - 1]![0], receptionNotes: null, prepAt: 0, releaseAt: 0,
     days: days.map(([date, bookings]) => ({ date, receptionNotes: null, housekeepingNotes: null, bookings })),
   };
 }

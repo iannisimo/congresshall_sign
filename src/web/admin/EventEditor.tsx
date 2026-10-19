@@ -11,9 +11,10 @@ import { changeoverMargins, type ChangeoverSettings as Changeover, DAY, DEFAULT_
 import { DEFAULT_SETTINGS } from '../../shared/settings.ts';
 import { formatAdminShortDay, formatAdminTime } from '../lib/format.ts';
 import { api, errorMessage, HttpError, refreshSchedule, useEvent, useEvents, useOrganizers, useRooms, useSettings } from './api.ts';
-import { margins, shiftTime, type BookingErrors, type BookingFieldKey, type DraftBooking, type MarginMode } from './BookingFields.tsx';
+import { shiftTime, type BookingErrors, type BookingFieldKey, type DraftBooking } from './BookingFields.tsx';
 import { atTime, dateShortcut, dayLabel, fromDateValue, toDateValue, todayValue, toTimeValue } from './dates.ts';
 import { DayTab, type DayErrors, type DraftDay } from './DayTab.tsx';
+import { margins, MarginsSection, type DraftMargins, type MarginMode } from './EventMargins.tsx';
 import { usePrintEvents } from './EventsPrint.tsx';
 import { LogoPicker, OrganizerPicker } from './OrganizerFields.tsx';
 import { SignCardPreview } from './SignPreview.tsx';
@@ -23,7 +24,7 @@ type Mode = 'new' | 'edit' | 'clone';
 
 const MAX_DAYS = 60;
 
-interface Draft {
+interface Draft extends DraftMargins {
   organizerId: number | null;
   logoId: number | null;
   title: string;
@@ -44,9 +45,6 @@ function newBooking(patch: Partial<DraftBooking> = {}): DraftBooking {
     roomIds: [],
     start,
     end: shiftTime(start, DEFAULT_DURATION_MINUTES),
-    margins: 'changeover',
-    prepMinutes: 30,
-    cleanupMinutes: 30,
     breaks: [],
     ...patch,
   };
@@ -76,11 +74,24 @@ function newDraft(search: URLSearchParams): Draft {
     subtitle: '',
     visible: true,
     receptionNotes: '',
+    margins: 'changeover',
+    prepMinutes: 30,
+    cleanupMinutes: 30,
     days: [{ date, receptionNotes: '', housekeepingNotes: '', bookings: [newBooking({ start, roomIds: room > 0 ? [room] : [] })] }],
   };
 }
 
 function draftFrom(event: ScheduledEvent, changeover: Changeover): Draft {
+  const bookings = event.days.flatMap((d) => d.bookings);
+  const firstStart = Math.min(...bookings.map((b) => b.startAt));
+  const lastEnd = Math.max(...bookings.map((b) => b.endAt));
+  const defaults = changeoverMargins(firstStart, lastEnd, changeover);
+  const mode: MarginMode =
+    event.prepAt === defaults.prepAt && event.releaseAt === defaults.releaseAt
+      ? 'changeover'
+      : event.prepAt === firstStart && event.releaseAt === lastEnd
+        ? 'none'
+        : 'custom';
   return {
     organizerId: event.organizerId,
     logoId: event.logoId,
@@ -88,38 +99,35 @@ function draftFrom(event: ScheduledEvent, changeover: Changeover): Draft {
     subtitle: event.subtitle ?? '',
     visible: event.visible,
     receptionNotes: event.receptionNotes ?? '',
+    margins: mode,
+    prepMinutes: Math.round((firstStart - event.prepAt) / MINUTE),
+    cleanupMinutes: Math.round((event.releaseAt - lastEnd) / MINUTE),
     days: event.days.map((day) => ({
       date: day.date,
       receptionNotes: day.receptionNotes ?? '',
       housekeepingNotes: day.housekeepingNotes ?? '',
-      bookings: day.bookings.map((b) => {
-        const defaults = changeoverMargins(b.startAt, b.endAt, changeover);
-        const mode: MarginMode =
-          b.prepAt === defaults.prepAt && b.releaseAt === defaults.releaseAt
-            ? 'changeover'
-            : b.prepAt === b.startAt && b.releaseAt === b.endAt
-              ? 'none'
-              : 'custom';
-        return {
-          key: nextKey++,
-          label: b.label ?? '',
-          roomIds: b.roomIds,
-          start: toTimeValue(b.startAt),
-          end: toTimeValue(b.endAt),
-          margins: mode,
-          prepMinutes: Math.round((b.startAt - b.prepAt) / MINUTE),
-          cleanupMinutes: Math.round((b.releaseAt - b.endAt) / MINUTE),
-          breaks: b.breaks.map((br) => ({ label: br.label, start: toTimeValue(br.startAt), end: toTimeValue(br.endAt) })),
-        };
-      }),
+      bookings: day.bookings.map((b) => ({
+        key: nextKey++,
+        label: b.label ?? '',
+        roomIds: b.roomIds,
+        start: toTimeValue(b.startAt),
+        end: toTimeValue(b.endAt),
+        breaks: b.breaks.map((br) => ({ label: br.label, start: toTimeValue(br.startAt), end: toTimeValue(br.endAt) })),
+      })),
     })),
   };
 }
 
-type BuiltBooking = { prepAt: number; startAt: number; endAt: number; releaseAt: number };
+type BuiltBooking = { startAt: number; endAt: number };
+
+/** The event's reservation span with the earliest start and latest end it was built from. */
+type Span = { prepAt: number; releaseAt: number; firstStart: number; lastEnd: number };
 
 /** The API input, plus each booking's times (null where they can't be read). Ends before the start mean the next day. */
-function buildInput(draft: Draft, changeover: Changeover): { input: EventInput; built: (BuiltBooking | null)[][]; unreadable: boolean[][] } {
+function buildInput(
+  draft: Draft,
+  changeover: Changeover,
+): { input: EventInput; built: (BuiltBooking | null)[][]; unreadable: boolean[][]; span: Span | null } {
   const built: (BuiltBooking | null)[][] = [];
   const unreadable: boolean[][] = [];
   const days = draft.days.map((day, i) => {
@@ -135,7 +143,6 @@ function buildInput(draft: Draft, changeover: Changeover): { input: EventInput; 
         continue;
       }
       if (endAt <= startAt) endAt += DAY;
-      const { prepAt, releaseAt } = margins(b, startAt, endAt, changeover);
       // Break times are on the booking's day; in bookings past midnight, earlier times are the next day.
       const breaks = [];
       let bad = false;
@@ -150,12 +157,21 @@ function buildInput(draft: Draft, changeover: Changeover): { input: EventInput; 
         if (breakEnd <= breakStart) breakEnd += DAY;
         breaks.push({ label: br.label, startAt: breakStart, endAt: breakEnd });
       }
-      built[i]!.push({ prepAt, startAt, endAt, releaseAt });
+      built[i]!.push({ startAt, endAt });
       unreadable[i]!.push(bad);
-      if (!bad) bookings.push({ label: b.label.trim() || null, roomIds: b.roomIds, prepAt, startAt, endAt, releaseAt, breaks });
+      if (!bad) bookings.push({ label: b.label.trim() || null, roomIds: b.roomIds, startAt, endAt, breaks });
     }
     return { date: day.date, receptionNotes: day.receptionNotes, housekeepingNotes: day.housekeepingNotes, bookings };
   });
+  const readable = built.flat().filter((b): b is BuiltBooking => b !== null);
+  let span: Span | null = null;
+  if (readable.length > 0) {
+    const firstStart = Math.min(...readable.map((b) => b.startAt));
+    const lastEnd = Math.max(...readable.map((b) => b.endAt));
+    span = { ...margins(draft, firstStart, lastEnd, changeover), firstStart, lastEnd };
+  }
+  // Without readable bookings the span is a placeholder: the form can't be saved anyway.
+  const placeholder = atTime(draft.days[0]!.date, '00:00') ?? 0;
   const input: EventInput = {
     organizerId: draft.organizerId ?? 0,
     logoId: draft.logoId,
@@ -163,12 +179,14 @@ function buildInput(draft: Draft, changeover: Changeover): { input: EventInput; 
     subtitle: draft.subtitle.trim() || null,
     visible: draft.visible,
     receptionNotes: draft.receptionNotes,
+    prepAt: span?.prepAt ?? placeholder,
+    releaseAt: span?.releaseAt ?? placeholder,
     days,
   };
-  return { input, built, unreadable };
+  return { input, built, unreadable, span };
 }
 
-type EventFieldKey = 'organizer' | 'title' | 'subtitle' | 'receptionNotes';
+type EventFieldKey = 'organizer' | 'title' | 'subtitle' | 'receptionNotes' | 'prep' | 'cleanup';
 
 interface Errors {
   event: Partial<Record<EventFieldKey, string>>;
@@ -184,6 +202,8 @@ const EVENT_FIELD_OF: Record<string, EventFieldKey> = {
   title: 'title',
   subtitle: 'subtitle',
   receptionNotes: 'receptionNotes',
+  prepAt: 'prep',
+  releaseAt: 'cleanup',
 };
 
 const BOOKING_FIELD_OF: Record<string, BookingFieldKey> = {
@@ -191,8 +211,6 @@ const BOOKING_FIELD_OF: Record<string, BookingFieldKey> = {
   roomIds: 'rooms',
   startAt: 'times',
   endAt: 'times',
-  prepAt: 'prep',
-  releaseAt: 'cleanup',
   breaks: 'breaks',
 };
 
@@ -383,14 +401,13 @@ function EditorForm({
   const bookable = rooms.filter((r) => r.kind === 'main');
   const organizer = organizers.find((o) => o.id === draft.organizerId);
 
-  const { input, built, unreadable } = buildInput(draft, changeover);
+  const { input, built, unreadable, span } = buildInput(draft, changeover);
   const errors = validate(draft, input, unreadable);
   const startDate = draft.days[0]!.date;
   const endDate = draft.days[draft.days.length - 1]!.date;
 
   // Conflicts with other saved events, checked while editing (ADMIN-7), for every day.
-  const readable = built.flat().filter((b): b is BuiltBooking => b !== null);
-  const range = readable.length > 0 ? { from: Math.min(...readable.map((b) => b.prepAt)), to: Math.max(...readable.map((b) => b.releaseAt)) } : null;
+  const range = span ? { from: span.prepAt, to: span.releaseAt } : null;
   const others = useEvents(range?.from ?? 0, range?.to ?? 1, { enabled: range !== null, keepPrevious: true });
   const conflicts: DayConflict[] = useMemo(() => {
     if (!others.data) return [];
@@ -552,6 +569,8 @@ function EditorForm({
           subtitle: draft.subtitle.trim() || null,
           roomIds: firstBooking.roomIds,
           ...firstTimes,
+          prepAt: span?.prepAt ?? firstTimes.startAt,
+          releaseAt: span?.releaseAt ?? firstTimes.endAt,
           breaks: (input.days[sel]?.bookings[0]?.breaks ?? []).map((b) => ({ ...b, label: b.label.trim() || 'Break' })),
           visible: draft.visible,
         }
@@ -633,6 +652,16 @@ function EditorForm({
             </p>
           </Section>
 
+          <Section title="Preparazione e riordino">
+            <MarginsSection
+              value={draft}
+              onChange={update}
+              changeover={changeover}
+              span={span}
+              errors={{ prep: shown('prep'), cleanup: shown('cleanup') }}
+            />
+          </Section>
+
           <Section title="Reception (tutto l’evento)">
             <Field label="Note per la reception" error={shown('receptionNotes')} hint="Facoltativo. Non appaiono sul cartello.">
               <textarea
@@ -672,8 +701,6 @@ function EditorForm({
               index={sel}
               days={draft.days}
               bookable={bookable}
-              changeover={changeover}
-              built={built[sel] ?? []}
               bookingErrors={showErrors ? (errors.bookings[sel] ?? []) : []}
               dayErrors={dayErrors(sel)}
               onChange={(patch) => updateDay(sel, patch)}

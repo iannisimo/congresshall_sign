@@ -86,7 +86,8 @@ export function countUpcomingBookings(db: Db, roomId: number, now: number): numb
   const row = get<{ n: number }>(
     db,
     `SELECT count(*) AS n FROM event_booking_rooms er JOIN event_bookings b ON b.id = er.booking_id
-     WHERE er.room_id = :roomId AND b.release_at > :now`,
+     JOIN event_days d ON d.id = b.day_id JOIN events e ON e.id = d.event_id
+     WHERE er.room_id = :roomId AND e.release_at > :now`,
     { roomId, now },
   );
   return row?.n ?? 0;

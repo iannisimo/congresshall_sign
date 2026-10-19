@@ -7,10 +7,8 @@ function booking(date: string, extra: Record<string, unknown> = {}) {
   return {
     label: null,
     roomIds: [1, 2],
-    prepAt: at(date, '08:30'),
     startAt: at(date, '09:00'),
     endAt: at(date, '13:00'),
-    releaseAt: at(date, '13:30'),
     ...extra,
   };
 }
@@ -23,6 +21,8 @@ const valid = {
   title: '  Congresso  ',
   subtitle: '',
   visible: true,
+  prepAt: at('2026-10-19', '14:00'),
+  releaseAt: at('2026-10-21', '14:00'),
   days: [day('2026-10-20'), day('2026-10-21')],
 };
 
@@ -47,26 +47,26 @@ describe('eventInputSchema', () => {
     [{ days: [day('2026-10-20', []), day('2026-10-21', [])] }, 'days.0.bookings'],
     [{ days: [day('2026-10-20', [booking('2026-10-21')])] }, 'days.0.bookings.0.startAt'],
     [{ days: [day('2026-10-20', [booking('2026-10-20', { roomIds: [] })])] }, 'days.0.bookings.0.roomIds'],
-    [{ days: [day('2026-10-20', [booking('2026-10-20', { prepAt: at('2026-10-20', '09:01') })])] }, 'days.0.bookings.0.prepAt'],
+    [{ prepAt: at('2026-10-20', '09:01') }, 'prepAt'],
     [{ days: [day('2026-10-20', [booking('2026-10-20', { endAt: at('2026-10-20', '09:00') })])] }, 'days.0.bookings.0.endAt'],
-    [{ days: [day('2026-10-20', [booking('2026-10-20', { releaseAt: at('2026-10-20', '12:00') })])] }, 'days.0.bookings.0.releaseAt'],
+    [{ releaseAt: at('2026-10-21', '12:00') }, 'releaseAt'],
   ])('rejects %o at %s', (patch, path) => {
     expect(paths(patch)).toContain(path);
   });
 
   it('allows a day with no bookings, and a booking running past midnight', () => {
-    const late = booking('2026-10-20', { startAt: at('2026-10-20', '22:00'), endAt: at('2026-10-21', '01:00'), releaseAt: at('2026-10-21', '02:00') });
-    expect(eventInputSchema.safeParse({ ...valid, days: [day('2026-10-20', [late]), day('2026-10-21', [])] }).success).toBe(true);
+    const late = booking('2026-10-20', { startAt: at('2026-10-20', '22:00'), endAt: at('2026-10-21', '01:00') });
+    expect(eventInputSchema.safeParse({ ...valid, releaseAt: at('2026-10-21', '02:00'), days: [day('2026-10-20', [late]), day('2026-10-21', [])] }).success).toBe(true);
   });
 
   it('allows instant preparation and release', () => {
-    const b = booking('2026-10-20', { prepAt: at('2026-10-20', '09:00'), releaseAt: at('2026-10-20', '13:00') });
-    expect(eventInputSchema.safeParse({ ...valid, days: [day('2026-10-20', [b])] }).success).toBe(true);
+    const b = booking('2026-10-20');
+    expect(eventInputSchema.safeParse({ ...valid, prepAt: at('2026-10-20', '09:00'), releaseAt: at('2026-10-20', '13:00'), days: [day('2026-10-20', [b])] }).success).toBe(true);
   });
 
   it('refuses two bookings of one event in the same room at the same time', () => {
     const morning = booking('2026-10-20', { roomIds: [1] });
-    const overlapping = booking('2026-10-20', { roomIds: [2, 1], startAt: at('2026-10-20', '12:00'), endAt: at('2026-10-20', '15:00'), releaseAt: at('2026-10-20', '15:30') });
+    const overlapping = booking('2026-10-20', { roomIds: [2, 1], startAt: at('2026-10-20', '12:00'), endAt: at('2026-10-20', '15:00') });
     expect(paths({ days: [day('2026-10-20', [morning, overlapping])] })).toContain('days.0.bookings.1.roomIds');
     const otherRoom = { ...overlapping, roomIds: [2] };
     expect(eventInputSchema.safeParse({ ...valid, days: [day('2026-10-20', [morning, otherRoom])] }).success).toBe(true);

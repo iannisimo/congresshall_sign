@@ -36,13 +36,9 @@ export interface EventBooking {
   label: string | null;
   /** Booked rooms, in display order. */
   roomIds: number[];
-  /** The rooms are reserved from here... */
-  prepAt: number;
   startAt: number;
   /** May be past midnight. */
   endAt: number;
-  /** ...until here, when they become free again. */
-  releaseAt: number;
   /** Pauses within [startAt, endAt), in time order. The rooms stay occupied during them. */
   breaks: EventBreak[];
 }
@@ -75,6 +71,10 @@ export interface ScheduledEvent {
   endDate: string;
   /** For the front desk, whole event. Never on the sign. */
   receptionNotes: string | null;
+  /** Every room the event uses on any day is reserved from here... */
+  prepAt: number;
+  /** ...until here, when they become free again. */
+  releaseAt: number;
   /** Consecutive dates from startDate to endDate. */
   days: EventDay[];
 }
@@ -96,6 +96,7 @@ export interface SignEvent {
   subtitle: string | null;
   /** Booked rooms, in display order. */
   roomIds: number[];
+  /** The event's reservation span, the same for all its bookings. */
   prepAt: number;
   startAt: number;
   endAt: number;

@@ -10,10 +10,8 @@ function booking(id: number, date: string, roomIds: number[], from = '09:00', to
     id,
     label: 'Plenaria',
     roomIds,
-    prepAt: at(date, '08:00'),
     startAt: at(date, from),
     endAt: at(date, to),
-    releaseAt: at(date, '19:00'),
     breaks: [{ label: 'Coffee break', startAt: at(date, from === '09:00' ? '10:30' : '15:30'), endAt: at(date, from === '09:00' ? '11:00' : '16:00') }],
   };
 }
@@ -29,6 +27,8 @@ const event: ScheduledEvent = {
   startDate: '2026-10-24',
   endDate: '2026-10-26',
   receptionNotes: 'Badge',
+  prepAt: at('2026-10-24', '08:00'),
+  releaseAt: at('2026-10-25', '19:00'),
   days: [
     { date: '2026-10-24', receptionNotes: 'Banco 1', housekeepingNotes: 'Platea', bookings: [booking(1, '2026-10-24', [1])] },
     {
