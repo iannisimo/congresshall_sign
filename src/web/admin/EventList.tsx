@@ -8,6 +8,7 @@ import { eventDates } from '../../shared/events.ts';
 import { Logo } from '../sign/parts.tsx';
 import { api, errorMessage, refreshSchedule, useRooms } from './api.ts';
 import { fromDateValue as parseDate, todayValue } from './dates.ts';
+import { usePrintEvents } from './EventsPrint.tsx';
 import { Badge, Button, buttonClass, Card, ErrorNote, inputClass, PageLoading, useFeedback } from './ui.tsx';
 
 /** Every event ending today or later, live ones included. */
@@ -129,12 +130,14 @@ function EventRow({
  */
 export default function EventList({
   onPrintRestaurant = () => {},
-  onPrintDetails = () => {},
+  onPrintDetails,
 }: {
   onPrintRestaurant?: () => void;
   /** Gets the events to print: all those shown, or the one of the row. */
   onPrintDetails?: (events: ScheduledEvent[]) => void;
 }) {
+  const detailsPrinter = usePrintEvents();
+  const printDetails = onPrintDetails ?? detailsPrinter.print;
   const from = startOfDay(Date.now()).getTime();
   const today = todayValue();
   const events = useUpcomingEvents(from);
@@ -169,6 +172,7 @@ export default function EventList({
 
   return (
     <div className="space-y-5">
+      {detailsPrinter.sheet}
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="mr-auto text-xl font-semibold text-slate-900">Eventi</h1>
         <input
@@ -186,7 +190,7 @@ export default function EventList({
           <Printer className="size-4" />
           Stampa ristorante (14 gg)
         </Button>
-        <Button variant="secondary" onClick={() => onPrintDetails(shown)}>
+        <Button variant="secondary" onClick={() => printDetails(shown)}>
           <Printer className="size-4" />
           Stampa dettagli
         </Button>
@@ -200,7 +204,7 @@ export default function EventList({
             <Card>
               <ul className="divide-y divide-slate-100">
                 {group.events.map((event) => (
-                  <EventRow key={event.id} event={event} rooms={sortedRooms} today={today} onPrintDetails={onPrintDetails} />
+                  <EventRow key={event.id} event={event} rooms={sortedRooms} today={today} onPrintDetails={printDetails} />
                 ))}
               </ul>
             </Card>
