@@ -98,7 +98,7 @@ export function DayTab({
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         <div className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Occupazioni delle sale</div>
         {day.bookings.length === 0 && <p className="text-sm text-slate-500">Nessuna sala occupata in questo giorno.</p>}
         {dayErrors.bookings && <ErrorNote>{dayErrors.bookings}</ErrorNote>}
@@ -122,7 +122,7 @@ export function DayTab({
       <div>
         <div className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Note per lo staff (non appaiono sul cartello)</div>
         <div className="@container">
-          <div className="grid gap-4 @xl:grid-cols-3">
+          <div className="grid items-start gap-4 @4xl:grid-cols-3">
             {noteFields.map(({ field, label }) => (
               <Field key={field} label={label} error={dayErrors[field]} hint={`${noteHint(field)}.${dash}`}>
                 <textarea

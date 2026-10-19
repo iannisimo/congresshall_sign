@@ -617,42 +617,38 @@ function EditorForm({
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,34rem)]">
         <div className="space-y-6">
           <Section title="Evento">
-            <div className="grid gap-5 md:grid-cols-2">
-              <Field label="Organizzatore" error={shown('organizer')}>
-                <OrganizerPicker
-                  organizers={organizers}
-                  value={draft.organizerId}
-                  onChange={(id) =>
-                    update({
-                      organizerId: id,
-                      // A newly chosen organizer starts with its first logo, if it has any.
-                      logoId: id === draft.organizerId ? draft.logoId : (organizers.find((o) => o.id === id)?.logoIds[0] ?? null),
-                    })
-                  }
-                />
+            <Field label="Organizzatore" error={shown('organizer')}>
+              <OrganizerPicker
+                organizers={organizers}
+                value={draft.organizerId}
+                onChange={(id) =>
+                  update({
+                    organizerId: id,
+                    // A newly chosen organizer starts with its first logo, if it has any.
+                    logoId: id === draft.organizerId ? draft.logoId : (organizers.find((o) => o.id === id)?.logoIds[0] ?? null),
+                  })
+                }
+              />
+            </Field>
+            {organizer && (
+              <Field label="Logo">
+                <LogoPicker organizer={organizer} value={draft.logoId} onChange={(logoId) => update({ logoId })} />
               </Field>
-              {organizer && (
-                <Field label="Logo">
-                  <LogoPicker organizer={organizer} value={draft.logoId} onChange={(logoId) => update({ logoId })} />
-                </Field>
-              )}
-            </div>
-            <div className="grid gap-5 md:grid-cols-[3fr_2fr]">
-              <Field label="Titolo" error={shown('title')}>
-                <input className={inputClass} value={draft.title} maxLength={200} onChange={(e) => update({ title: e.target.value })} />
-              </Field>
-              <Field label="Sottotitolo" error={shown('subtitle')} hint="Facoltativo">
-                <input className={inputClass} value={draft.subtitle} maxLength={300} onChange={(e) => update({ subtitle: e.target.value })} />
-              </Field>
-            </div>
+            )}
+            <Field label="Titolo" error={shown('title')}>
+              <input className={inputClass} value={draft.title} maxLength={200} onChange={(e) => update({ title: e.target.value })} />
+            </Field>
+            <Field label="Sottotitolo" error={shown('subtitle')} hint="Facoltativo">
+              <input className={inputClass} value={draft.subtitle} maxLength={300} onChange={(e) => update({ subtitle: e.target.value })} />
+            </Field>
           </Section>
 
           <Section title="Date e sale">
-            <div className="flex flex-wrap items-start gap-x-4 gap-y-5">
+            <div className="grid grid-cols-2 gap-4 sm:max-w-md">
               <Field label="Dal">
                 <input
                   type="date"
-                  className={`${inputClass} w-auto!`}
+                  className={inputClass}
                   value={startDate}
                   onChange={(e) => changeStart(e.target.value)}
                   onKeyDown={(e) => {
@@ -664,7 +660,7 @@ function EditorForm({
               <Field label="Al">
                 <input
                   type="date"
-                  className={`${inputClass} w-auto!`}
+                  className={inputClass}
                   value={endDate}
                   min={startDate}
                   onChange={(e) => void changeEnd(e.target.value)}
@@ -674,15 +670,15 @@ function EditorForm({
                   }}
                 />
               </Field>
-              <MarginsSection
+            </div>
+            <MarginsSection
                 value={draft}
                 onChange={update}
                 changeover={changeover}
                 span={span}
                 errors={{ prep: shown('prep'), cleanup: shown('cleanup') }}
                 help="Cambiando «Dal» si sposta tutto l’evento; cambiando «Al» si aggiungono o si tolgono giorni in fondo. Tasti rapidi nelle date: o = oggi, d = domani."
-              />
-            </div>
+            />
           </Section>
 
           <Card className="p-5">
@@ -698,14 +694,14 @@ function EditorForm({
                     role="tab"
                     aria-selected={i === sel}
                     onClick={() => setSelected(i)}
-                    className={`relative min-w-28 shrink-0 rounded-lg px-3 py-1.5 text-left transition-colors ${i === sel ? 'bg-white text-brand-900 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}
+                    className={`relative min-w-32 shrink-0 rounded-lg py-2 pr-6 pl-3 text-left transition-colors ${i === sel ? 'bg-white text-brand-900 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}
                   >
                     <span className="block text-sm font-medium whitespace-nowrap">{dayLabel(day.date)}</span>
                     <span className="block text-xs whitespace-nowrap text-slate-500">
                       {n === 0 ? 'nessuna sala' : `${n} ${n === 1 ? 'occupazione' : 'occupazioni'}`}
                       {hours(day) && ` · ${hours(day)}`}
                     </span>
-                    {flagged && <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-amber-500" title="Da controllare" />}
+                    {flagged && <span className="absolute top-2 right-2 size-2 rounded-full bg-amber-500" title="Da controllare" />}
                   </button>
                 );
               })}
@@ -728,7 +724,7 @@ function EditorForm({
           </Card>
 
           <Section title="Dati interni (non appaiono sul cartello)">
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid items-start gap-5 sm:grid-cols-2">
               <Field label="Costo" error={shown('cost')} hint={costHint(draft.cost) ?? 'Facoltativo, in euro.'}>
                 <input
                   className={inputClass}

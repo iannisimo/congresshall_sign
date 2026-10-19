@@ -149,10 +149,10 @@ export function BookingCard({
           type="button"
           aria-expanded={isOpen}
           onClick={() => setOpen(!isOpen)}
-          className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-3 py-2 text-left hover:bg-slate-100/60"
+          className="flex min-h-12 min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl px-3 py-2.5 text-left hover:bg-slate-100/60"
         >
           <ChevronRight className={`size-4 shrink-0 text-slate-400 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
-          <span className="text-sm font-semibold whitespace-nowrap text-slate-900 tabular-nums">
+          <span className="w-28 shrink-0 text-sm font-semibold whitespace-nowrap text-slate-900 tabular-nums">
             {booking.start || '--:--'}–{booking.end || '--:--'}
             {overnight && <span className="ml-1 text-xs font-normal text-slate-500">(+1)</span>}
           </span>
@@ -161,20 +161,20 @@ export function BookingCard({
               <span className="text-sm text-slate-400">nessuna sala</span>
             ) : (
               chosen.map((r) => (
-                <span key={r.id} className="rounded-full bg-brand-900 px-2 py-0.5 text-xs font-medium text-white">
+                <span key={r.id} className="rounded-md bg-brand-900 px-2.5 py-1 text-sm font-medium text-white">
                   {r.name}
                 </span>
               ))
             )}
           </span>
           {booking.label && <span className="truncate text-sm text-slate-600">{booking.label}</span>}
-          {breaksSummary && <span className="text-xs text-slate-500">{breaksSummary}</span>}
+          {breaksSummary && <span className="text-sm text-slate-500">{breaksSummary}</span>}
           {!booking.label && <span className="sr-only">Occupazione {index + 1}</span>}
         </button>
         <button
           type="button"
           onClick={onRemove}
-          className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600"
+          className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-red-600"
           aria-label="Togli occupazione"
         >
           <Trash2 className="size-4" />
@@ -182,8 +182,8 @@ export function BookingCard({
       </div>
 
       {isOpen && (
-        <div className="space-y-4 border-t border-slate-200 p-3">
-          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="space-y-5 border-t border-slate-200 p-4">
+          <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
             <Field label="Nome interno" error={errors.label}>
               <input
                 className={inputClass}
@@ -229,7 +229,7 @@ export function BookingCard({
                       // Keep the rooms in display order.
                       onChange({ roomIds: bookable.filter((r) => ids.has(r.id)).map((r) => r.id) });
                     }}
-                    className={`rounded-lg px-3 py-1.5 text-sm font-medium ring-1 ${on ? 'bg-brand-900 text-white ring-brand-900' : 'bg-white text-slate-700 ring-slate-300 hover:bg-slate-50'}`}
+                    className={`rounded-lg px-3 py-2 text-sm font-medium ring-1 ${on ? 'bg-brand-900 text-white ring-brand-900' : 'bg-white text-slate-700 ring-slate-300 hover:bg-slate-50'}`}
                   >
                     {room.name}
                   </button>

@@ -125,7 +125,7 @@ export function MarginsSection({
     });
   };
   return (
-    <div className="@container min-w-0 flex-1 basis-80">
+    <div className="@container">
       <Field
         label="Preparazione e riordino delle sale"
         error={value.margins === 'custom' ? undefined : (errors.prep ?? errors.cleanup)}
@@ -135,7 +135,7 @@ export function MarginsSection({
             : undefined
         }
       >
-        <div role="radiogroup" className="inline-flex rounded-lg bg-slate-100 p-0.5 text-sm font-medium">
+        <div role="radiogroup" className="inline-flex rounded-lg bg-slate-100 p-1 text-sm font-medium">
           {MODE_LABELS.map(([mode, label]) => (
             <button
               key={mode}
@@ -143,14 +143,14 @@ export function MarginsSection({
               role="radio"
               aria-checked={value.margins === mode}
               onClick={() => select(mode)}
-              className={`rounded-md px-3 py-1.5 ${value.margins === mode ? 'bg-white text-brand-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+              className={`rounded-md px-4 py-1.5 ${value.margins === mode ? 'bg-white text-brand-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
             >
               {label}
             </button>
           ))}
         </div>
       </Field>
-      <details className="mt-1 text-sm text-slate-600">
+      <details className="mt-2 text-sm text-slate-600">
         <summary className="cursor-pointer text-slate-500 select-none hover:text-slate-800">dettagli</summary>
         <ul className="mt-1 list-disc space-y-1 pl-5">
           <li>
@@ -168,7 +168,7 @@ export function MarginsSection({
         </ul>
       </details>
       {value.margins === 'custom' && (
-        <div className="mt-3 grid gap-3 @lg:grid-cols-2">
+        <div className="mt-4 grid gap-4 @2xl:grid-cols-2">
           <MarginField
             label="Preparazione delle sale"
             minutes={value.prepMinutes}
