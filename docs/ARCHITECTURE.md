@@ -203,6 +203,8 @@ each booking) unless `allowConflicts` is true (ADMIN-7). The admin area runs the
 ## Web app
 
 - `/`: the sign. Lightweight bundle. The admin code is split into its own lazily loaded chunk.
+  `?header=0` / `?footer=0` (parsed once by `web/sign/chrome.ts`) hide the header and the room strip on every
+  sign layout; the stale-data pill then moves into the content area (SIGN-14).
 - `/admin/*`: the admin area. The programme page shows a week, one day under the other (timeline and
   event list per day, one row per event with a line per booking), and scrolls to the selected day (`?d=`),
   so the editor returns where it started. Italian wording, like the old app. It uses TanStack Query against

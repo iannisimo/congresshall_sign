@@ -9,6 +9,7 @@ import { ComingUp } from './ComingUp.tsx';
 import { CARD_HEIGHT, EventCard, HeroCard } from './EventCard.tsx';
 import { Header, StalePill } from './Header.tsx';
 import { useKiosk, useNow, useRemHeight, useSelfUpdate, useSignTheme, useThemeColors } from './hooks.ts';
+import { parseChrome } from './chrome.ts';
 import { Carousel, NightClock, usePrefetchMedia } from './Carousel.tsx';
 import { MarqueeCycle, MarqueeSettings } from './Marquee.tsx';
 import { SectionTitle, Time } from './parts.tsx';
@@ -115,6 +116,7 @@ export type SignLayout = 'standard' | 'big' | 'carousel';
 
 function SignScreen({ layout }: { layout: SignLayout }) {
   useKiosk();
+  const chrome = useMemo(() => parseChrome(location.search), []);
   const { snapshot, lastContactAt, clockOffset } = useSnapshot();
   useSelfUpdate(snapshot?.version, lastContactAt);
   const now = useNow(clockOffset);
@@ -142,7 +144,7 @@ function SignScreen({ layout }: { layout: SignLayout }) {
   if (!snapshot) {
     return (
       <div className="flex h-screen flex-col bg-canvas">
-        <Header now={now} staleSince={null} logo={null} />
+        {chrome.header && <Header now={now} staleSince={null} logo={null} />}
         <div className="grid flex-1 place-items-center text-[2rem] font-semibold text-slate-400">{strings.connecting}</div>
       </div>
     );
@@ -172,7 +174,7 @@ function SignScreen({ layout }: { layout: SignLayout }) {
           {staleSince !== null && <StalePill since={staleSince} now={now} className="absolute top-[1rem] right-[1.5rem] bg-white/90" />}
           {outdated && <OutdatedWarning since={lastContactAt!} />}
         </main>
-        <RoomStrip rooms={rooms} statuses={statuses} now={now} />
+        {chrome.footer && <RoomStrip rooms={rooms} statuses={statuses} now={now} />}
       </div>
     );
   }
@@ -183,9 +185,10 @@ function SignScreen({ layout }: { layout: SignLayout }) {
       <div className="flex h-screen w-screen flex-col overflow-hidden bg-canvas">
         <main className="relative flex min-h-0 flex-1">
           <NightClock now={now} />
+          {staleSince !== null && <StalePill since={staleSince} now={now} className="absolute top-[1rem] right-[1.5rem]" />}
           {outdated && <OutdatedWarning since={lastContactAt!} />}
         </main>
-        <RoomStrip rooms={rooms} statuses={statuses} now={now} />
+        {chrome.footer && <RoomStrip rooms={rooms} statuses={statuses} now={now} />}
       </div>
     );
   }
@@ -193,9 +196,9 @@ function SignScreen({ layout }: { layout: SignLayout }) {
   return (
     <MarqueeSettings.Provider value={settings}>
       <div className="flex h-screen w-screen flex-col overflow-hidden bg-canvas">
-        <Header now={now} staleSince={staleSince} logo={snapshot.venueLogo ?? null} />
+        {chrome.header && <Header now={now} staleSince={staleSince} logo={snapshot.venueLogo ?? null} />}
 
-        <main className="relative flex min-h-0 flex-1 gap-[2.5rem] px-[2.5rem] pt-[1.75rem] pb-[1.5rem]">
+        <main className={`relative flex min-h-0 flex-1 gap-[2.5rem] px-[2.5rem] pb-[1.5rem] ${chrome.header ? 'pt-[1.75rem]' : 'pt-[2rem]'}`}>
           {nothingPlanned ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-[1rem] text-slate-400">
               <CalendarDays className="size-[5rem]" strokeWidth={1.5} />
@@ -217,10 +220,11 @@ function SignScreen({ layout }: { layout: SignLayout }) {
             </section>
           )}
 
+          {!chrome.header && staleSince !== null && <StalePill since={staleSince} now={now} className="absolute top-[0.5rem] right-[1.5rem] bg-white/90" />}
           {outdated && <OutdatedWarning since={lastContactAt!} />}
         </main>
 
-        <RoomStrip rooms={rooms} statuses={statuses} now={now} />
+        {chrome.footer && <RoomStrip rooms={rooms} statuses={statuses} now={now} />}
       </div>
     </MarqueeSettings.Provider>
   );
