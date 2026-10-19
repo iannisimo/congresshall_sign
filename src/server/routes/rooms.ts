@@ -55,7 +55,7 @@ export function roomRoutes(deps: AppDeps) {
     checkParents(db, input, id);
     if (input.kind === 'sub' && room.kind === 'main') {
       if (countUpcomingBookings(db, id, deps.clock()) > 0) {
-        throw new ApiError(409, 'Ha eventi in programma: non può diventare una sottosala');
+        throw new ApiError(409, 'Ha occupazioni in programma: non può diventare una sottosala');
       }
       if (countChildren(db, id) > 0) throw new ApiError(409, 'Ha delle sottosale: non può diventare una sottosala');
     }
@@ -67,7 +67,7 @@ export function roomRoutes(deps: AppDeps) {
     const id = idParam(c);
     if (!getRoom(db, id)) throw notFound();
     const upcoming = countUpcomingBookings(db, id, deps.clock());
-    if (upcoming > 0) throw new ApiError(409, `Non eliminabile: ${upcoming} eventi in programma la usano`);
+    if (upcoming > 0) throw new ApiError(409, `Non eliminabile: ${upcoming} occupazioni in programma la usano`);
     deleteRoom(db, id);
     return c.body(null, 204);
   });
