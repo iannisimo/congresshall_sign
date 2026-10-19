@@ -1,5 +1,5 @@
 import { QueryClientProvider, useMutation } from '@tanstack/react-query';
-import { CalendarDays, CalendarRange, DoorOpen, ExternalLink, Images, LogOut, Settings as SettingsIcon, Users } from 'lucide-react';
+import { CalendarDays, CalendarRange, DoorOpen, ExternalLink, Images, List, LogOut, Settings as SettingsIcon, Users } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router';
 import { installUpdate, onUpdateWaiting } from '../lib/pwa.ts';
@@ -9,6 +9,7 @@ import { VenueLogo } from '../sign/parts.tsx';
 import type { Role } from '../../shared/model.ts';
 import { api, keys, queryClient, useDisplay, useMe } from './api.ts';
 import EventEditor from './EventEditor.tsx';
+import EventList from './EventList.tsx';
 import Login from './Login.tsx';
 import Media from './Media.tsx';
 import MonthView from './MonthView.tsx';
@@ -77,7 +78,10 @@ function Shell({ role, username, children }: { role: Role; username: string; chi
                 <NavItem to="/admin/month" icon={<CalendarRange className="size-4" />}>
                   Calendario
                 </NavItem>
-                <NavItem to="/admin/organizers" icon={<Users className="size-4" />}>
+                <NavItem to="/admin/events" icon={<List className="size-4" />}>
+                  Eventi
+                </NavItem>
+                <NavItem to="/admin/organizers"icon={<Users className="size-4" />}>
                   Organizzatori
                 </NavItem>
               </>
@@ -141,6 +145,7 @@ function Gate() {
     <Shell role={role} username={username}>
       <Routes>
         <Route index element={<WeekView />} />
+        <Route path="events" element={<EventList />} />
         <Route path="events/new" element={<EventEditor mode="new" />} />
         <Route path="events/:id" element={<EventEditor mode="edit" />} />
         <Route path="events/:id/clone" element={<EventEditor mode="clone" />} />
