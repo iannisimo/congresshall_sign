@@ -26,12 +26,14 @@ const congress: ScheduledEvent = {
   startDate: '2026-10-20',
   endDate: '2026-10-22',
   receptionNotes: null,
+  costCents: null,
+  bookingNumber: null,
   prepAt: local('2026-10-19T14:00'),
   releaseAt: local('2026-10-23T14:00'),
   days: [
-    { date: '2026-10-20', receptionNotes: null, housekeepingNotes: null, bookings: [booking(1, '2026-10-20', 1)] },
-    { date: '2026-10-21', receptionNotes: null, housekeepingNotes: null, bookings: [] },
-    { date: '2026-10-22', receptionNotes: null, housekeepingNotes: null, bookings: [booking(2, '2026-10-22', 2)] },
+    { date: '2026-10-20', receptionNotes: null, housekeepingNotes: null, restaurantNotes: null, bookings: [booking(1, '2026-10-20', 1)] },
+    { date: '2026-10-21', receptionNotes: null, housekeepingNotes: null, restaurantNotes: null, bookings: [] },
+    { date: '2026-10-22', receptionNotes: null, housekeepingNotes: null, restaurantNotes: null, bookings: [booking(2, '2026-10-22', 2)] },
   ],
 };
 

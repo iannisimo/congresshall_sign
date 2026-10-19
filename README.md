@@ -108,12 +108,14 @@ become a smart-TV browser. **One person** does the admin work.
   event is live, its card on the sign shows the break under way, or else the next one.
 - **ADMIN-13** Staff notes at two levels: *Reception (tutto l’evento)* on the event, and on each day
   *Reception (questo giorno)* and *Housekeeping e preparazione sala* (which also covers how the room is set
-  up). On days after the first, an empty note means "same as the previous day": the field shows that as
+  up) and *Ristorante*. On days after the first, an empty note means "same as the previous day": the field shows that as
   its placeholder and hint, and the prints show the inherited text. To say "nothing today" after a day with
-  notes, write `—`. Notes are never shown on the sign or sent to it.
+  notes, write `—`. Notes are never shown on the sign or sent to it. Two more internal fields per event,
+  equally off the sign: *Costo* (one amount in euro, typed as `1.234,50`) and *Numero prenotazione* (free text,
+  searchable in *Eventi*). The restaurant print shows each day's *Ristorante* note, inherited ones in full.
 - **ADMIN-14** *Eventi* tab: every event ending today or later, grouped by month, with logo, organizer,
-  title, dates and number of days, rooms used, and *In corso* / *Bozza* badges. Filter by organizer or
-  title, hide drafts; edit (opens today's tab if the event is live), clone, print, delete.
+  title, dates and number of days, rooms used, and *In corso* / *Bozza* badges. Filter by organizer,
+  title or booking number, hide drafts; edit (opens today's tab if the event is live), clone, print, delete.
 - **ADMIN-15** Prints (`printSheet`, like the day sheet). *Stampa ristorante (14 gg)*: the next 14 days
   (today included), per event, one line per day with bookings showing hours and breaks, no rooms and no
   notes; drafts are included and framed "DA CONFERMARE"; it ignores the list's filters. *Stampa dettagli*:

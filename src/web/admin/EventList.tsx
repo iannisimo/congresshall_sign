@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import type { Room, ScheduledEvent } from '../../shared/model.ts';
 import { eventDates } from '../../shared/events.ts';
+import { formatEuros } from '../../shared/money.ts';
 import { Logo } from '../sign/parts.tsx';
 import { printSheet } from './DayPrint.tsx';
 import { RestaurantPrint } from './RestaurantPrint.tsx';
@@ -96,6 +97,8 @@ function EventRow({
           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-slate-600">
             <span className="font-medium">{datesText(event)}</span>
             {roomNames && <span className="text-slate-500">{roomNames}</span>}
+            {event.bookingNumber && <span className="text-xs text-slate-400">N. {event.bookingNumber}</span>}
+            {event.costCents !== null && <span className="text-xs text-slate-400">{formatEuros(event.costCents)}</span>}
           </div>
         </div>
       </div>
@@ -153,7 +156,7 @@ export default function EventList({
     return (events.data ?? [])
       .filter((e) => e.endDate >= today)
       .filter((e) => !hideDrafts || e.visible)
-      .filter((e) => !term || e.organizerName.toLowerCase().includes(term) || e.title.toLowerCase().includes(term))
+      .filter((e) => !term || e.organizerName.toLowerCase().includes(term) || e.title.toLowerCase().includes(term) || (e.bookingNumber ?? '').toLowerCase().includes(term))
       .sort((a, b) => a.startDate.localeCompare(b.startDate) || a.id - b.id);
   }, [events.data, filter, hideDrafts, today]);
 
@@ -182,7 +185,7 @@ export default function EventList({
         <input
           type="search"
           className={`${inputClass} max-w-xs`}
-          placeholder="Cerca organizzatore o titolo"
+          placeholder="Cerca organizzatore, titolo o n. prenotazione"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         />

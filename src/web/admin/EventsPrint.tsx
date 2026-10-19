@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { EventBooking, Room, ScheduledEvent } from '../../shared/model.ts';
 import { effectiveDayNotes } from '../../shared/events.ts';
+import { formatEuros } from '../../shared/money.ts';
 import { formatAdminDay, formatAdminShortDay, formatAdminTime } from '../lib/format.ts';
 import { useRooms } from './api.ts';
 import { fromDateValue } from './dates.ts';
@@ -89,6 +90,8 @@ export function EventsPrint({ events, rooms }: { events: ScheduledEvent[]; rooms
                 : `${formatAdminShortDay(first)} – ${formatAdminShortDay(last)}`}
               {' · '}
               {event.days.length === 1 ? '1 giorno' : `${event.days.length} giorni`}
+              {event.bookingNumber && ` · N. prenotazione ${event.bookingNumber}`}
+              {event.costCents !== null && ` · Costo ${formatEuros(event.costCents)}`}
               <div>
                 Sale riservate dalle {formatAdminTime(event.prepAt)} ({formatAdminShortDay(event.prepAt)}) alle {formatAdminTime(event.releaseAt)} (
                 {formatAdminShortDay(event.releaseAt)})
@@ -116,13 +119,14 @@ export function EventsPrint({ events, rooms }: { events: ScheduledEvent[]; rooms
                       <BookingsTable bookings={day.bookings} rooms={rooms} />
                     </div>
                   )}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <Note label="Reception" text={notes.receptionNotes} inherited={notes.inherited.receptionNotes} />
                     <Note
                       label="Housekeeping"
                       text={notes.housekeepingNotes}
                       inherited={notes.inherited.housekeepingNotes}
                     />
+                    <Note label="Ristorante" text={notes.restaurantNotes} inherited={notes.inherited.restaurantNotes} />
                   </div>
                 </section>
               );

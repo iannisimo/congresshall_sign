@@ -41,12 +41,15 @@ export function eventToInput(event: ScheduledEvent): EventInput {
     subtitle: event.subtitle,
     visible: event.visible,
     receptionNotes: event.receptionNotes,
+    costCents: event.costCents,
+    bookingNumber: event.bookingNumber,
     prepAt: event.prepAt,
     releaseAt: event.releaseAt,
     days: event.days.map((day) => ({
       date: day.date,
       receptionNotes: day.receptionNotes,
       housekeepingNotes: day.housekeepingNotes,
+      restaurantNotes: day.restaurantNotes,
       bookings: day.bookings.map((b) => ({
         label: b.label,
         roomIds: [...b.roomIds],
@@ -58,13 +61,15 @@ export function eventToInput(event: ScheduledEvent): EventInput {
   };
 }
 
-type NotesDay = Pick<EventDay, 'receptionNotes' | 'housekeepingNotes'>;
+type NoteField = 'receptionNotes' | 'housekeepingNotes' | 'restaurantNotes';
+type NotesDay = Pick<EventDay, NoteField>;
 
 export interface EffectiveDayNotes {
   receptionNotes: string | null;
   housekeepingNotes: string | null;
+  restaurantNotes: string | null;
   /** True when the note is the previous day's, because this day's is empty. */
-  inherited: { receptionNotes: boolean; housekeepingNotes: boolean };
+  inherited: { receptionNotes: boolean; housekeepingNotes: boolean; restaurantNotes: boolean };
 }
 
 /**
@@ -73,17 +78,23 @@ export interface EffectiveDayNotes {
  * after a day with one writes "—", which is a note like any other.
  */
 export function effectiveDayNotes(event: { days: NotesDay[] }, dayIndex: number): EffectiveDayNotes {
-  const resolve = (field: 'receptionNotes' | 'housekeepingNotes') => {
+  const resolve = (field: NoteField) => {
     let i = dayIndex;
     while (i > 0 && event.days[i]?.[field] == null) i -= 1;
     return { value: event.days[i]?.[field] ?? null, inherited: i !== dayIndex };
   };
   const reception = resolve('receptionNotes');
   const housekeeping = resolve('housekeepingNotes');
+  const restaurant = resolve('restaurantNotes');
   return {
     receptionNotes: reception.value,
     housekeepingNotes: housekeeping.value,
-    inherited: { receptionNotes: reception.inherited, housekeepingNotes: housekeeping.inherited },
+    restaurantNotes: restaurant.value,
+    inherited: {
+      receptionNotes: reception.inherited,
+      housekeepingNotes: housekeeping.inherited,
+      restaurantNotes: restaurant.inherited,
+    },
   };
 }
 

@@ -144,6 +144,8 @@ export async function importMongo(db: Db, dir: string, now: number): Promise<Imp
           subtitle: text(doc['subtitle']) || null,
           visible: doc['enabled'] !== false,
           receptionNotes: null,
+          costCents: null,
+          bookingNumber: null,
           prepAt: Math.min(date(doc['prep_time']) ?? startAt, startAt),
           // The old app had no clean-up time: rooms stayed reserved until freed by hand.
           releaseAt: changeoverMargins(startAt, endAt, settings).releaseAt,
@@ -151,7 +153,7 @@ export async function importMongo(db: Db, dir: string, now: number): Promise<Imp
             {
               date: toDateValue(startAt),
               receptionNotes: null,
-              housekeepingNotes: null,
+              housekeepingNotes: null, restaurantNotes: null,
               bookings: [
                 {
                   label: null,

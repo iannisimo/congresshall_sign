@@ -54,6 +54,7 @@ export function DayPrint({ day, date, events, rooms }: { day: number; date: stri
         <article key={event.id} className="mb-4 break-inside-avoid border-t border-slate-400 pt-3">
           <div className="text-xs font-semibold tracking-wide uppercase">{event.organizerName}</div>
           <h2 className="text-base font-bold">{event.title}</h2>
+          {event.bookingNumber && <div className="text-xs">N. prenotazione {event.bookingNumber}</div>}
           <div className="mb-2 space-y-0.5 tabular-nums">
             {eventDay.bookings.length === 0 && <div>Nessuna sala</div>}
             {eventDay.bookings.map((b) => (

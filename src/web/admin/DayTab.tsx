@@ -10,6 +10,7 @@ export interface DraftDay {
   /** Empty on a day after the first means "same as the previous day". */
   receptionNotes: string;
   housekeepingNotes: string;
+  restaurantNotes: string;
   bookings: DraftBooking[];
 }
 
@@ -18,6 +19,7 @@ export interface DayErrors {
   bookings?: string;
   receptionNotes?: string;
   housekeepingNotes?: string;
+  restaurantNotes?: string;
 }
 
 /** First non-empty line of an inherited note, trimmed for a hint. */
@@ -56,10 +58,10 @@ export function DayTab({
 }) {
   const day = days[index]!;
   const notes = effectiveDayNotes(
-    { days: days.map((d) => ({ receptionNotes: d.receptionNotes.trim() || null, housekeepingNotes: d.housekeepingNotes.trim() || null })) },
+    { days: days.map((d) => ({ receptionNotes: d.receptionNotes.trim() || null, housekeepingNotes: d.housekeepingNotes.trim() || null, restaurantNotes: d.restaurantNotes.trim() || null })) },
     index,
   );
-  const noteHint = (field: 'receptionNotes' | 'housekeepingNotes') =>
+  const noteHint = (field: 'receptionNotes' | 'housekeepingNotes' | 'restaurantNotes') =>
     index > 0 && notes.inherited[field] && notes[field] ? `Come il giorno precedente: «${firstLine(notes[field])}»` : 'Facoltativo';
   const placeholder = index > 0 ? 'Come il giorno precedente' : '';
   const dash = index > 0 ? ' Scrivi «—» per dire che questo giorno non ha note.' : '';
@@ -129,6 +131,15 @@ export function DayTab({
             maxLength={4000}
             placeholder={placeholder}
             onChange={(e) => onChange({ receptionNotes: e.target.value })}
+          />
+        </Field>
+        <Field label="Ristorante" error={dayErrors.restaurantNotes} hint={`${noteHint('restaurantNotes')}.${dash}`}>
+          <textarea
+            className={`${inputClass} min-h-24`}
+            value={day.restaurantNotes}
+            maxLength={4000}
+            placeholder={placeholder}
+            onChange={(e) => onChange({ restaurantNotes: e.target.value })}
           />
         </Field>
       </div>

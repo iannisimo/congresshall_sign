@@ -11,8 +11,8 @@ function booking(date: string, from: string, to: string, breaks: EventBooking['b
 function event(id: number, visible: boolean, days: [string, EventBooking[]][]): ScheduledEvent {
   return {
     id, organizerId: 1, organizerName: `Org ${id}`, logoId: null, title: `Titolo ${id}`, subtitle: null, visible,
-    startDate: days[0]![0], endDate: days[days.length - 1]![0], receptionNotes: null, prepAt: 0, releaseAt: 0,
-    days: days.map(([date, bookings]) => ({ date, receptionNotes: null, housekeepingNotes: null, bookings })),
+    startDate: days[0]![0], endDate: days[days.length - 1]![0], receptionNotes: null, costCents: null, bookingNumber: null, prepAt: 0, releaseAt: 0,
+    days: days.map(([date, bookings]) => ({ date, receptionNotes: null, housekeepingNotes: null, restaurantNotes: null, bookings })),
   };
 }
 
@@ -45,9 +45,21 @@ describe('restaurantRows', () => {
     );
     expect(rows.map((r) => r.id)).toEqual([1, 2]);
     expect(rows[0]!.days).toEqual([
-      { date: '2026-10-20', hours: '09:00–18:00', breaks: ['Coffee break 10:30–11:00', 'Lunch break 13:00–14:00'] },
+      { date: '2026-10-20', hours: '09:00–18:00', breaks: ['Coffee break 10:30–11:00', 'Lunch break 13:00–14:00'], notes: null },
     ]);
     expect(rows[1]).toMatchObject({ draft: true });
-    expect(rows[1]!.days[0]).toEqual({ date: '2026-10-25', hours: '09:00–13:00, 15:00–18:00', breaks: [] });
+    expect(rows[1]!.days[0]).toEqual({ date: '2026-10-25', hours: '09:00–13:00, 15:00–18:00', breaks: [], notes: null });
+  });
+
+  it('prints each day\'s effective restaurant note, inherited ones in full', () => {
+    const e = event(1, true, [
+      ['2026-10-20', [booking('2026-10-20', '09:00', '18:00')]],
+      ['2026-10-21', [booking('2026-10-21', '09:00', '18:00')]],
+      ['2026-10-22', [booking('2026-10-22', '09:00', '18:00')]],
+    ]);
+    e.days[0]!.restaurantNotes = 'Menu vegano\n20 coperti';
+    e.days[2]!.restaurantNotes = '—';
+    const days = restaurantRows([e], at('2026-10-20', '08:00'))[0]!.days;
+    expect(days.map((d) => d.notes)).toEqual(['Menu vegano\n20 coperti', 'Menu vegano\n20 coperti', null]);
   });
 });

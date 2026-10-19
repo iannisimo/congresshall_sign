@@ -32,7 +32,10 @@ export function RestaurantPrint({ events, now }: { events: ScheduledEvent[]; now
                 <tr key={day.date} className="border-t border-slate-300">
                   <td className="w-32 py-1 pr-3 font-medium">{dayFormat.format(fromDateValue(day.date)).replace(',', '')}</td>
                   <td className="w-56 py-1 pr-3">{day.hours}</td>
-                  <td className="py-1">{day.breaks.length > 0 ? day.breaks.join(' · ') : '—'}</td>
+                  <td className="py-1">
+                    {day.breaks.length > 0 ? day.breaks.join(' · ') : '—'}
+                    {day.notes && <div className="whitespace-pre-wrap">{day.notes}</div>}
+                  </td>
                 </tr>
               ))}
             </tbody>

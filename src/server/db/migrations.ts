@@ -287,4 +287,10 @@ export const migrations: string[] = [
   CREATE INDEX event_booking_rooms_room ON event_booking_rooms(room_id);
   CREATE INDEX event_booking_breaks_booking ON event_booking_breaks(booking_id);
   `,
+  // 12: internal extras: cost and booking number per event, restaurant notes per day.
+  `
+  ALTER TABLE events ADD COLUMN cost_cents INTEGER;
+  ALTER TABLE events ADD COLUMN booking_number TEXT;
+  ALTER TABLE event_days ADD COLUMN restaurant_notes TEXT;
+  `,
 ];

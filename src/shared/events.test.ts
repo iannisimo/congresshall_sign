@@ -27,17 +27,19 @@ const event: ScheduledEvent = {
   startDate: '2026-10-24',
   endDate: '2026-10-26',
   receptionNotes: 'Badge',
+  costCents: 123450,
+  bookingNumber: 'PR-77',
   prepAt: at('2026-10-24', '08:00'),
   releaseAt: at('2026-10-25', '19:00'),
   days: [
-    { date: '2026-10-24', receptionNotes: 'Banco 1', housekeepingNotes: 'Platea', bookings: [booking(1, '2026-10-24', [1])] },
+    { date: '2026-10-24', receptionNotes: 'Banco 1', housekeepingNotes: 'Platea', restaurantNotes: 'Menu A', bookings: [booking(1, '2026-10-24', [1])] },
     {
       date: '2026-10-25',
       receptionNotes: null,
-      housekeepingNotes: null,
+      housekeepingNotes: null, restaurantNotes: null,
       bookings: [booking(2, '2026-10-25', [1]), booking(3, '2026-10-25', [2, 3], '14:00', '18:00')],
     },
-    { date: '2026-10-26', receptionNotes: '—', housekeepingNotes: null, bookings: [] },
+    { date: '2026-10-26', receptionNotes: '—', housekeepingNotes: null, restaurantNotes: null, bookings: [] },
   ],
 };
 
@@ -49,7 +51,7 @@ describe('flattenEvent', () => {
       [2, 5, '2026-10-25'],
       [3, 5, '2026-10-25'],
     ]);
-    expect(JSON.stringify(flat)).not.toMatch(/Badge|Banco|Platea|Plenaria/);
+    expect(JSON.stringify(flat)).not.toMatch(/Badge|Banco|Platea|Plenaria|Menu A|PR-77|123450/);
   });
 });
 
@@ -58,24 +60,27 @@ describe('effectiveDayNotes', () => {
     expect(effectiveDayNotes(event, 0)).toEqual({
       receptionNotes: 'Banco 1',
       housekeepingNotes: 'Platea',
-      inherited: { receptionNotes: false, housekeepingNotes: false },
+      restaurantNotes: 'Menu A',
+      inherited: { receptionNotes: false, housekeepingNotes: false, restaurantNotes: false },
     });
     expect(effectiveDayNotes(event, 1)).toEqual({
       receptionNotes: 'Banco 1',
       housekeepingNotes: 'Platea',
-      inherited: { receptionNotes: true, housekeepingNotes: true },
+      restaurantNotes: 'Menu A',
+      inherited: { receptionNotes: true, housekeepingNotes: true, restaurantNotes: true },
     });
     // "—" is a note of its own and stops the chain for reception; housekeeping still goes back two days.
     expect(effectiveDayNotes(event, 2)).toEqual({
       receptionNotes: '—',
       housekeepingNotes: 'Platea',
-      inherited: { receptionNotes: false, housekeepingNotes: true },
+      restaurantNotes: 'Menu A',
+      inherited: { receptionNotes: false, housekeepingNotes: true, restaurantNotes: true },
     });
   });
 
   it('means no note on the first day', () => {
-    const none = { days: [{ receptionNotes: null, housekeepingNotes: null }] };
-    expect(effectiveDayNotes(none, 0)).toMatchObject({ receptionNotes: null, housekeepingNotes: null });
+    const none = { days: [{ receptionNotes: null, housekeepingNotes: null, restaurantNotes: null }] };
+    expect(effectiveDayNotes(none, 0)).toMatchObject({ receptionNotes: null, housekeepingNotes: null, restaurantNotes: null });
   });
 });
 
