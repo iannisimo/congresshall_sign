@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
-import type { Room, ScheduledEvent } from '../../shared/model.ts';
+import type { Room, SignEvent } from '../../shared/model.ts';
 import { DAY, HOUR } from '../../shared/time.ts';
 import { formatAdminShortDay, formatAdminTime } from '../lib/format.ts';
 
@@ -7,9 +7,9 @@ const DEFAULT_FIRST_HOUR = 7;
 const DEFAULT_LAST_HOUR = 24;
 const NAMES_WIDTH = 128; // px, the room names column
 
-/** Splits a room's events into lanes so events running at the same time (conflicts) sit on separate lines. */
-function lanes(events: ScheduledEvent[]): ScheduledEvent[][] {
-  const result: ScheduledEvent[][] = [];
+/** Splits a room's bookings into lanes so events running at the same time (conflicts) sit on separate lines. */
+function lanes(events: SignEvent[]): SignEvent[][] {
+  const result: SignEvent[][] = [];
   for (const event of [...events].sort((a, b) => a.startAt - b.startAt)) {
     const lane = result.find((l) => l[l.length - 1]!.endAt <= event.startAt);
     if (lane) lane.push(event);
@@ -20,7 +20,7 @@ function lanes(events: ScheduledEvent[]): ScheduledEvent[][] {
 
 const stripes = 'bg-[repeating-linear-gradient(135deg,var(--color-slate-100)_0_6px,var(--color-slate-200)_6px_12px)]';
 
-function heldText(event: ScheduledEvent): string {
+function heldText(event: SignEvent): string {
   const at = (t: number) => `${formatAdminTime(t)} di ${formatAdminShortDay(t)}`;
   return `${event.title} · sala riservata dalle ${at(event.prepAt)} alle ${at(event.releaseAt)}`;
 }
@@ -41,9 +41,9 @@ export function Timeline({
   day: number;
   rooms: Room[];
   /** Events holding a room at some point of the day, including only by preparation or clean-up. */
-  events: ScheduledEvent[];
+  events: SignEvent[];
   now: number;
-  onOpen: (event: ScheduledEvent) => void;
+  onOpen: (event: SignEvent) => void;
   onCreate: (roomId: number, hour: number) => void;
 }) {
   const running = events.filter((e) => e.startAt < day + DAY && e.endAt > day);

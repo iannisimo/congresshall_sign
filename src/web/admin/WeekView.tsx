@@ -3,7 +3,8 @@ import { addDays, isSameDay, isSameWeek, isToday, startOfDay, startOfWeek } from
 import { ChevronLeft, ChevronRight, Copy, Eye, EyeOff, MapPin, Pencil, Plus, Printer, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import type { Room, ScheduledEvent } from '../../shared/model.ts';
+import type { EventBooking, Room, ScheduledEvent } from '../../shared/model.ts';
+import { eventToInput, flattenEvents } from '../../shared/events.ts';
 import { formatAdminDay, formatAdminShortDay, formatAdminTime, formatAdminWeek } from '../lib/format.ts';
 import { Logo } from '../sign/parts.tsx';
 import { api, errorMessage, refreshSchedule, useEvents, useRooms } from './api.ts';
@@ -13,20 +14,15 @@ import { RoomStatusPanel } from './RoomStatusPanel.tsx';
 import { Timeline } from './Timeline.tsx';
 import { Badge, Button, buttonClass, Card, ErrorNote, inputClass, PageLoading, useFeedback } from './ui.tsx';
 
-/** The event as API input, e.g. to flip its visibility. */
-export function toInput(event: ScheduledEvent) {
-  const { id: _id, organizerName: _name, ...input } = event;
-  return input;
+/** When the room is held around the booking, with the day when it isn't the booking's. */
+function heldText(b: EventBooking): string {
+  if (b.prepAt === b.startAt && b.releaseAt === b.endAt) return 'nessuna preparazione né riordino';
+  const at = (t: number) => (isSameDay(t, b.startAt) ? formatAdminTime(t) : `${formatAdminTime(t)} di ${formatAdminShortDay(t)}`);
+  return `sala riservata dalle ${at(b.prepAt)} alle ${at(b.releaseAt)}`;
 }
 
-/** When the room is held around the event, with the day when it isn't the event's. */
-function heldText(event: ScheduledEvent): string {
-  if (event.prepAt === event.startAt && event.releaseAt === event.endAt) return 'nessuna preparazione né riordino';
-  const at = (t: number) => (isSameDay(t, event.startAt) ? formatAdminTime(t) : `${formatAdminTime(t)} di ${formatAdminShortDay(t)}`);
-  return `sala riservata dalle ${at(event.prepAt)} alle ${at(event.releaseAt)}`;
-}
-
-function EventRow({ event, rooms, day }: { event: ScheduledEvent; rooms: Map<number, Room>; day: string }) {
+/** One event on one of its days: its bookings of that day, one line each. */
+function EventRow({ event, rooms, date }: { event: ScheduledEvent; rooms: Map<number, Room>; date: string }) {
   const { confirm, toast } = useFeedback();
   const remove = useMutation({
     mutationFn: () => api(`/events/${event.id}`, { method: 'DELETE' }),
@@ -40,13 +36,15 @@ function EventRow({ event, rooms, day }: { event: ScheduledEvent; rooms: Map<num
     mutationFn: () =>
       api(`/events/${event.id}`, {
         method: 'PUT',
-        json: { event: { ...toInput(event), visible: !event.visible }, allowConflicts: true },
+        json: { event: { ...eventToInput(event), visible: !event.visible }, allowConflicts: true },
       }),
     onSuccess: () => refreshSchedule(),
     onError: (error) => toast(errorMessage(error), 'error'),
   });
 
-  const roomNames = event.roomIds.map((id) => rooms.get(id)?.name ?? '?').join(', ');
+  const dayIndex = event.days.findIndex((d) => d.date === date);
+  const bookings = event.days[dayIndex]?.bookings ?? [];
+  const editUrl = `/admin/events/${event.id}?day=${date}&d=${date}`;
   return (
     <li
       className={`flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center ${event.visible ? '' : 'border-l-4 border-amber-400 bg-amber-50/60 pl-3'}`}
@@ -55,10 +53,15 @@ function EventRow({ event, rooms, day }: { event: ScheduledEvent; rooms: Map<num
         <Logo logoId={event.logoId} name={event.organizerName} className="size-14 ring-1 ring-slate-200" />
         <div className="min-w-0 flex-1">
           <div className="truncate text-xs font-semibold tracking-wide text-brand-800 uppercase">{event.organizerName}</div>
-          <div className="flex items-center gap-2">
-            <Link to={`/admin/events/${event.id}?d=${day}`} className="truncate font-semibold text-slate-900 hover:underline">
+          <div className="flex flex-wrap items-center gap-x-2">
+            <Link to={editUrl} className="truncate font-semibold text-slate-900 hover:underline">
               {event.title}
             </Link>
+            {event.days.length > 1 && (
+              <span className="text-xs text-slate-500">
+                giorno {dayIndex + 1} di {event.days.length}
+              </span>
+            )}
             {!event.visible && (
               <Badge tone="amber">
                 <EyeOff className="size-3.5" />
@@ -67,24 +70,30 @@ function EventRow({ event, rooms, day }: { event: ScheduledEvent; rooms: Map<num
             )}
           </div>
           {event.subtitle && <div className="truncate text-sm text-slate-500">{event.subtitle}</div>}
-          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-slate-600">
-            <span className="font-medium tabular-nums">
-              {formatAdminTime(event.startAt)}–{formatAdminTime(event.endAt)}
-            </span>
-            <span className="text-slate-500 tabular-nums">{heldText(event)}</span>
-            <span className="flex items-center gap-1">
-              <MapPin className="size-3.5 text-slate-400" />
-              {roomNames}
-            </span>
+          <div className="mt-1 space-y-0.5 text-sm text-slate-600">
+            {bookings.length === 0 && <div className="text-slate-500">Nessuna sala questo giorno</div>}
+            {bookings.map((b) => (
+              <div key={b.id} className="flex flex-wrap gap-x-4 gap-y-0.5">
+                {b.label && <span className="font-medium text-slate-700">{b.label}</span>}
+                <span className="font-medium tabular-nums">
+                  {formatAdminTime(b.startAt)}–{formatAdminTime(b.endAt)}
+                </span>
+                <span className="text-slate-500 tabular-nums">{heldText(b)}</span>
+                <span className="flex items-center gap-1">
+                  <MapPin className="size-3.5 text-slate-400" />
+                  {b.roomIds.map((id) => rooms.get(id)?.name ?? '?').join(', ')}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
       <div className="flex gap-1 self-end sm:self-auto">
-        <Link to={`/admin/events/${event.id}?d=${day}`} className={buttonClass('ghost', 'sm')} title="Modifica">
+        <Link to={editUrl} className={buttonClass('ghost', 'sm')} title="Modifica">
           <Pencil className="size-4" />
           <span className="sm:hidden lg:inline">Modifica</span>
         </Link>
-        <Link to={`/admin/events/${event.id}/clone?d=${day}`} className={buttonClass('ghost', 'sm')} title="Duplica">
+        <Link to={`/admin/events/${event.id}/clone?d=${date}`} className={buttonClass('ghost', 'sm')} title="Duplica">
           <Copy className="size-4" />
         </Link>
         <Button
@@ -102,7 +111,9 @@ function EventRow({ event, rooms, day }: { event: ScheduledEvent; rooms: Map<num
           title="Elimina"
           busy={remove.isPending}
           onClick={async () => {
-            if (await confirm(`Eliminare «${event.title}»?`, { confirmLabel: 'Elimina', danger: true })) remove.mutate();
+            const message =
+              event.days.length > 1 ? `Eliminare «${event.title}» e tutti i suoi ${event.days.length} giorni?` : `Eliminare «${event.title}»?`;
+            if (await confirm(message, { confirmLabel: 'Elimina', danger: true })) remove.mutate();
           }}
         >
           <Trash2 className="size-4 text-red-600" />
@@ -129,8 +140,9 @@ function DaySection({
   const next = addDays(day, 1).getTime();
   // Events holding a room this day, also only by preparation or clean-up (the timeline shows those as
   // stripes); the list is about what runs this day.
-  const touching = events.filter((e) => e.prepAt < next && e.releaseAt > day);
-  const running = touching.filter((e) => e.startAt < next && e.endAt > day);
+  const touching = useMemo(() => flattenEvents(events).filter((b) => b.prepAt < next && b.releaseAt > day), [events, day, next]);
+  // One row per event that has this date among its days (also a day without bookings).
+  const running = events.filter((e) => e.days.some((d) => d.date === value));
   const roomMap = useMemo(() => new Map(rooms.map((r) => [r.id, r])), [rooms]);
   const bookable = rooms.filter((r) => r.kind === 'main');
   const today = isToday(day);
@@ -165,7 +177,7 @@ function DaySection({
               rooms={bookable}
               events={touching}
               now={now}
-              onOpen={(e) => navigate(`/admin/events/${e.id}?d=${value}`)}
+              onOpen={(e) => navigate(`/admin/events/${e.eventId}?day=${e.date}&d=${value}`)}
               onCreate={(roomId, hour) => navigate(`/admin/events/new?d=${value}&room=${roomId}&start=${String(hour).padStart(2, '0')}:00`)}
             />
           )}
@@ -173,12 +185,12 @@ function DaySection({
         {running.length > 0 && (
           <ul className="divide-y divide-slate-100 border-t border-slate-100">
             {running.map((event) => (
-              <EventRow key={event.id} event={event} rooms={roomMap} day={value} />
+              <EventRow key={event.id} event={event} rooms={roomMap} date={value} />
             ))}
           </ul>
         )}
       </Card>
-      {printing && <DayPrint day={day} events={running.filter((e) => e.visible)} rooms={roomMap} />}
+      {printing && <DayPrint day={day} date={value} events={running.filter((e) => e.visible)} rooms={roomMap} />}
     </section>
   );
 }
