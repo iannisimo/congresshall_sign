@@ -275,7 +275,7 @@ These are assumptions. Each one is easy to change.
 8. **No venue name on the sign:** the header shows the venue logo on the left and the clock on the right;
    a name would break the mostly-English wording.
 9. **Data from the old app** can be brought over with an import command that reads `mongoexport` files.
-   The old app had no clean-up time, so imported events get the default clean-up.
+   The old app had no clean-up time, so imported events get the default 30 minutes.
 10. **Rooms in an event follow the display order**, not the order they were clicked.
 11. **"Until next change" overrides** end when the calculated status changes cause (a different event or
     phase), not merely its look. Overrides that no longer apply are deleted by the server when it builds
