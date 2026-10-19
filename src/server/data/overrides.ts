@@ -1,4 +1,5 @@
 import type { Override, RoomStatusKind } from '../../shared/model.ts';
+import { flattenEvents } from '../../shared/events.ts';
 import { computeRoomStatuses } from '../../shared/status.ts';
 import { all, run, type Db } from '../db/database.ts';
 import { listEvents } from './events.ts';
@@ -50,9 +51,11 @@ export function activeOverrides(db: Db, now: number): Override[] {
   const overrides = listOverrides(db);
   if (overrides.length === 0) return overrides;
 
-  // Every event that could have changed a status between the oldest override and now.
+  // Every booking that could have changed a status between the oldest override and now.
   const from = Math.min(...overrides.map((o) => o.createdAt));
-  const events = listEvents(db, { from, to: now + 1, visibleOnly: true });
+  const events = flattenEvents(listEvents(db, { from, to: now + 1, visibleOnly: true })).filter(
+    (b) => b.releaseAt > from && b.prepAt < now + 1,
+  );
   const statuses = computeRoomStatuses({ rooms: listRooms(db), events, overrides, now });
 
   return overrides.filter((o) => {

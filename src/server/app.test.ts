@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import sharp from 'sharp';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { DisplaySnapshot, MediaFit, MediaPreset, Organizer, Room, ScheduledEvent } from '../shared/model.ts';
-import { changeoverMargins, DAY, HOUR, MINUTE } from '../shared/time.ts';
+import { changeoverMargins, DAY, HOUR, MINUTE, toDateValue } from '../shared/time.ts';
 import { createApp } from './app.ts';
 import { hashPassword } from './auth/password.ts';
 import { loadConfig } from './config.ts';
@@ -77,20 +77,31 @@ async function seed(t: Setup) {
   return { superadmin, admin, rooms: { a, b, a1 }, org };
 }
 
+/** A booking on a date (local time), from "HH:MM" to "HH:MM", with 30 minutes of preparation and clean-up. */
+function bookingOn(date: string, from: string, to: string, roomIds: number[], label: string | null = null) {
+  const at = (time: string) => new Date(`${date}T${time}`).getTime();
+  return { label, roomIds, prepAt: at(from) - 30 * MINUTE, startAt: at(from), endAt: at(to), releaseAt: at(to) + 30 * MINUTE, breaks: [] as { label: string; startAt: number; endAt: number }[] };
+}
+
+/** A one-day event with one booking, starting `startInHours` after the test clock. */
 function eventInput(t: Setup, organizerId: number, roomIds: number[], startInHours: number, durationHours = 2) {
   const startAt = t.clock.now + startInHours * HOUR;
   const endAt = startAt + durationHours * HOUR;
   return {
     organizerId,
-    logoId: null,
+    logoId: null as number | null,
     title: 'Convegno',
     subtitle: '',
-    roomIds,
-    prepAt: startAt - 30 * MINUTE,
-    startAt,
-    endAt,
-    releaseAt: endAt + 30 * MINUTE,
     visible: true,
+    receptionNotes: null as string | null,
+    days: [
+      {
+        date: toDateValue(startAt),
+        receptionNotes: null as string | null,
+        housekeepingNotes: null as string | null,
+        bookings: [{ label: null as string | null, roomIds, prepAt: startAt - 30 * MINUTE, startAt, endAt, releaseAt: endAt + 30 * MINUTE, breaks: [] as { label: string; startAt: number; endAt: number }[] }],
+      },
+    ],
   };
 }
 
@@ -171,7 +182,7 @@ describe('rooms', () => {
   it('refuses to delete a room with upcoming events, and allows it once they are over', async () => {
     const t = setup();
     const { superadmin, admin, rooms, org } = await seed(t);
-    await admin.req('POST', '/api/events', { events: [eventInput(t, org.id, [rooms.b.id], 1)] });
+    await admin.req('POST', '/api/events', { event: eventInput(t, org.id, [rooms.b.id], 1) });
     expect((await superadmin.req('DELETE', `/api/rooms/${rooms.b.id}`)).status).toBe(409);
     t.clock.now += DAY;
     expect((await superadmin.req('DELETE', `/api/rooms/${rooms.b.id}`)).status).toBe(204);
@@ -182,41 +193,51 @@ describe('events', () => {
   it('creates, edits in place and deletes', async () => {
     const t = setup();
     const { admin, rooms, org } = await seed(t);
-    const created = await admin.req('POST', '/api/events', { events: [eventInput(t, org.id, [rooms.a.id], 1)] });
+    const created = await admin.req('POST', '/api/events', { event: eventInput(t, org.id, [rooms.a.id], 1) });
     expect(created.status).toBe(201);
-    const [id] = (await json<{ ids: number[] }>(created)).ids;
+    const { id } = await json<{ id: number }>(created);
 
     const edited = { ...eventInput(t, org.id, [rooms.b.id, rooms.a.id], 2), title: 'Nuovo titolo' };
     const updated = await json<ScheduledEvent>(await admin.req('PUT', `/api/events/${id}`, { event: edited }));
-    expect(updated).toMatchObject({ id, title: 'Nuovo titolo', roomIds: [rooms.b.id, rooms.a.id], organizerName: 'Unipi', subtitle: null });
+    expect(updated).toMatchObject({ id, title: 'Nuovo titolo', organizerName: 'Unipi', subtitle: null, startDate: '2026-10-17', endDate: '2026-10-17' });
+    expect(updated.days[0]!.bookings[0]!.roomIds).toEqual([rooms.b.id, rooms.a.id]);
 
     expect((await admin.req('DELETE', `/api/events/${id}`)).status).toBe(204);
     expect((await admin.req('GET', `/api/events/${id}`)).status).toBe(404);
   });
 
-  it('keeps the staff notes off the sign', async () => {
+  it('keeps the staff notes and labels off the sign', async () => {
     const t = setup();
     const { admin, rooms, org } = await seed(t);
-    const input = { ...eventInput(t, org.id, [rooms.a.id], 0), receptionNotes: ' Badge al banco 2 ', housekeepingNotes: '' };
-    const [id] = (await json<{ ids: number[] }>(await admin.req('POST', '/api/events', { events: [input] }))).ids;
+    const input = eventInput(t, org.id, [rooms.a.id], 0);
+    input.receptionNotes = ' Badge al banco 2 ';
+    input.days[0]!.housekeepingNotes = ' Platea ';
+    input.days[0]!.receptionNotes = '';
+    input.days[0]!.bookings[0]!.label = 'Plenaria';
+    const { id } = await json<{ id: number }>(await admin.req('POST', '/api/events', { event: input }));
 
     const saved = await json<ScheduledEvent>(await admin.req('GET', `/api/events/${id}`));
-    expect(saved).toMatchObject({ receptionNotes: 'Badge al banco 2', housekeepingNotes: null });
+    expect(saved).toMatchObject({ receptionNotes: 'Badge al banco 2' });
+    expect(saved.days[0]).toMatchObject({ receptionNotes: null, housekeepingNotes: 'Platea' });
+    expect(saved.days[0]!.bookings[0]!.label).toBe('Plenaria');
 
     const snapshot = await json<DisplaySnapshot>(await t.app.request('/api/display'));
-    expect(snapshot.events.map((e) => e.id)).toContain(id);
-    expect(JSON.stringify(snapshot)).not.toContain('Badge');
+    expect(snapshot.events.map((e) => e.eventId)).toEqual([id]);
+    expect(JSON.stringify(snapshot)).not.toMatch(/Badge|Platea|Plenaria/);
   });
 
-  it('keeps breaks with the event', async () => {
+  it('keeps breaks with their booking', async () => {
     const t = setup();
     const { admin, rooms, org } = await seed(t);
     const input = eventInput(t, org.id, [rooms.a.id], 1, 4);
-    const lunch = { label: 'Lunch break', startAt: input.startAt + 2 * HOUR, endAt: input.startAt + 3 * HOUR };
-    const coffee = { label: 'Coffee break', startAt: input.startAt + HOUR, endAt: input.startAt + 1.5 * HOUR };
-    const [id] = (await json<{ ids: number[] }>(await admin.req('POST', '/api/events', { events: [{ ...input, breaks: [lunch, coffee] }] }))).ids;
-    expect((await json<ScheduledEvent>(await admin.req('GET', `/api/events/${id}`))).breaks).toEqual([coffee, lunch]);
-    await admin.req('PUT', `/api/events/${id}`, { event: { ...input, breaks: [lunch] } });
+    const booking = input.days[0]!.bookings[0]!;
+    const lunch = { label: 'Lunch break', startAt: booking.startAt + 2 * HOUR, endAt: booking.startAt + 3 * HOUR };
+    const coffee = { label: 'Coffee break', startAt: booking.startAt + HOUR, endAt: booking.startAt + 1.5 * HOUR };
+    booking.breaks = [lunch, coffee];
+    const { id } = await json<{ id: number }>(await admin.req('POST', '/api/events', { event: input }));
+    expect((await json<ScheduledEvent>(await admin.req('GET', `/api/events/${id}`))).days[0]!.bookings[0]!.breaks).toEqual([coffee, lunch]);
+    booking.breaks = [lunch];
+    await admin.req('PUT', `/api/events/${id}`, { event: input });
     const snapshot = await json<DisplaySnapshot>(await t.app.request('/api/display'));
     expect(snapshot.events[0]!.breaks).toEqual([lunch]);
   });
@@ -224,51 +245,116 @@ describe('events', () => {
   it('validates times and references', async () => {
     const t = setup();
     const { admin, rooms, org } = await seed(t);
-    const bad = { ...eventInput(t, org.id, [rooms.a.id], 1), endAt: t.clock.now };
-    const res = await admin.req('POST', '/api/events', { events: [bad] });
+    const bad = eventInput(t, org.id, [rooms.a.id], 1);
+    bad.days[0]!.bookings[0]!.endAt = t.clock.now;
+    const res = await admin.req('POST', '/api/events', { event: bad });
     expect(res.status).toBe(400);
-    expect(await json(res)).toMatchObject({ issues: [{ path: 'events.0.endAt' }] });
+    expect(await json(res)).toMatchObject({ issues: [{ path: 'event.days.0.bookings.0.endAt' }] });
 
-    const subRoom = await admin.req('POST', '/api/events', { events: [eventInput(t, org.id, [rooms.a1.id], 1)] });
+    const subRoom = await admin.req('POST', '/api/events', { event: eventInput(t, org.id, [rooms.a1.id], 1) });
     expect(subRoom.status).toBe(400);
   });
 
-  it('reports conflicts unless told to save anyway', async () => {
+  it('reports conflicts per booking unless told to save anyway', async () => {
     const t = setup();
     const { admin, rooms, org } = await seed(t);
-    await admin.req('POST', '/api/events', { events: [eventInput(t, org.id, [rooms.a.id], 1)] });
+    await admin.req('POST', '/api/events', { event: eventInput(t, org.id, [rooms.a.id], 1) });
 
     const clash = eventInput(t, org.id, [rooms.a.id, rooms.b.id], 2);
-    const res = await admin.req('POST', '/api/events', { events: [clash] });
+    const res = await admin.req('POST', '/api/events', { event: clash });
     expect(res.status).toBe(409);
-    expect(await json(res)).toMatchObject({ conflicts: [{ index: 0, conflicts: [{ roomIds: [rooms.a.id] }] }] });
+    expect(await json(res)).toMatchObject({
+      conflicts: [{ date: '2026-10-17', bookingIndex: 0, conflicts: [{ roomIds: [rooms.a.id], booking: { title: 'Convegno' } }] }],
+    });
 
-    expect((await admin.req('POST', '/api/events', { events: [clash], allowConflicts: true })).status).toBe(201);
+    expect((await admin.req('POST', '/api/events', { event: clash, allowConflicts: true })).status).toBe(201);
+  });
+
+  it('does not conflict with its own bookings when edited', async () => {
+    const t = setup();
+    const { admin, rooms, org } = await seed(t);
+    const { id } = await json<{ id: number }>(await admin.req('POST', '/api/events', { event: eventInput(t, org.id, [rooms.a.id], 1) }));
+    expect((await admin.req('PUT', `/api/events/${id}`, { event: eventInput(t, org.id, [rooms.a.id], 2) })).status).toBe(200);
   });
 
   it('lets the days of a congress hold the room in between without conflicts', async () => {
     const t = setup();
     const { admin, rooms, org } = await seed(t);
     const days = [24, 48].map((h) => {
-      const input = eventInput(t, org.id, [rooms.a.id], h, 9);
-      return { ...input, ...changeoverMargins(input.startAt, input.endAt, { prepTime: '14:00', cleanupTime: '14:00', cleanupMinGapHours: 0 }) };
+      const day = eventInput(t, org.id, [rooms.a.id], h, 9).days[0]!;
+      const booking = day.bookings[0]!;
+      Object.assign(booking, changeoverMargins(booking.startAt, booking.endAt, { prepTime: '14:00', cleanupTime: '14:00', cleanupMinGapHours: 0 }));
+      return day;
     });
-    // Day 1 is cleaned up until 14:00 of day 2, day 2 is prepared from 14:00 of day 1: no conflict.
-    expect((await admin.req('POST', '/api/events', { events: days })).status).toBe(201);
+    // Day 1 is cleaned up until 14:00 of day 2, day 2 is prepared from 14:00 of day 1: no problem.
+    const congress = { ...eventInput(t, org.id, [rooms.a.id], 24), days };
+    expect((await admin.req('POST', '/api/events', { event: congress })).status).toBe(201);
     // Another event during day 2 is a conflict.
-    expect((await admin.req('POST', '/api/events', { events: [eventInput(t, org.id, [rooms.a.id], 50)] })).status).toBe(409);
+    expect((await admin.req('POST', '/api/events', { event: eventInput(t, org.id, [rooms.a.id], 50) })).status).toBe(409);
   });
 
-  it('creates the same event on several days at once', async () => {
+  it('saves a three-day event with two bookings on day 2', async () => {
     const t = setup();
     const { admin, rooms, org } = await seed(t);
-    const days = [0, 1, 2].map((d) => eventInput(t, org.id, [rooms.a.id], 1 + d * 24));
-    const res = await admin.req('POST', '/api/events', { events: days });
-    expect((await json<{ ids: number[] }>(res)).ids).toHaveLength(3);
-    const listed = await json<ScheduledEvent[]>(
-      await admin.req('GET', `/api/events?from=${t.clock.now}&to=${t.clock.now + 4 * DAY}`),
-    );
-    expect(listed).toHaveLength(3);
+    const dates = ['2026-10-17', '2026-10-18', '2026-10-19'];
+    const input = {
+      ...eventInput(t, org.id, [rooms.a.id], 1),
+      days: dates.map((date) => ({ date, receptionNotes: null as string | null, housekeepingNotes: null as string | null, bookings: [] as ReturnType<typeof bookingOn>[] })),
+    };
+    input.days[0]!.bookings = [bookingOn('2026-10-17', '09:00', '13:00', [rooms.a.id])];
+    // Sent out of order: the afternoon workshops first.
+    input.days[1]!.bookings = [bookingOn('2026-10-18', '14:00', '18:00', [rooms.b.id, rooms.a.id], 'Workshop'), bookingOn('2026-10-18', '09:00', '13:00', [rooms.a.id], 'Plenaria')];
+    input.days[1]!.housekeepingNotes = 'Aula magna';
+    input.days[2]!.receptionNotes = 'Gita';
+    const res = await admin.req('POST', '/api/events', { event: input });
+    expect(res.status).toBe(201);
+    const { id } = await json<{ id: number }>(res);
+
+    const saved = await json<ScheduledEvent>(await admin.req('GET', `/api/events/${id}`));
+    expect(saved).toMatchObject({ startDate: '2026-10-17', endDate: '2026-10-19' });
+    expect(saved.days.map((d) => [d.date, d.bookings.length])).toEqual([['2026-10-17', 1], ['2026-10-18', 2], ['2026-10-19', 0]]);
+    expect(saved.days[1]!.bookings.map((b) => b.label)).toEqual(['Plenaria', 'Workshop']);
+    expect(saved.days[1]!.bookings[1]!.roomIds).toEqual([rooms.b.id, rooms.a.id]);
+    expect(saved.days[1]).toMatchObject({ housekeepingNotes: 'Aula magna', receptionNotes: null });
+
+    // One event, however many days or bookings are in the range; a day without bookings still counts.
+    const listed = (query: string) => admin.req('GET', `/api/events${query}`).then((r) => json<ScheduledEvent[]>(r));
+    expect(await listed(`?from=${t.clock.now}&to=${t.clock.now + 4 * DAY}`)).toHaveLength(1);
+    expect(await listed(`?from=${t.clock.now}`)).toHaveLength(1);
+    expect(await listed(`?from=${new Date('2026-10-19T12:00').getTime()}`)).toHaveLength(1);
+    expect(await listed(`?from=${new Date('2026-10-20T00:00').getTime()}`)).toHaveLength(0);
+
+    // Taking a day away replaces the days; the event keeps its id.
+    input.days.pop();
+    const updated = await json<ScheduledEvent>(await admin.req('PUT', `/api/events/${id}`, { event: input }));
+    expect(updated).toMatchObject({ id, endDate: '2026-10-18' });
+    expect(updated.days).toHaveLength(2);
+  });
+
+  it('flattens bookings for the sign, only those of visible events overlapping the window', async () => {
+    const t = setup();
+    const { admin, rooms, org } = await seed(t);
+    const congress = {
+      ...eventInput(t, org.id, [rooms.a.id], 1),
+      days: [
+        { date: '2026-10-17', receptionNotes: null, housekeepingNotes: null, bookings: [bookingOn('2026-10-17', '09:00', '13:00', [rooms.a.id]), bookingOn('2026-10-17', '14:00', '18:00', [rooms.b.id])] },
+        { date: '2026-10-18', receptionNotes: null, housekeepingNotes: null, bookings: [bookingOn('2026-10-18', '09:00', '13:00', [rooms.a.id])] },
+        { date: '2026-11-17', receptionNotes: null, housekeepingNotes: null, bookings: [] },
+      ],
+    };
+    // Not consecutive: refused.
+    expect((await admin.req('POST', '/api/events', { event: congress })).status).toBe(400);
+    congress.days.pop();
+    const { id } = await json<{ id: number }>(await admin.req('POST', '/api/events', { event: congress }));
+    await admin.req('POST', '/api/events', { event: { ...eventInput(t, org.id, [rooms.b.id], 30), visible: false } });
+    await admin.req('POST', '/api/events', { event: eventInput(t, org.id, [rooms.a.id], 24 * 20) });
+
+    const snapshot = await json<DisplaySnapshot>(await t.app.request('/api/display'));
+    expect(snapshot.events.map((e) => [e.eventId, e.date, e.roomIds])).toEqual([
+      [id, '2026-10-17', [rooms.a.id]],
+      [id, '2026-10-17', [rooms.b.id]],
+      [id, '2026-10-18', [rooms.a.id]],
+    ]);
   });
 });
 
@@ -303,7 +389,7 @@ describe('organizers and logos', () => {
     const meta = await sharp(Buffer.from(await image.arrayBuffer())).metadata();
     expect([meta.width, meta.height]).toEqual([512, 256]);
 
-    await admin.req('POST', '/api/events', { events: [{ ...eventInput(t, org.id, [rooms.a.id], 1), logoId: id }] });
+    await admin.req('POST', '/api/events', { event: { ...eventInput(t, org.id, [rooms.a.id], 1), logoId: id } });
     expect((await admin.req('DELETE', `/api/logos/${id}`)).status).toBe(409);
     expect((await admin.req('DELETE', `/api/organizers/${org.id}`)).status).toBe(409);
   });
@@ -345,9 +431,8 @@ describe('display', () => {
   it('serves a snapshot with an ETag and answers 304 when nothing changed', async () => {
     const t = setup();
     const { admin, rooms, org } = await seed(t);
-    await admin.req('POST', '/api/events', {
-      events: [eventInput(t, org.id, [rooms.a.id], 1), { ...eventInput(t, org.id, [rooms.b.id], 3), visible: false }],
-    });
+    await admin.req('POST', '/api/events', { event: eventInput(t, org.id, [rooms.a.id], 1) });
+    await admin.req('POST', '/api/events', { event: { ...eventInput(t, org.id, [rooms.b.id], 3), visible: false } });
 
     const res = await t.app.request('/api/display');
     expect(res.status).toBe(200);
@@ -360,7 +445,7 @@ describe('display', () => {
     expect((await t.app.request('/api/display', { headers: { 'if-none-match': etag } })).status).toBe(304);
     expect((await t.app.request('/api/display', { headers: { 'if-none-match': `W/${etag}` } })).status).toBe(304);
 
-    await admin.req('DELETE', `/api/events/${snapshot.events[0]!.id}`);
+    await admin.req('DELETE', `/api/events/${snapshot.events[0]!.eventId}`);
     expect((await t.app.request('/api/display', { headers: { 'if-none-match': etag } })).status).toBe(200);
   });
 
@@ -385,7 +470,7 @@ describe('display', () => {
   it('ends "until next change" overrides when the schedule moves on', async () => {
     const t = setup();
     const { admin, rooms, org } = await seed(t);
-    await admin.req('POST', '/api/events', { events: [eventInput(t, org.id, [rooms.a.id], 1)] });
+    await admin.req('POST', '/api/events', { event: eventInput(t, org.id, [rooms.a.id], 1) });
     await admin.req('PUT', `/api/rooms/${rooms.a.id}/override`, { status: 'reserved', message: null, until: { kind: 'next-change' } });
     expect((await json<DisplaySnapshot>(await t.app.request('/api/display'))).overrides).toHaveLength(1);
     t.clock.now += 31 * MINUTE; // preparation started

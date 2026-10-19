@@ -179,4 +179,65 @@ export const migrations: string[] = [
   ALTER TABLE media DROP COLUMN fit;
   ALTER TABLE media DROP COLUMN sort_order;
   `,
+  `
+  -- Multi-day events: an event has days, a day has bookings (room occupations). The app had not been used
+  -- in production, so existing events are dropped, not converted. Children first: with foreign keys on,
+  -- dropping a parent runs an implicit DELETE.
+  DROP TABLE event_breaks;
+  DROP TABLE event_rooms;
+  DROP TABLE events;
+
+  CREATE TABLE events (
+    id INTEGER PRIMARY KEY,
+    organizer_id INTEGER NOT NULL REFERENCES organizers(id),
+    logo_id INTEGER REFERENCES logos(id),
+    title TEXT NOT NULL,
+    subtitle TEXT,
+    visible INTEGER NOT NULL DEFAULT 1,
+    reception_notes TEXT,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  CREATE INDEX events_dates ON events(start_date, end_date);
+
+  CREATE TABLE event_days (
+    id INTEGER PRIMARY KEY,
+    event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    reception_notes TEXT,
+    housekeeping_notes TEXT,
+    UNIQUE (event_id, date)
+  );
+
+  CREATE TABLE event_bookings (
+    id INTEGER PRIMARY KEY,
+    day_id INTEGER NOT NULL REFERENCES event_days(id) ON DELETE CASCADE,
+    label TEXT,
+    prep_at INTEGER NOT NULL,
+    start_at INTEGER NOT NULL,
+    end_at INTEGER NOT NULL,
+    release_at INTEGER NOT NULL,
+    CHECK (prep_at <= start_at AND start_at < end_at AND end_at <= release_at)
+  );
+  CREATE INDEX event_bookings_day ON event_bookings(day_id);
+  CREATE INDEX event_bookings_time ON event_bookings(release_at, prep_at);
+
+  CREATE TABLE event_booking_rooms (
+    booking_id INTEGER NOT NULL REFERENCES event_bookings(id) ON DELETE CASCADE,
+    room_id INTEGER NOT NULL REFERENCES rooms(id),
+    position INTEGER NOT NULL,
+    PRIMARY KEY (booking_id, room_id)
+  );
+  CREATE INDEX event_booking_rooms_room ON event_booking_rooms(room_id);
+
+  CREATE TABLE event_booking_breaks (
+    booking_id INTEGER NOT NULL REFERENCES event_bookings(id) ON DELETE CASCADE,
+    label TEXT NOT NULL,
+    start_at INTEGER NOT NULL,
+    end_at INTEGER NOT NULL
+  );
+  CREATE INDEX event_booking_breaks_booking ON event_booking_breaks(booking_id);
+  `,
 ];

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { RoomKind } from '../shared/model.ts';
-import { changeoverMargins } from '../shared/time.ts';
+import { changeoverMargins, toDateValue } from '../shared/time.ts';
 import { get, transaction, type Db } from './db/database.ts';
 import { insertEvent } from './data/events.ts';
 import { createOrganizer, findOrganizerByName, insertLogo } from './data/organizers.ts';
@@ -142,16 +142,27 @@ export async function importMongo(db: Db, dir: string, now: number): Promise<Imp
           logoId: logo && logo.organizerId === organizer ? logo.id : null,
           title: text(doc['title']),
           subtitle: text(doc['subtitle']) || null,
-          roomIds: rooms,
-          prepAt: Math.min(date(doc['prep_time']) ?? startAt, startAt),
-          startAt,
-          endAt,
-          // The old app had no clean-up time: rooms stayed reserved until freed by hand.
-          releaseAt: changeoverMargins(startAt, endAt, settings).releaseAt,
-          breaks: [],
           visible: doc['enabled'] !== false,
           receptionNotes: null,
-          housekeepingNotes: null,
+          days: [
+            {
+              date: toDateValue(startAt),
+              receptionNotes: null,
+              housekeepingNotes: null,
+              bookings: [
+                {
+                  label: null,
+                  roomIds: rooms,
+                  prepAt: Math.min(date(doc['prep_time']) ?? startAt, startAt),
+                  startAt,
+                  endAt,
+                  // The old app had no clean-up time: rooms stayed reserved until freed by hand.
+                  releaseAt: changeoverMargins(startAt, endAt, settings).releaseAt,
+                  breaks: [],
+                },
+              ],
+            },
+          ],
         },
         now,
       );

@@ -1,4 +1,6 @@
+import { addDays } from 'date-fns';
 import { z } from 'zod';
+import { fromDateValue, toDateValue } from './time.ts';
 
 // Inputs accepted by the API, checked with the same rules in the admin form and on the server.
 // Messages are in Italian because only the admin area shows them.
@@ -17,32 +19,24 @@ const optionalText = (max: number) =>
 
 const unique = (ids: number[]) => new Set(ids).size === ids.length;
 
-export const eventInputSchema = z
+const breakInput = z
   .object({
-    organizerId: id,
-    logoId: id.nullable(),
-    title: z.string().trim().min(1, { error: 'Inserisci un titolo' }).max(200, { error: 'Massimo 200 caratteri' }),
-    subtitle: optionalText(300),
+    label: z.string().trim().min(1, { error: 'Dai un nome alla pausa' }).max(40, { error: 'Massimo 40 caratteri' }),
+    startAt: time,
+    endAt: time,
+  })
+  .refine((b) => b.startAt < b.endAt, { error: 'La pausa deve finire dopo il suo inizio' });
+
+/** One room occupation on a day. */
+export const bookingInputSchema = z
+  .object({
+    label: optionalText(80).default(null),
     roomIds: z.array(id).min(1, { error: 'Scegli almeno una sala' }).max(50).refine(unique, { error: 'Sala ripetuta' }),
     prepAt: time,
     startAt: time,
     endAt: time,
     releaseAt: time,
-    breaks: z
-      .array(
-        z
-          .object({
-            label: z.string().trim().min(1, { error: 'Dai un nome alla pausa' }).max(40, { error: 'Massimo 40 caratteri' }),
-            startAt: time,
-            endAt: time,
-          })
-          .refine((b) => b.startAt < b.endAt, { error: 'La pausa deve finire dopo il suo inizio' }),
-      )
-      .max(20)
-      .default([]),
-    visible: z.boolean(),
-    receptionNotes: optionalText(4000).default(null),
-    housekeepingNotes: optionalText(4000).default(null),
+    breaks: z.array(breakInput).max(20).default([]),
   })
   .refine((e) => e.prepAt <= e.startAt, {
     path: ['prepAt'],
@@ -61,21 +55,87 @@ export const eventInputSchema = z
     (e) => [...e.breaks].sort((a, b) => a.startAt - b.startAt).every((b, i, list) => i === 0 || list[i - 1]!.endAt <= b.startAt),
     { path: ['breaks'], error: 'Le pause non possono sovrapporsi' },
   );
+export type BookingInput = z.output<typeof bookingInputSchema>;
+
+const dateValue = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { error: 'Data non valida' });
+
+export const dayInputSchema = z.object({
+  date: dateValue,
+  receptionNotes: optionalText(4000).default(null),
+  housekeepingNotes: optionalText(4000).default(null),
+  bookings: z.array(bookingInputSchema).max(20, { error: 'Massimo 20 occupazioni al giorno' }).default([]),
+});
+export type DayInput = z.output<typeof dayInputSchema>;
+
+export const eventInputSchema = z
+  .object({
+    organizerId: id,
+    logoId: id.nullable(),
+    title: z.string().trim().min(1, { error: 'Inserisci un titolo' }).max(200, { error: 'Massimo 200 caratteri' }),
+    subtitle: optionalText(300),
+    visible: z.boolean(),
+    receptionNotes: optionalText(4000).default(null),
+    days: z.array(dayInputSchema).min(1, { error: 'Aggiungi almeno un giorno' }).max(60, { error: 'Massimo 60 giorni' }),
+  })
+  .superRefine((event, ctx) => {
+    // Consecutive dates, no repeats, no gaps.
+    const first = fromDateValue(event.days[0]?.date ?? '');
+    const seen = new Set<string>();
+    event.days.forEach((day, i) => {
+      const path = ['days', i, 'date'];
+      if (fromDateValue(day.date) === null) ctx.addIssue({ code: 'custom', path, message: 'Data non valida' });
+      else if (seen.has(day.date)) ctx.addIssue({ code: 'custom', path, message: 'Giorno ripetuto' });
+      else if (first !== null && day.date !== toDateValue(addDays(first, i).getTime())) {
+        ctx.addIssue({ code: 'custom', path, message: 'I giorni devono essere consecutivi' });
+      }
+      seen.add(day.date);
+    });
+
+    if (event.days.every((day) => day.bookings.length === 0)) {
+      ctx.addIssue({ code: 'custom', path: ['days', 0, 'bookings'], message: 'Aggiungi almeno un’occupazione delle sale' });
+    }
+
+    // Each booking starts on its day.
+    event.days.forEach((day, i) =>
+      day.bookings.forEach((booking, j) => {
+        if (toDateValue(booking.startAt) !== day.date) {
+          ctx.addIssue({ code: 'custom', path: ['days', i, 'bookings', j, 'startAt'], message: 'L’inizio deve cadere in questo giorno' });
+        }
+      }),
+    );
+
+    // Two bookings of the same event never hold the same room at the same time.
+    const all = event.days.flatMap((day, i) => day.bookings.map((booking, j) => ({ booking, i, j })));
+    all.forEach((later, n) => {
+      const clash = all
+        .slice(0, n)
+        .some(
+          ({ booking }) =>
+            booking.startAt < later.booking.endAt &&
+            later.booking.startAt < booking.endAt &&
+            booking.roomIds.some((room) => later.booking.roomIds.includes(room)),
+        );
+      if (clash) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['days', later.i, 'bookings', later.j, 'roomIds'],
+          message: 'Una sala è già occupata da un’altra occupazione di questo evento nello stesso orario',
+        });
+      }
+    });
+  });
 export type EventInput = z.output<typeof eventInputSchema>;
 
-export const createEventsSchema = z.object({
-  events: z.array(eventInputSchema).min(1).max(60),
-  allowConflicts: z.boolean().optional(),
-});
-
-export const updateEventSchema = z.object({
+export const createEventSchema = z.object({
   event: eventInputSchema,
   allowConflicts: z.boolean().optional(),
 });
 
+export const updateEventSchema = createEventSchema;
+
 export const eventRangeSchema = z
-  .object({ from: z.coerce.number().int(), to: z.coerce.number().int() })
-  .refine((r) => r.from < r.to, { error: 'Intervallo non valido' });
+  .object({ from: z.coerce.number().int(), to: z.coerce.number().int().optional() })
+  .refine((r) => r.to === undefined || r.from < r.to, { error: 'Intervallo non valido' });
 
 export const organizerInputSchema = z.object({
   name: z.string().trim().min(1, { error: 'Inserisci un nome' }).max(120, { error: 'Massimo 120 caratteri' }),

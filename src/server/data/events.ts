@@ -1,6 +1,7 @@
-import type { EventBreak, ScheduledEvent } from '../../shared/model.ts';
+import type { EventBooking, EventBreak, EventDay, ScheduledEvent } from '../../shared/model.ts';
 import type { EventInput } from '../../shared/schemas.ts';
-import { all, get, run, type Db } from '../db/database.ts';
+import { toDateValue } from '../../shared/time.ts';
+import { all, run, type Db } from '../db/database.ts';
 
 interface EventRow {
   id: number;
@@ -9,57 +10,190 @@ interface EventRow {
   logo_id: number | null;
   title: string;
   subtitle: string | null;
+  visible: number;
+  reception_notes: string | null;
+  start_date: string;
+  end_date: string;
+}
+
+interface DayRow {
+  id: number;
+  event_id: number;
+  date: string;
+  reception_notes: string | null;
+  housekeeping_notes: string | null;
+}
+
+interface BookingRow {
+  id: number;
+  day_id: number;
+  label: string | null;
   prep_at: number;
   start_at: number;
   end_at: number;
   release_at: number;
-  visible: number;
-  reception_notes: string | null;
-  housekeeping_notes: string | null;
-  room_ids: string;
-  breaks: string;
 }
 
-const SELECT = `
-  SELECT e.*, o.name AS organizer_name,
-    (SELECT json_group_array(room_id ORDER BY position) FROM event_rooms WHERE event_id = e.id) AS room_ids,
-    (SELECT json_group_array(json_object('label', label, 'startAt', start_at, 'endAt', end_at) ORDER BY start_at)
-       FROM event_breaks WHERE event_id = e.id) AS breaks
-  FROM events e JOIN organizers o ON o.id = e.organizer_id`;
+/** Ids as a JSON array, so one prepared query can take any number of them. */
+const idList = (ids: number[]) => JSON.stringify(ids);
+const IN_IDS = 'IN (SELECT value FROM json_each(:ids))';
 
-function toEvent(row: EventRow): ScheduledEvent {
-  return {
+/** Builds whole events from the ids given, in that order: one query per table, assembled here. */
+function loadEvents(db: Db, ids: number[]): ScheduledEvent[] {
+  if (ids.length === 0) return [];
+  const params = { ids: idList(ids) };
+  const events = all<EventRow>(
+    db,
+    `SELECT e.*, o.name AS organizer_name FROM events e JOIN organizers o ON o.id = e.organizer_id WHERE e.id ${IN_IDS}`,
+    params,
+  );
+  const dayRows = all<DayRow>(db, `SELECT * FROM event_days WHERE event_id ${IN_IDS} ORDER BY date`, params);
+  const bookingRows = all<BookingRow>(
+    db,
+    `SELECT b.* FROM event_bookings b JOIN event_days d ON d.id = b.day_id WHERE d.event_id ${IN_IDS} ORDER BY b.start_at, b.id`,
+    params,
+  );
+  const roomRows = all<{ booking_id: number; room_id: number }>(
+    db,
+    `SELECT r.booking_id, r.room_id FROM event_booking_rooms r
+     JOIN event_bookings b ON b.id = r.booking_id JOIN event_days d ON d.id = b.day_id
+     WHERE d.event_id ${IN_IDS} ORDER BY r.position`,
+    params,
+  );
+  const breakRows = all<{ booking_id: number; label: string; start_at: number; end_at: number }>(
+    db,
+    `SELECT k.* FROM event_booking_breaks k
+     JOIN event_bookings b ON b.id = k.booking_id JOIN event_days d ON d.id = b.day_id
+     WHERE d.event_id ${IN_IDS} ORDER BY k.start_at`,
+    params,
+  );
+
+  const group = <T>(rows: T[], key: (row: T) => number) => {
+    const map = new Map<number, T[]>();
+    for (const row of rows) map.set(key(row), [...(map.get(key(row)) ?? []), row]);
+    return map;
+  };
+  const rooms = group(roomRows, (r) => r.booking_id);
+  const breaks = group(breakRows, (r) => r.booking_id);
+  const bookings = group(bookingRows, (r) => r.day_id);
+  const days = group(dayRows, (r) => r.event_id);
+
+  const toBooking = (row: BookingRow): EventBooking => ({
     id: row.id,
-    organizerId: row.organizer_id,
-    organizerName: row.organizer_name,
-    logoId: row.logo_id,
-    title: row.title,
-    subtitle: row.subtitle,
-    roomIds: JSON.parse(row.room_ids) as number[],
+    label: row.label,
+    roomIds: (rooms.get(row.id) ?? []).map((r) => r.room_id),
     prepAt: row.prep_at,
     startAt: row.start_at,
     endAt: row.end_at,
     releaseAt: row.release_at,
-    breaks: JSON.parse(row.breaks) as EventBreak[],
-    visible: row.visible === 1,
+    breaks: (breaks.get(row.id) ?? []).map((k): EventBreak => ({ label: k.label, startAt: k.start_at, endAt: k.end_at })),
+  });
+  const toDay = (row: DayRow): EventDay => ({
+    date: row.date,
     receptionNotes: row.reception_notes,
     housekeepingNotes: row.housekeeping_notes,
-  };
+    bookings: (bookings.get(row.id) ?? []).map(toBooking),
+  });
+
+  const byId = new Map(events.map((row) => [row.id, row]));
+  return ids.flatMap((id) => {
+    const row = byId.get(id);
+    if (!row) return [];
+    return [
+      {
+        id: row.id,
+        organizerId: row.organizer_id,
+        organizerName: row.organizer_name,
+        logoId: row.logo_id,
+        title: row.title,
+        subtitle: row.subtitle,
+        visible: row.visible === 1,
+        startDate: row.start_date,
+        endDate: row.end_date,
+        receptionNotes: row.reception_notes,
+        days: (days.get(row.id) ?? []).map(toDay),
+      },
+    ];
+  });
 }
 
-/** Events holding a room at some point in [from, to), from preparation to release. */
-export function listEvents(db: Db, range: { from: number; to: number; visibleOnly?: boolean }): ScheduledEvent[] {
-  const visible = range.visibleOnly ? 'AND e.visible = 1' : '';
-  return all<EventRow>(
+/**
+ * Events with a booking holding a room at some point in [from, to), from preparation to release, or with a
+ * day whose date falls in that range. `to` is optional: no upper bound. Ordered by start date, then first
+ * booking, then id.
+ */
+export function listEvents(db: Db, range: { from: number; to?: number; visibleOnly?: boolean }): ScheduledEvent[] {
+  const params: Record<string, number | string> = { from: range.from, fromDate: toDateValue(range.from) };
+  let held = 'b.release_at > :from';
+  let dated = 'd.date >= :fromDate';
+  if (range.to !== undefined) {
+    params['to'] = range.to;
+    params['toDate'] = toDateValue(range.to - 1);
+    held += ' AND b.prep_at < :to';
+    dated += ' AND d.date <= :toDate';
+  }
+  const ids = all<{ id: number }>(
     db,
-    `${SELECT} WHERE e.release_at > :from AND e.prep_at < :to ${visible} ORDER BY e.start_at, e.id`,
-    { from: range.from, to: range.to },
-  ).map(toEvent);
+    `SELECT e.id FROM events e
+     WHERE (EXISTS (SELECT 1 FROM event_days d JOIN event_bookings b ON b.day_id = d.id WHERE d.event_id = e.id AND ${held})
+       OR EXISTS (SELECT 1 FROM event_days d WHERE d.event_id = e.id AND ${dated}))
+       ${range.visibleOnly ? 'AND e.visible = 1' : ''}
+     ORDER BY e.start_date,
+       (SELECT min(b.start_at) FROM event_days d JOIN event_bookings b ON b.day_id = d.id WHERE d.event_id = e.id),
+       e.id`,
+    params,
+  );
+  return loadEvents(
+    db,
+    ids.map((row) => row.id),
+  );
 }
 
 export function getEvent(db: Db, id: number): ScheduledEvent | undefined {
-  const row = get<EventRow>(db, `${SELECT} WHERE e.id = :id`, { id });
-  return row && toEvent(row);
+  return loadEvents(db, [id])[0];
+}
+
+/** Replaces every day and booking of the event. Call inside a transaction. */
+function setDays(db: Db, eventId: number, input: EventInput): void {
+  run(db, 'DELETE FROM event_days WHERE event_id = :eventId', { eventId });
+  for (const day of input.days) {
+    const { lastInsertRowid: dayId } = run(
+      db,
+      `INSERT INTO event_days (event_id, date, reception_notes, housekeeping_notes)
+       VALUES (:eventId, :date, :receptionNotes, :housekeepingNotes)`,
+      { eventId, date: day.date, receptionNotes: day.receptionNotes, housekeepingNotes: day.housekeepingNotes },
+    );
+    for (const booking of [...day.bookings].sort((a, b) => a.startAt - b.startAt)) {
+      const { lastInsertRowid: bookingId } = run(
+        db,
+        `INSERT INTO event_bookings (day_id, label, prep_at, start_at, end_at, release_at)
+         VALUES (:dayId, :label, :prepAt, :startAt, :endAt, :releaseAt)`,
+        {
+          dayId,
+          label: booking.label,
+          prepAt: booking.prepAt,
+          startAt: booking.startAt,
+          endAt: booking.endAt,
+          releaseAt: booking.releaseAt,
+        },
+      );
+      booking.roomIds.forEach((roomId, position) =>
+        run(db, 'INSERT INTO event_booking_rooms (booking_id, room_id, position) VALUES (:bookingId, :roomId, :position)', {
+          bookingId,
+          roomId,
+          position,
+        }),
+      );
+      for (const b of booking.breaks) {
+        run(db, 'INSERT INTO event_booking_breaks (booking_id, label, start_at, end_at) VALUES (:bookingId, :label, :startAt, :endAt)', {
+          bookingId,
+          label: b.label,
+          startAt: b.startAt,
+          endAt: b.endAt,
+        });
+      }
+    }
+  }
 }
 
 function columns(input: EventInput) {
@@ -68,66 +202,35 @@ function columns(input: EventInput) {
     logoId: input.logoId,
     title: input.title,
     subtitle: input.subtitle,
-    prepAt: input.prepAt,
-    startAt: input.startAt,
-    endAt: input.endAt,
-    releaseAt: input.releaseAt,
     visible: input.visible ? 1 : 0,
     receptionNotes: input.receptionNotes,
-    housekeepingNotes: input.housekeepingNotes,
+    startDate: input.days[0]!.date,
+    endDate: input.days.at(-1)!.date,
   };
-}
-
-function setRooms(db: Db, eventId: number, roomIds: number[]): void {
-  run(db, 'DELETE FROM event_rooms WHERE event_id = :eventId', { eventId });
-  roomIds.forEach((roomId, position) =>
-    run(db, 'INSERT INTO event_rooms (event_id, room_id, position) VALUES (:eventId, :roomId, :position)', {
-      eventId,
-      roomId,
-      position,
-    }),
-  );
-}
-
-function setBreaks(db: Db, eventId: number, breaks: EventBreak[]): void {
-  run(db, 'DELETE FROM event_breaks WHERE event_id = :eventId', { eventId });
-  for (const b of breaks) {
-    run(db, 'INSERT INTO event_breaks (event_id, label, start_at, end_at) VALUES (:eventId, :label, :startAt, :endAt)', {
-      eventId,
-      label: b.label,
-      startAt: b.startAt,
-      endAt: b.endAt,
-    });
-  }
 }
 
 /** Call inside a transaction. */
 export function insertEvent(db: Db, input: EventInput, now: number): number {
   const { lastInsertRowid: id } = run(
     db,
-    `INSERT INTO events (organizer_id, logo_id, title, subtitle, prep_at, start_at, end_at, release_at, visible,
-       reception_notes, housekeeping_notes, created_at, updated_at)
-     VALUES (:organizerId, :logoId, :title, :subtitle, :prepAt, :startAt, :endAt, :releaseAt, :visible,
-       :receptionNotes, :housekeepingNotes, :now, :now)`,
+    `INSERT INTO events (organizer_id, logo_id, title, subtitle, visible, reception_notes, start_date, end_date, created_at, updated_at)
+     VALUES (:organizerId, :logoId, :title, :subtitle, :visible, :receptionNotes, :startDate, :endDate, :now, :now)`,
     { ...columns(input), now },
   );
-  setRooms(db, id, input.roomIds);
-  setBreaks(db, id, input.breaks);
+  setDays(db, id, input);
   return id;
 }
 
-/** Call inside a transaction. */
+/** Call inside a transaction. The event keeps its id; its days and bookings are replaced. */
 export function updateEvent(db: Db, id: number, input: EventInput, now: number): void {
   run(
     db,
     `UPDATE events SET organizer_id = :organizerId, logo_id = :logoId, title = :title, subtitle = :subtitle,
-       prep_at = :prepAt, start_at = :startAt, end_at = :endAt, release_at = :releaseAt, visible = :visible,
-       reception_notes = :receptionNotes, housekeeping_notes = :housekeepingNotes, updated_at = :now
+       visible = :visible, reception_notes = :receptionNotes, start_date = :startDate, end_date = :endDate, updated_at = :now
      WHERE id = :id`,
     { ...columns(input), id, now },
   );
-  setRooms(db, id, input.roomIds);
-  setBreaks(db, id, input.breaks);
+  setDays(db, id, input);
 }
 
 export function deleteEvent(db: Db, id: number): boolean {

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { Hono } from 'hono';
-import { INTERNAL_EVENT_FIELDS, type DisplaySnapshot, type ScheduledEvent, type SignEvent } from '../../shared/model.ts';
+import { flattenEvents } from '../../shared/events.ts';
+import type { DisplaySnapshot, SignEvent } from '../../shared/model.ts';
 import { displayWindow } from '../../shared/time.ts';
 import { listEvents } from '../data/events.ts';
 import { getMedia, presetByNameOrDefault } from '../data/media.ts';
@@ -9,11 +10,12 @@ import { listRooms } from '../data/rooms.ts';
 import { getSettings, getVenueLogo } from '../data/settings.ts';
 import type { AppDeps, AppEnv } from '../http.ts';
 
-/** The sign is public: staff notes stay in the admin area. */
-function forSign(event: ScheduledEvent): SignEvent {
-  const copy: Partial<ScheduledEvent> = { ...event };
-  for (const field of INTERNAL_EVENT_FIELDS) delete copy[field];
-  return copy as SignEvent;
+/** Bookings of visible events overlapping the window. The sign is public: flattening leaves the staff notes out. */
+function signEvents(deps: AppDeps, now: number): SignEvent[] {
+  const window = displayWindow(now);
+  return flattenEvents(listEvents(deps.db, { ...window, visibleOnly: true }))
+    .filter((b) => b.releaseAt > window.from && b.prepAt < window.to)
+    .sort((a, b) => a.startAt - b.startAt || a.id - b.id);
 }
 
 /**
@@ -42,7 +44,7 @@ export function displayRoutes(deps: AppDeps) {
         fit: preset.fit ?? settings.carouselFit,
       },
       rooms: listRooms(deps.db),
-      events: listEvents(deps.db, { ...displayWindow(now), visibleOnly: true }).map(forSign),
+      events: signEvents(deps, now),
       overrides: activeOverrides(deps.db, now),
     };
     const body = JSON.stringify(snapshot);

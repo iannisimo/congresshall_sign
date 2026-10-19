@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { findConflicts } from '../../shared/conflicts.ts';
-import type { ScheduledEvent } from '../../shared/model.ts';
-import { createEventsSchema, eventRangeSchema, updateEventSchema, type EventInput } from '../../shared/schemas.ts';
+import { flattenEvents } from '../../shared/events.ts';
+import type { Conflict } from '../../shared/model.ts';
+import { createEventSchema, eventRangeSchema, updateEventSchema, type EventInput } from '../../shared/schemas.ts';
 import { requireRole } from '../auth/session.ts';
 import { transaction, type Db } from '../db/database.ts';
 import { deleteEvent, getEvent, insertEvent, listEvents, updateEvent } from '../data/events.ts';
@@ -15,29 +16,37 @@ function checkReferences(db: Db, input: EventInput): void {
     throw new ApiError(400, 'Il logo non appartiene a questo organizzatore');
   }
   const rooms = new Map(listRooms(db).map((room) => [room.id, room]));
-  for (const roomId of input.roomIds) {
-    const room = rooms.get(roomId);
-    if (!room) throw new ApiError(400, 'Sala inesistente');
-    if (room.kind !== 'main') throw new ApiError(400, `${room.name} è una sottosala e non si può prenotare`);
+  for (const booking of input.days.flatMap((day) => day.bookings)) {
+    for (const roomId of booking.roomIds) {
+      const room = rooms.get(roomId);
+      if (!room) throw new ApiError(400, 'Sala inesistente');
+      if (room.kind !== 'main') throw new ApiError(400, `${room.name} è una sottosala e non si può prenotare`);
+    }
   }
 }
 
-/** Conflicts of each event with saved events and with the ones before it in the same request. */
-function findAllConflicts(db: Db, items: { id?: number; input: EventInput }[]) {
-  const from = Math.min(...items.map((i) => i.input.prepAt));
-  const to = Math.max(...items.map((i) => i.input.releaseAt));
-  const others: ScheduledEvent[] = listEvents(db, { from, to });
-  const found = [];
-  for (const [index, { id, input }] of items.entries()) {
-    const conflicts = findConflicts({ id, ...input }, others);
-    if (conflicts.length > 0) found.push({ index, conflicts });
-    others.push({ ...input, id: -(index + 1), organizerName: '' });
+/**
+ * Conflicts of each booking with the bookings of other events. Bookings of the same event are checked by
+ * the schema.
+ */
+function findAllConflicts(db: Db, eventId: number | undefined, input: EventInput) {
+  const bookings = input.days.flatMap((day) => day.bookings);
+  if (bookings.length === 0) return [];
+  const from = Math.min(...bookings.map((b) => b.startAt));
+  const to = Math.max(...bookings.map((b) => b.endAt));
+  const others = flattenEvents(listEvents(db, { from, to }));
+  const found: { date: string; bookingIndex: number; conflicts: Conflict[] }[] = [];
+  for (const day of input.days) {
+    day.bookings.forEach((booking, bookingIndex) => {
+      const conflicts = findConflicts({ eventId, ...booking }, others);
+      if (conflicts.length > 0) found.push({ date: day.date, bookingIndex, conflicts });
+    });
   }
   return found;
 }
 
-function rejectConflicts(db: Db, items: { id?: number; input: EventInput }[]): void {
-  const conflicts = findAllConflicts(db, items);
+function rejectConflicts(db: Db, eventId: number | undefined, input: EventInput): void {
+  const conflicts = findAllConflicts(db, eventId, input);
   if (conflicts.length > 0) throw new ApiError(409, 'Sovrapposizione con altri eventi nelle stesse sale', { conflicts });
 }
 
@@ -57,14 +66,12 @@ export function eventRoutes(deps: AppDeps) {
     return c.json(event);
   });
 
-  /** Creates one or more events at once, e.g. the same session on each day of a congress. */
   app.post('/', async (c) => {
-    const { events, allowConflicts } = await readJson(c, createEventsSchema);
-    events.forEach((input) => checkReferences(db, input));
-    if (!allowConflicts) rejectConflicts(db, events.map((input) => ({ input })));
-    const now = deps.clock();
-    const ids = transaction(db, () => events.map((input) => insertEvent(db, input, now)));
-    return c.json({ ids }, 201);
+    const { event: input, allowConflicts } = await readJson(c, createEventSchema);
+    checkReferences(db, input);
+    if (!allowConflicts) rejectConflicts(db, undefined, input);
+    const id = transaction(db, () => insertEvent(db, input, deps.clock()));
+    return c.json({ id }, 201);
   });
 
   app.put('/:id', async (c) => {
@@ -72,7 +79,7 @@ export function eventRoutes(deps: AppDeps) {
     const { event: input, allowConflicts } = await readJson(c, updateEventSchema);
     if (!getEvent(db, id)) throw notFound();
     checkReferences(db, input);
-    if (!allowConflicts) rejectConflicts(db, [{ id, input }]);
+    if (!allowConflicts) rejectConflicts(db, id, input);
     transaction(db, () => updateEvent(db, id, input, deps.clock()));
     return c.json(getEvent(db, id));
   });

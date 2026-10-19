@@ -15,6 +15,8 @@ function event(id: number, roomIds: number[], startH: number, endH: number, extr
   const endAt = T0 + endH * HOUR;
   return {
     id,
+    eventId: id,
+    date: '2026-10-17',
     organizerId: 1,
     organizerName: 'Org',
     logoId: null,
@@ -213,5 +215,14 @@ describe('inDailyRange', () => {
   it('handles ranges within a day', () => {
     expect(inDailyRange(local('2026-10-18T13:00'), '12:00', '14:00')).toBe(true);
     expect(inDailyRange(local('2026-10-18T14:00'), '12:00', '14:00')).toBe(false);
+  });
+});
+
+describe('computeRoomStatuses: bookings of one event', () => {
+  it('treats each booking on its own: the plenary room frees up while the workshop room is live', () => {
+    const rooms = [room(1), room(2)];
+    const events = [event(1, [1], 0, 2, { eventId: 7 }), event(2, [2], 1, 4, { eventId: 7 })];
+    expect(statusAt(at(3), rooms, events).get(1)).toMatchObject({ status: 'free' });
+    expect(statusAt(at(3), rooms, events).get(2)).toMatchObject({ status: 'occupied', eventId: 2 });
   });
 });

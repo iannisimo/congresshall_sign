@@ -67,10 +67,10 @@ export function updateRoom(db: Db, id: number, input: RoomInput): void {
   });
 }
 
-/** Removes the room; past events simply lose it from their room list. */
+/** Removes the room; past bookings simply lose it from their room list. */
 export function deleteRoom(db: Db, id: number): void {
   transaction(db, () => {
-    run(db, 'DELETE FROM event_rooms WHERE room_id = :id', { id });
+    run(db, 'DELETE FROM event_booking_rooms WHERE room_id = :id', { id });
     run(db, 'DELETE FROM rooms WHERE id = :id', { id });
   });
 }
@@ -81,12 +81,12 @@ export function reorderRooms(db: Db, ids: number[]): void {
   });
 }
 
-/** Events that still need the room (not yet released). */
+/** Bookings that still need the room (not yet released). */
 export function countUpcomingBookings(db: Db, roomId: number, now: number): number {
   const row = get<{ n: number }>(
     db,
-    `SELECT count(*) AS n FROM event_rooms er JOIN events e ON e.id = er.event_id
-     WHERE er.room_id = :roomId AND e.release_at > :now`,
+    `SELECT count(*) AS n FROM event_booking_rooms er JOIN event_bookings b ON b.id = er.booking_id
+     WHERE er.room_id = :roomId AND b.release_at > :now`,
     { roomId, now },
   );
   return row?.n ?? 0;
