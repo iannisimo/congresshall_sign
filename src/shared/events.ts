@@ -22,7 +22,8 @@ export function flattenEvent(event: ScheduledEvent): SignEvent[] {
       startAt: booking.startAt,
       endAt: booking.endAt,
       releaseAt: event.releaseAt,
-      breaks: booking.breaks,
+      // The sign is only told about breaks within the booking's hours.
+      breaks: booking.breaks.filter((b) => b.startAt >= booking.startAt && b.endAt <= booking.endAt),
       visible: event.visible,
       lowPriority: event.lowPriority,
     })),

@@ -110,6 +110,8 @@ become a smart-TV browser. **One person** does the admin work.
 - **ADMIN-9** Events are edited in place and keep their identity.
 - **ADMIN-12** Breaks inside an event (presets: Break, Coffee break, Lunch break, or any name). While the
   event is live, its card on the sign shows the break under way, or else the next one.
+  A break may also fall outside the booking's hours (breakfast, dinner, up to a day away): it is never
+  shown on the sign, but it is printed, in the restaurant print included.
 - **ADMIN-13** Staff notes at two levels: *Reception (tutto l’evento)* on the event, and on each day
   *Reception (questo giorno)* and *Housekeeping e preparazione sala* (which also covers how the room is set
   up) and *Ristorante*. On days after the first, an empty note means "same as the previous day": the field shows that as

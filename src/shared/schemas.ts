@@ -17,6 +17,8 @@ const optionalText = (max: number) =>
     .nullable()
     .transform((v) => v || null);
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 const unique = (ids: number[]) => new Set(ids).size === ids.length;
 
 const breakInput = z
@@ -37,9 +39,10 @@ export const bookingInputSchema = z
     breaks: z.array(breakInput).max(20).default([]),
   })
   .refine((e) => e.startAt < e.endAt, { path: ['endAt'], error: "La fine deve essere dopo l'inizio" })
-  .refine((e) => e.breaks.every((b) => b.startAt >= e.startAt && b.endAt <= e.endAt), {
+  // Breaks may fall outside the booking's hours (they are then only printed); a day of slack catches typos.
+  .refine((e) => e.breaks.every((b) => b.startAt >= e.startAt - DAY_MS && b.endAt <= e.endAt + DAY_MS), {
     path: ['breaks'],
-    error: "Le pause devono stare dentro l'orario dell'evento",
+    error: "Le pause devono essere entro un giorno dall'orario dell'evento",
   })
   .refine(
     (e) => [...e.breaks].sort((a, b) => a.startAt - b.startAt).every((b, i, list) => i === 0 || list[i - 1]!.endAt <= b.startAt),

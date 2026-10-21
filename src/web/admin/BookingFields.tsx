@@ -68,6 +68,8 @@ function BreaksEditor({
   eventEnd: string;
 }) {
   const set = (i: number, patch: Partial<DraftBreak>) => onChange(breaks.map((b, j) => (j === i ? { ...b, ...patch } : b)));
+  // Outside the booking's hours (same-day bookings only): printed, never on the sign.
+  const outside = (b: DraftBreak) => eventStart < eventEnd && (b.start < eventStart || b.end > eventEnd);
   const add = (label: string) =>
     onChange([...breaks, suggestBreak(label, breaks, eventStart, eventEnd)].sort((a, b) => a.start.localeCompare(b.start)));
   return (
@@ -85,6 +87,7 @@ function BreaksEditor({
           <input type="time" className={`${inputClass} w-auto!`} value={b.start} onChange={(e) => set(i, { start: e.target.value })} />
           <span className="text-slate-400">–</span>
           <input type="time" className={`${inputClass} w-auto!`} value={b.end} onChange={(e) => set(i, { end: e.target.value })} />
+          {outside(b) && <span className="text-xs text-amber-700">Solo nelle stampe</span>}
           <button
             type="button"
             onClick={() => onChange(breaks.filter((_, j) => j !== i))}
@@ -242,7 +245,7 @@ export function BookingCard({
           <Field
             label="Pause"
             error={errors.breaks}
-            hint="Durante l’evento il cartello mostra la prossima pausa. I nomi appaiono sul cartello: meglio in inglese."
+            hint="Durante l’evento il cartello mostra la prossima pausa. I nomi appaiono sul cartello: meglio in inglese. Le pause fuori dall’orario (colazione, cena) non appaiono sul cartello ma solo nelle stampe."
           >
             <BreaksEditor breaks={booking.breaks} onChange={(breaks) => onChange({ breaks })} eventStart={booking.start} eventEnd={booking.end} />
           </Field>

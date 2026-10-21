@@ -53,6 +53,10 @@ export default function Help() {
           </li>
         </Steps>
         <p>
+          <b>Pause fuori orario:</b> una pausa può cadere anche prima dell’inizio o dopo la fine dell’occupazione (colazione, cena). Compare l’avviso «Solo
+          nelle stampe»: non appare sul cartello, ma è nella stampa ristorante e negli altri fogli.
+        </p>
+        <p>
           <b>Preparazione e pulizia:</b> di norma le sale restano riservate dalle 14:00 del giorno prima fino alle 14:00 dopo la fine. Puoi scegliere «nessuna
           preparazione» o orari personalizzati.
         </p>

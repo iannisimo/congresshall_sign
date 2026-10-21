@@ -155,7 +155,9 @@ function buildInput(
         continue;
       }
       if (endAt <= startAt) endAt += DAY;
-      // Break times are on the booking's day; in bookings past midnight, earlier times are the next day.
+      // Break times are on the booking's day (also those before its start). Only in bookings past midnight,
+      // times before the start are the next day.
+      const overnight = endAt - startAt > 0 && new Date(endAt - 1).getDate() !== new Date(startAt).getDate();
       const breaks = [];
       let bad = false;
       for (const br of b.breaks) {
@@ -165,7 +167,7 @@ function buildInput(
           bad = true;
           break;
         }
-        if (breakStart < startAt) breakStart += DAY;
+        if (overnight && breakStart < startAt) breakStart += DAY;
         if (breakEnd <= breakStart) breakEnd += DAY;
         breaks.push({ label: br.label, startAt: breakStart, endAt: breakEnd });
       }

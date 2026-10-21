@@ -91,8 +91,14 @@ describe('booking breaks', () => {
     expect(eventInputSchema.safeParse(withBreaks([coffee])).success).toBe(true);
   });
 
+  it('accept breaks outside the booking hours (printed only)', () => {
+    const breakfast = { label: 'Breakfast', startAt: at('2026-10-20', '07:30'), endAt: at('2026-10-20', '08:15') };
+    const dinner = { label: 'Dinner', startAt: at('2026-10-20', '20:00'), endAt: at('2026-10-20', '21:30') };
+    expect(eventInputSchema.safeParse(withBreaks([breakfast, coffee, dinner])).success).toBe(true);
+  });
+
   it.each([
-    [[{ ...coffee, endAt: at('2026-10-20', '14:00') }], 'outside the booking'],
+    [[{ ...coffee, startAt: at('2026-10-18', '10:00'), endAt: at('2026-10-18', '10:30') }], 'days away from the booking'],
     [[coffee, { label: 'Break', startAt: at('2026-10-20', '10:15'), endAt: at('2026-10-20', '11:00') }], 'overlapping'],
     [[{ ...coffee, label: ' ' }], 'without a name'],
     [[{ ...coffee, endAt: coffee.startAt }], 'empty'],

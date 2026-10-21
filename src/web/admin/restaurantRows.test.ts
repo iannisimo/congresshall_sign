@@ -51,6 +51,14 @@ describe('restaurantRows', () => {
     expect(rows[1]!.days[0]).toEqual({ date: '2026-10-25', hours: '09:00–13:00, 15:00–18:00', breaks: [], notes: null });
   });
 
+  it('prints breaks outside the booking hours too, in time order', () => {
+    const breakfast = { label: 'Breakfast', startAt: at('2026-10-20', '07:30'), endAt: at('2026-10-20', '08:30') };
+    const coffee = { label: 'Coffee break', startAt: at('2026-10-20', '10:30'), endAt: at('2026-10-20', '11:00') };
+    const dinner = { label: 'Dinner', startAt: at('2026-10-20', '20:00'), endAt: at('2026-10-20', '21:30') };
+    const rows = restaurantRows([event(1, true, [['2026-10-20', [booking('2026-10-20', '09:00', '18:00', [dinner, coffee, breakfast])]]])], now);
+    expect(rows[0]!.days[0]!.breaks).toEqual(['Breakfast 07:30–08:30', 'Coffee break 10:30–11:00', 'Dinner 20:00–21:30']);
+  });
+
   it('prints each day\'s effective restaurant note, inherited ones in full', () => {
     const e = event(1, true, [
       ['2026-10-20', [booking('2026-10-20', '09:00', '18:00')]],
