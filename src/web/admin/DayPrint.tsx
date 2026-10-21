@@ -67,7 +67,7 @@ export function DayPrint({ day, date, events, rooms }: { day: number; date: stri
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="space-y-2">
             <Notes label="Reception (tutto l’evento)" text={event.receptionNotes} />
             <Notes label="Reception (oggi)" text={notes.receptionNotes} inherited={notes.inherited.receptionNotes} />
             <Notes label="Housekeeping" text={notes.housekeepingNotes} inherited={notes.inherited.housekeepingNotes} />
