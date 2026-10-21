@@ -108,13 +108,28 @@ function EventRow({
         </div>
       </div>
       <div className="flex gap-1 self-end sm:self-auto">
-        <Link to={`/admin/events/${event.id}/clone`} className={buttonClass('ghost', 'sm')} title="Duplica">
-          <Copy className="size-4" />
-          <span className="sm:hidden lg:inline">Duplica</span>
-        </Link>
-        <Link to={edit} className={buttonClass('ghost', 'sm')} title="Modifica">
-          <Pencil className="size-4" />
-        </Link>
+        {onPrintDetails ? (
+          <>
+            <Link to={edit} className={buttonClass('ghost', 'sm')} title="Modifica">
+              <Pencil className="size-4" />
+              <span className="sm:hidden lg:inline">Modifica</span>
+            </Link>
+            <Link to={`/admin/events/${event.id}/clone`} className={buttonClass('ghost', 'sm')} title="Duplica">
+              <Copy className="size-4" />
+            </Link>
+          </>
+        ) : (
+          // Past events are mostly duplicated, so that comes first.
+          <>
+            <Link to={`/admin/events/${event.id}/clone`} className={buttonClass('ghost', 'sm')} title="Duplica">
+              <Copy className="size-4" />
+              <span className="sm:hidden lg:inline">Duplica</span>
+            </Link>
+            <Link to={edit} className={buttonClass('ghost', 'sm')} title="Modifica">
+              <Pencil className="size-4" />
+            </Link>
+          </>
+        )}
         {onPrintDetails && (
           <Button size="sm" variant="ghost" title="Stampa dettagli" onClick={() => onPrintDetails([event])}>
             <Printer className="size-4" />
