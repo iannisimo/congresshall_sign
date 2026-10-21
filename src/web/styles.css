@@ -110,17 +110,26 @@ html.sign-dark .venue-logo {
 }
 
 /* Printing a day's sheet from the programme: only the sheet goes on paper. */
+/* Offscreen but laid out at the paper's text width (A4 minus margins), so a sheet can measure itself. */
 .print-sheet {
-  display: none;
+  position: fixed;
+  top: 0;
+  left: -9999px;
+  width: 180mm;
+  visibility: hidden;
+  pointer-events: none;
 }
 @media print {
   body:has(.print-sheet) > :not(.print-sheet) {
     display: none !important;
   }
   .print-sheet {
-    display: block;
+    position: static;
+    width: auto;
+    visibility: visible;
   }
   @page {
+    size: A4;
     margin: 15mm;
   }
 }

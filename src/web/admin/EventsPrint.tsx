@@ -1,5 +1,5 @@
 import { isSameDay } from 'date-fns';
-import { useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { EventBooking, Room, ScheduledEvent } from '../../shared/model.ts';
 import { effectiveDayNotes } from '../../shared/events.ts';
@@ -67,17 +67,46 @@ function BookingsTable({ bookings, rooms }: { bookings: EventBooking[]; rooms: M
   );
 }
 
-/** Full details of the given events, one per page: for the staff who run them. */
+/** Text height of an A4 page with the 15mm margins (see styles.css), in CSS pixels. */
+const PAGE_HEIGHT = ((297 - 30) / 25.4) * 96;
+/** Space between events, in CSS pixels (the article's `mb-6`). */
+const EVENT_GAP = 24;
+
+/**
+ * Events flow one after the other, but one that doesn't fit what is left of the page starts a new one
+ * (unless it is already at the top). `heights` are the events' heights at the paper's width.
+ */
+export function pageBreaks(heights: number[], page = PAGE_HEIGHT): Set<number> {
+  const breaks = new Set<number>();
+  let used = 0;
+  heights.forEach((height, i) => {
+    if (used > 0 && used + height > page) {
+      breaks.add(i);
+      used = 0;
+    }
+    // An event taller than a page ends part-way down its last one.
+    used = (used + height + EVENT_GAP) % page;
+  });
+  return breaks;
+}
+
+/** Full details of the given events, flowing through the pages: for the staff who run them. */
 export function EventsPrint({ events, rooms }: { events: ScheduledEvent[]; rooms: Map<number, Room> }) {
+  const sheet = useRef<HTMLDivElement>(null);
+  const [breaks, setBreaks] = useState<Set<number>>(new Set());
+  useLayoutEffect(() => {
+    const articles = [...(sheet.current?.querySelectorAll('article') ?? [])];
+    setBreaks(pageBreaks(articles.map((a) => a.getBoundingClientRect().height)));
+  }, [events, rooms]);
   return createPortal(
-    <div className="print-sheet text-sm text-black">
+    <div ref={sheet} className="print-sheet text-sm text-black">
       {events.length === 0 && <p>Nessun evento.</p>}
-      {events.map((event) => {
+      {events.map((event, index) => {
         const reception = noteText(event.receptionNotes);
         const first = fromDateValue(event.startDate) ?? 0;
         const last = fromDateValue(event.endDate) ?? 0;
         return (
-          <article key={event.id} className="break-before-page first:break-before-auto">
+          <article key={event.id} className={`mb-6 ${breaks.has(index) ? 'break-before-page' : ''}`}>
             <div className="text-xs font-semibold tracking-wide uppercase">{event.organizerName}</div>
             <h1 className="text-xl font-bold">
               {event.title}
@@ -119,7 +148,7 @@ export function EventsPrint({ events, rooms }: { events: ScheduledEvent[]; rooms
                       <BookingsTable bookings={day.bookings} rooms={rooms} />
                     </div>
                   )}
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
                     <Note label="Reception" text={notes.receptionNotes} inherited={notes.inherited.receptionNotes} />
                     <Note
                       label="Housekeeping"
