@@ -145,7 +145,7 @@ export default function Help() {
             <b>Foglio del giorno:</b> in Programma, il pulsante <b>Stampa</b> accanto al giorno.
           </li>
           <li>
-            <b>Stampa ristorante:</b> in <b>Eventi</b>. Tutti i giorni da oggi in poi, con orari e pause ma senza sale; le bozze sono segnate «DA CONFERMARE». Ignora i
+            <b>Stampa ristorante:</b> in <b>Eventi</b>. Tutti i giorni da oggi in poi, con orari, pause e note per il ristorante ma senza sale; gli eventi senza pause né note non compaiono; le bozze sono segnate «DA CONFERMARE». Ignora i
             filtri dell’elenco.
           </li>
           <li>

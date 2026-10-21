@@ -44,7 +44,7 @@ export function restaurantFirstDay(now: number): string {
 
 /**
  * One entry per event with bookings from today on, by first day; per entry, one row per day from
- * today on that has bookings. Days without bookings and events without any row are left out.
+ * today on that has bookings. Days without bookings are left out, and so are events with no break and no note on any of their days.
  */
 export function restaurantRows(events: ScheduledEvent[], now: number): RestaurantEvent[] {
   const first = restaurantFirstDay(now);
@@ -65,7 +65,8 @@ export function restaurantRows(events: ScheduledEvent[], now: number): Restauran
       const note = effectiveDayNotes(event, index).restaurantNotes?.trim() ?? '';
       days.push({ date: day.date, hours, breaks, notes: note === '' || note === '—' ? null : note });
     }
-    if (days.length > 0) out.push({ id: event.id, organizerName: event.organizerName, title: event.title, draft: !event.visible, days });
+    // Nothing for the kitchen to know: no break and no note on any day.
+    if (days.some((d) => d.breaks.length > 0 || d.notes !== null)) out.push({ id: event.id, organizerName: event.organizerName, title: event.title, draft: !event.visible, days });
   }
   return out.sort((a, b) => a.days[0]!.date.localeCompare(b.days[0]!.date) || a.id - b.id);
 }

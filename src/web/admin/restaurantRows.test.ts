@@ -31,9 +31,11 @@ describe('restaurantRows', () => {
   it('builds rows: from today on, hours, deduplicated breaks, drafts, order', () => {
     const coffee = (d: string) => ({ label: 'Coffee break', startAt: at(d, '10:30'), endAt: at(d, '11:00') });
     const lunch = (d: string) => ({ label: 'Lunch', startAt: at(d, '13:00'), endAt: at(d, '14:00') });
+    const draft = event(2, false, [['2026-10-25', [booking('2026-10-25', '09:00', '13:00'), booking('2026-10-25', '15:00', '18:00')]]]);
+    draft.days[0]!.restaurantNotes = 'Menu vegano';
     const rows = restaurantRows(
       [
-        event(2, false, [['2026-10-25', [booking('2026-10-25', '09:00', '13:00'), booking('2026-10-25', '15:00', '18:00')]]]),
+        draft,
         event(1, true, [
           ['2026-10-18', [booking('2026-10-18', '09:00', '18:00')]],
           ['2026-10-20', [booking('2026-10-20', '09:00', '13:00', [coffee('2026-10-20'), lunch('2026-10-20')]), booking('2026-10-20', '13:00', '18:00', [coffee('2026-10-20')])]],
@@ -43,12 +45,16 @@ describe('restaurantRows', () => {
       ],
       now,
     );
-    expect(rows.map((r) => r.id)).toEqual([1, 2, 3]); // past days are left out, far-away ones are not
+    expect(rows.map((r) => r.id)).toEqual([1, 2]); // 3 has neither breaks nor notes
     expect(rows[0]!.days).toEqual([
       { date: '2026-10-20', hours: '09:00–18:00', breaks: ['Coffee break 10:30–11:00', 'Lunch 13:00–14:00'], notes: null },
     ]);
     expect(rows[1]).toMatchObject({ draft: true });
-    expect(rows[1]!.days[0]).toEqual({ date: '2026-10-25', hours: '09:00–13:00, 15:00–18:00', breaks: [], notes: null });
+    expect(rows[1]!.days[0]).toEqual({ date: '2026-10-25', hours: '09:00–13:00, 15:00–18:00', breaks: [], notes: 'Menu vegano' });
+  });
+
+  it('leaves out an event shown with nothing but hours', () => {
+    expect(restaurantRows([event(1, true, [['2026-10-20', [booking('2026-10-20', '09:00', '18:00')]]])], now)).toEqual([]);
   });
 
   it('prints breaks outside the booking hours too, in time order', () => {
