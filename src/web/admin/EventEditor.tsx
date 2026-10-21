@@ -836,8 +836,8 @@ export default function EventEditor({ mode }: { mode: Mode }) {
   if ((id !== undefined && source.isPending) || rooms.isPending || organizers.isPending || settings.isPending) return <PageLoading />;
   if (rooms.isError || organizers.isError) return <ErrorNote>{errorMessage(rooms.error ?? organizers.error)}</ErrorNote>;
 
-  const { prepTime, cleanupTime, cleanupMinGapHours } = settings.data ?? DEFAULT_SETTINGS;
-  const changeover = { prepTime, cleanupTime, cleanupMinGapHours };
+  const { prepTime, prepMinGapHours, cleanupTime, cleanupMinGapHours } = settings.data ?? DEFAULT_SETTINGS;
+  const changeover = { prepTime, prepMinGapHours, cleanupTime, cleanupMinGapHours };
   const initial = source.data ? draftFrom(source.data, changeover) : newDraft(search);
   return (
     <EditorForm

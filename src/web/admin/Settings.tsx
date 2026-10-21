@@ -311,7 +311,7 @@ function SettingsForm({ saved }: { saved: Settings }) {
         <div>
           <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Programma: cambio sala</h2>
           <p className="mt-1 text-sm text-slate-600">
-            Per i nuovi eventi la preparazione parte all’orario di preparazione del giorno prima e il riordino finisce
+            Per i nuovi eventi la preparazione parte all’orario di preparazione del giorno prima (o dello stesso giorno, se c’è abbastanza tempo) e il riordino finisce
             all’orario di riordino dopo la fine. Gli eventi già salvati non cambiano.
           </p>
         </div>
@@ -333,6 +333,20 @@ function SettingsForm({ saved }: { saved: Settings }) {
             />
           </Field>
         </div>
+        <Field
+          label="Margine minimo per la preparazione in giornata"
+          error={errors.get('prepMinGapHours')}
+          hint="Se l’evento inizia almeno queste ore dopo l’inizio preparazione, la sala viene preparata lo stesso giorno invece del giorno prima"
+        >
+          <NumberWithSlider
+            value={draft.prepMinGapHours}
+            onChange={(prepMinGapHours) => setDraft({ ...draft, prepMinGapHours })}
+            min={0}
+            max={12}
+            step={0.5}
+            unit="ore"
+          />
+        </Field>
         <Field
           label="Margine minimo per il riordino in giornata"
           error={errors.get('cleanupMinGapHours')}

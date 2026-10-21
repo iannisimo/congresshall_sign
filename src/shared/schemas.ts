@@ -213,6 +213,7 @@ export const settingsSchema = z.object({
     .max(200, { error: 'Massimo 200 pixel al secondo' }),
   marqueePause: z.number().min(0, { error: 'Non può essere negativa' }).max(30, { error: 'Massimo 30 secondi' }),
   prepTime: clockTime,
+  prepMinGapHours: z.number().min(0, { error: 'Non può essere negativo' }).max(12, { error: 'Massimo 12 ore' }),
   cleanupTime: clockTime,
   cleanupMinGapHours: z.number().min(0, { error: 'Non può essere negativo' }).max(12, { error: 'Massimo 12 ore' }),
   signTheme: z.enum(['auto', 'light', 'dark']),

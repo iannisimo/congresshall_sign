@@ -112,7 +112,7 @@ export function MarginsSection({
   /** Extra explanation shown in the details (about the dates next to it). */
   help?: string;
 }) {
-  const { prepTime, cleanupTime, cleanupMinGapHours } = changeover;
+  const { prepTime, prepMinGapHours, cleanupTime, cleanupMinGapHours } = changeover;
   const select = (mode: MarginMode) => {
     if (mode !== 'custom') return onChange({ margins: mode });
     // Start from what is shown now, so the times only change when edited.
@@ -154,7 +154,7 @@ export function MarginsSection({
         <summary className="cursor-pointer text-slate-500 select-none hover:text-slate-800">dettagli</summary>
         <ul className="mt-1 list-disc space-y-1 pl-5">
           <li>
-            <b>Consueti</b>: dalle {prepTime} del giorno prima fino alle {cleanupTime} dopo la fine (lo stesso giorno se finisce almeno {cleanupMinGapHours}{' '}
+            <b>Consueti</b>: dalle {prepTime} del giorno prima (lo stesso giorno se inizia almeno {prepMinGapHours} {prepMinGapHours === 1 ? 'ora' : 'ore'} dopo) fino alle {cleanupTime} dopo la fine (lo stesso giorno se finisce almeno {cleanupMinGapHours}{' '}
             {cleanupMinGapHours === 1 ? 'ora' : 'ore'} prima).
           </li>
           <li>

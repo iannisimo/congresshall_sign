@@ -5,6 +5,7 @@ export const DEFAULT_SETTINGS: Settings = {
   marqueeVerticalSpeed: 15,
   marqueePause: 3,
   prepTime: '14:00',
+  prepMinGapHours: 1,
   cleanupTime: '14:00',
   cleanupMinGapHours: 1,
   signTheme: 'auto',

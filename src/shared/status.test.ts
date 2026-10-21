@@ -170,25 +170,31 @@ describe('changeover margins', () => {
   const local = (iso: string) => new Date(iso).getTime();
 
   it('reserve the room from 14:00 the day before to the next 14:00', () => {
-    expect(changeoverMargins(local('2026-10-20T09:00'), local('2026-10-20T18:00'), { prepTime: '14:00', cleanupTime: '14:00', cleanupMinGapHours: 0 })).toEqual({
+    expect(changeoverMargins(local('2026-10-20T09:00'), local('2026-10-20T18:00'), { prepTime: '14:00', prepMinGapHours: 24, cleanupTime: '14:00', cleanupMinGapHours: 0 })).toEqual({
       prepAt: local('2026-10-19T14:00'),
       releaseAt: local('2026-10-21T14:00'),
     });
   });
 
+  it('prepare the room the same day when the event starts late enough', () => {
+    const settings = { prepTime: '14:00', prepMinGapHours: 1, cleanupTime: '14:00', cleanupMinGapHours: 0 };
+    expect(changeoverMargins(local('2026-10-20T15:00'), local('2026-10-20T18:00'), settings).prepAt).toBe(local('2026-10-20T14:00'));
+    expect(changeoverMargins(local('2026-10-20T14:30'), local('2026-10-20T18:00'), settings).prepAt).toBe(local('2026-10-19T14:00'));
+  });
+
   it('free the room the same afternoon after a morning event', () => {
-    expect(changeoverMargins(local('2026-10-20T09:00'), local('2026-10-20T12:30'), { prepTime: '14:00', cleanupTime: '14:00', cleanupMinGapHours: 0 }).releaseAt).toBe(local('2026-10-20T14:00'));
+    expect(changeoverMargins(local('2026-10-20T09:00'), local('2026-10-20T12:30'), { prepTime: '14:00', prepMinGapHours: 24, cleanupTime: '14:00', cleanupMinGapHours: 0 }).releaseAt).toBe(local('2026-10-20T14:00'));
   });
 
   it('keep the room reserved between the days of a congress', () => {
-    const day1 = event(1, [1], 0, 0, { ...changeoverMargins(local('2026-10-20T09:00'), local('2026-10-20T18:00'), { prepTime: '14:00', cleanupTime: '14:00', cleanupMinGapHours: 0 }), startAt: local('2026-10-20T09:00'), endAt: local('2026-10-20T18:00') });
-    const day2 = event(2, [1], 0, 0, { ...changeoverMargins(local('2026-10-21T09:00'), local('2026-10-21T18:00'), { prepTime: '14:00', cleanupTime: '14:00', cleanupMinGapHours: 0 }), startAt: local('2026-10-21T09:00'), endAt: local('2026-10-21T18:00') });
+    const day1 = event(1, [1], 0, 0, { ...changeoverMargins(local('2026-10-20T09:00'), local('2026-10-20T18:00'), { prepTime: '14:00', prepMinGapHours: 24, cleanupTime: '14:00', cleanupMinGapHours: 0 }), startAt: local('2026-10-20T09:00'), endAt: local('2026-10-20T18:00') });
+    const day2 = event(2, [1], 0, 0, { ...changeoverMargins(local('2026-10-21T09:00'), local('2026-10-21T18:00'), { prepTime: '14:00', prepMinGapHours: 24, cleanupTime: '14:00', cleanupMinGapHours: 0 }), startAt: local('2026-10-21T09:00'), endAt: local('2026-10-21T18:00') });
     const night = computeRoomStatuses({ rooms: [room(1)], events: [day1, day2], overrides: [], now: local('2026-10-21T02:00') });
     expect(night.get(1)).toMatchObject({ status: 'reserved', changesAt: local('2026-10-21T09:00') });
   });
 
   it('use the changeover time set by the superadmin', () => {
-    expect(changeoverMargins(local('2026-10-20T09:00'), local('2026-10-20T12:30'), { prepTime: '13:30', cleanupTime: '13:30', cleanupMinGapHours: 0 })).toEqual({
+    expect(changeoverMargins(local('2026-10-20T09:00'), local('2026-10-20T12:30'), { prepTime: '13:30', prepMinGapHours: 24, cleanupTime: '13:30', cleanupMinGapHours: 0 })).toEqual({
       prepAt: local('2026-10-19T13:30'),
       releaseAt: local('2026-10-20T13:30'),
     });
@@ -196,7 +202,7 @@ describe('changeover margins', () => {
 
   it('follow local time across the daylight saving change', () => {
     // Clocks go back on 25 October 2026 in Italy.
-    expect(changeoverMargins(local('2026-10-26T09:00'), local('2026-10-26T18:00'), { prepTime: '14:00', cleanupTime: '14:00', cleanupMinGapHours: 0 }).prepAt).toBe(local('2026-10-25T14:00'));
+    expect(changeoverMargins(local('2026-10-26T09:00'), local('2026-10-26T18:00'), { prepTime: '14:00', prepMinGapHours: 24, cleanupTime: '14:00', cleanupMinGapHours: 0 }).prepAt).toBe(local('2026-10-25T14:00'));
   });
 });
 

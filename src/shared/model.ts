@@ -149,6 +149,8 @@ export interface Settings {
   marqueePause: number;
   /** "HH:MM" when the default preparation starts, on the day before the event. */
   prepTime: string;
+  /** Hours: an event starting at least this after the preparation time is prepared the same day. */
+  prepMinGapHours: number;
   /** "HH:MM" when the default clean-up ends, after the event. */
   cleanupTime: string;
   /** Hours: an event ending less than this before the clean-up time is cleaned up at the next day's. */
