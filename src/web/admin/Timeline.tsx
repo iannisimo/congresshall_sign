@@ -103,7 +103,7 @@ export function Timeline({
                 <span className="truncate">{room.name}</span>
               </div>
               <div
-                className="relative flex-1 cursor-copy py-1.5"
+                className="relative flex-1 cursor-copy overflow-hidden py-1.5"
                 onClick={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const hour = Math.floor(first + ((e.clientX - rect.left) / rect.width) * (last - first));
