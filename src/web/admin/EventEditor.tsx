@@ -360,9 +360,9 @@ function ConflictList({
   );
 }
 
-function Section({ title, id, children }: { title: string; id?: string; children: ReactNode }) {
+function Section({ title, id, highlight = false, children }: { title: string; id?: string; highlight?: boolean; children: ReactNode }) {
   return (
-    <Card id={id} className="scroll-mt-20 p-5">
+    <Card id={id} className={`scroll-mt-32 p-5 ${highlight ? 'bg-amber-50 outline-2 outline-dashed outline-amber-500' : ''}`}>
       <h2 className="mb-4 text-sm font-semibold tracking-wide text-slate-500 uppercase">{title}</h2>
       <div className="space-y-5">{children}</div>
     </Card>
@@ -647,7 +647,7 @@ function EditorForm({
             </Field>
           </Section>
 
-          <Section title="Date e sale" id="dates">
+          <Section title="Date e sale" id="dates" highlight={mode === 'clone' && startDate === initial.days[0]!.date && endDate === initial.days[initial.days.length - 1]!.date}>
             <div className="grid grid-cols-2 gap-4 sm:max-w-md">
               <Field label="Dal">
                 <input
@@ -733,7 +733,7 @@ function EditorForm({
                 <input
                   className={inputClass}
                   inputMode="decimal"
-                  placeholder="1.234,50"
+                  placeholder="0.00"
                   value={draft.cost}
                   onChange={(e) => update({ cost: e.target.value })}
                 />
@@ -847,7 +847,9 @@ export default function EventEditor({ mode }: { mode: Mode }) {
 
   const { prepTime, prepMinGapHours, cleanupTime, cleanupMinGapHours } = settings.data ?? DEFAULT_SETTINGS;
   const changeover = { prepTime, prepMinGapHours, cleanupTime, cleanupMinGapHours };
-  const initial = source.data ? draftFrom(source.data, changeover) : newDraft(search);
+  const copy = source.data ? draftFrom(source.data, changeover) : null;
+  // A duplicate is another reservation: it doesn't keep the number of the original.
+  const initial = copy ? (mode === 'clone' ? { ...copy, bookingNumber: '' } : copy) : newDraft(search);
   return (
     <EditorForm
       key={`${mode}-${id ?? 'new'}`}

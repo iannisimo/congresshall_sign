@@ -150,7 +150,7 @@ function DaySection({
   const [printing, setPrinting] = useState(false);
 
   return (
-    <section id={`day-${value}`} className="scroll-mt-20">
+    <section id={`day-${value}`} className="scroll-mt-32">
       <Card className={`overflow-hidden ${today ? 'ring-2 ring-brand-600' : ''}`}>
         <div className="flex items-center gap-3 px-4 py-3">
           <h2 className="font-semibold text-slate-900 first-letter:uppercase">{formatAdminDay(day)}</h2>
