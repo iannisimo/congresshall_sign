@@ -15,7 +15,7 @@ import { MarqueeCycle, MarqueeSettings } from './Marquee.tsx';
 import { SectionTitle, Time } from './parts.tsx';
 import { RecoveringBoundary } from './RecoveringBoundary.tsx';
 import { RoomStrip } from './RoomStrip.tsx';
-import { buildSignView } from './schedule.ts';
+import { buildSignView, isFromTime, parseFrom } from './schedule.ts';
 import { strings } from './strings.ts';
 import { useSnapshot } from './useSnapshot.ts';
 
@@ -109,14 +109,15 @@ function OutdatedWarning({ since }: { since: number }) {
 }
 
 /**
- * standard: today's events and the next days; big: only the featured day's events, across the whole
- * screen; carousel: the carousel whatever the events and the hour, to preview it.
+ * standard: today's events and the next days; big: only today's events across the whole screen, none before `?from=HH:MM` (09:00
+ * by default) except those already live, then all that are left (the usual carousel when none); carousel: the carousel whatever the events and the hour, to preview it.
  */
 export type SignLayout = 'standard' | 'big' | 'carousel';
 
 function SignScreen({ layout }: { layout: SignLayout }) {
   useKiosk();
   const chrome = useMemo(() => parseChrome(location.search), []);
+  const from = useMemo(() => parseFrom(location.search), []);
   const { snapshot, lastContactAt, clockOffset } = useSnapshot();
   useSelfUpdate(snapshot?.version, lastContactAt);
   const now = useNow(clockOffset);
@@ -137,7 +138,10 @@ function SignScreen({ layout }: { layout: SignLayout }) {
     () => computeRoomStatuses({ rooms, events: snapshot?.events ?? [], overrides: snapshot?.overrides ?? [], now }),
     [rooms, snapshot, now],
   );
-  const view = useMemo(() => buildSignView(snapshot?.events ?? [], now), [snapshot, Math.floor(now / MINUTE)]);
+  // The big sign only shows today's events: before `?from=` (09:00 by default) just those already live,
+  // from then on all that are left; with none, the usual carousel.
+  const bigToday = layout === 'big' && isFromTime(now, from);
+  const view = useMemo(() => buildSignView(snapshot?.events ?? [], now, layout === 'big' ? { listed: bigToday } : undefined), [snapshot, layout, bigToday, Math.floor(now / MINUTE)]);
 
   const offlineFor = lastContactAt === null ? 0 : now - lastContactAt;
 

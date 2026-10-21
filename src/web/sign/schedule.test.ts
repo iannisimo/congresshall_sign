@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { SignEvent } from '../../shared/model.ts';
 import { HOUR } from '../../shared/time.ts';
-import { buildSignView } from './schedule.ts';
+import { buildSignView, isFromTime, parseFrom } from './schedule.ts';
 
 const NOW = new Date('2026-10-17T10:00:00').getTime();
 const at = (iso: string) => new Date(iso).getTime();
@@ -75,5 +75,43 @@ describe('buildSignView', () => {
 
   it('is empty without events', () => {
     expect(buildSignView([], NOW)).toEqual({ featuredDay: null, featured: [], comingUp: [] });
+  });
+});
+
+describe('buildSignView for the big sign', () => {
+  const events = [
+    event(1, '2026-10-17T09:00', '2026-10-17T12:00'),
+    event(2, '2026-10-17T15:00', '2026-10-17T16:00'),
+    event(3, '2026-10-18T09:00', '2026-10-18T10:00'),
+  ];
+
+  it("shows all of today's events that are not over, never the next days", () => {
+    const view = buildSignView(events, NOW, { listed: true });
+    expect(view.featured.map((e) => e.id)).toEqual([1, 2]);
+    expect(view.comingUp).toEqual([]);
+  });
+
+  it('before the set time shows only the events already live', () => {
+    expect(buildSignView(events, at('2026-10-17T08:00'), { listed: false }).featured).toEqual([]);
+    expect(buildSignView(events, at('2026-10-17T10:00'), { listed: false }).featured.map((e) => e.id)).toEqual([1]);
+  });
+
+  it('shows nothing, not tomorrow, when today has no events left', () => {
+    expect(buildSignView(events, at('2026-10-17T17:00'), { listed: true })).toEqual({ featuredDay: null, featured: [], comingUp: [] });
+  });
+});
+
+describe('parseFrom', () => {
+  it('reads HH:MM and falls back to 09:00', () => {
+    expect(parseFrom('?from=14:00')).toBe('14:00');
+    expect(parseFrom('?from=9:30')).toBe('09:30');
+    expect(parseFrom('?from=25:00')).toBe('09:00');
+    expect(parseFrom('?from=abc')).toBe('09:00');
+    expect(parseFrom('')).toBe('09:00');
+  });
+
+  it('knows when the time of day has come', () => {
+    expect(isFromTime(at('2026-10-17T08:59'), '09:00')).toBe(false);
+    expect(isFromTime(at('2026-10-17T09:00'), '09:00')).toBe(true);
   });
 });

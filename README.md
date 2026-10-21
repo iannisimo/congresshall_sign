@@ -34,8 +34,10 @@ become a smart-TV browser. **One person** does the admin work.
   shows the default preset. The global duration and fit apply wherever a preset has none. At night, a
   setting replaces the carousel with a dim clock. `/carousel` shows the carousel whatever the events and
   the hour, to preview it (`/carousel?preset=bar` for a preset).
-- **SIGN-13** `/big` is the sign without the "Coming up" list: the featured day's events (today's, or
-  those of the next day with events) take the whole screen.
+- **SIGN-13** `/big` is the sign without the "Coming up" list: today's events take the whole screen, never
+  those of the next days. Before 09:00 (`?from=HH:MM` changes it, `/big?from=08:30`) it acts as if there
+  were none, apart from events already live; from then on it shows all of today's events that are not over
+  yet. With none left it shows the carousel as usual.
 - **SIGN-14** `?header=0` hides the sign's header (logo, clock, date) and `?footer=0` the room strip at the
   bottom (also `false`, `no`, `off`); both are shown by default and combine with `?preset=` and `?mode=`.
   The rest of the screen takes the freed space; with the header hidden, the "last update" note moves to a
