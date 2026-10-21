@@ -165,7 +165,7 @@ export default function Help() {
             Senza un logo proprio, scegli uno degli emblemi generici (università, medicina, tecnologia, associazioni…).
           </li>
         </Steps>
-        <p>Quando scegli un organizzatore in un evento, il suo primo logo viene selezionato da solo. Un organizzatore con eventi si elimina solo dopo conferma.</p>
+        <p>Quando scegli un organizzatore in un evento, il suo primo logo viene selezionato da solo. Per rinominare un organizzatore o eliminare un logo usa i pulsanti nella sua scheda. Attenzione: «Elimina organizzatore ed eventi» cancella anche tutti i suoi eventi, e non si può annullare.</p>
       </Topic>
     </div>
   );
