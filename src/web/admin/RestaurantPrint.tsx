@@ -1,22 +1,20 @@
 import { createPortal } from 'react-dom';
 import type { ScheduledEvent } from '../../shared/model.ts';
 import { fromDateValue as parseDate } from '../../shared/time.ts';
-import { restaurantRows, restaurantWindow } from './restaurantRows.ts';
+import { restaurantRows } from './restaurantRows.ts';
 
 const fromDateValue = (v: string) => new Date(parseDate(v) ?? 0);
 const dayFormat = new Intl.DateTimeFormat('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
-const shortFormat = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short' });
 const fullFormat = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
 const stampFormat = new Intl.DateTimeFormat('it-IT', { dateStyle: 'short', timeStyle: 'short' });
 
-/** The next 14 days for the restaurant: per event, one line per day with hours and breaks. Drafts are marked. */
+/** Every day from today on for the restaurant: per event, one line per day with hours and breaks. Drafts are marked. */
 export function RestaurantPrint({ events, now }: { events: ScheduledEvent[]; now: number }) {
-  const { first, last } = restaurantWindow(now);
   const rows = restaurantRows(events, now);
   return createPortal(
     <div className="print-sheet text-sm text-black">
       <h1 className="mb-4 text-xl font-bold">
-        Ristorante · dal {shortFormat.format(fromDateValue(first))} al {fullFormat.format(fromDateValue(last))}
+        Ristorante · dal {fullFormat.format(new Date(now))}
       </h1>
       {rows.length === 0 && <p>Nessun evento.</p>}
       {rows.map((event) => (

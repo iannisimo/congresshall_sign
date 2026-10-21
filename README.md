@@ -122,8 +122,8 @@ become a smart-TV browser. **One person** does the admin work.
 - **ADMIN-14** *Eventi* tab: every event ending today or later, grouped by month, with logo, organizer,
   title, dates and number of days, rooms used, and *In corso* / *Bozza* badges. Filter by organizer,
   title or booking number, hide drafts; edit (opens today's tab if the event is live), clone, print, delete.
-- **ADMIN-15** Prints (`printSheet`, like the day sheet). *Stampa ristorante (14 gg)*: the next 14 days
-  (today included), per event, one line per day with bookings showing hours and breaks, no rooms and no
+- **ADMIN-15** Prints (`printSheet`, like the day sheet). *Stampa ristorante*: every day from today
+  on, with no end date, per event, one line per day with bookings showing hours and breaks, no rooms and no
   notes; drafts are included and framed "DA CONFERMARE"; it ignores the list's filters. *Stampa dettagli*:
   one event per page with dates, reception notes and, per day, the room reservation span once and the bookings (rooms, hours,
   breaks) and the resolved day notes; from the list it prints the events shown (after the

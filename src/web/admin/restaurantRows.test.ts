@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { EventBooking, ScheduledEvent } from '../../shared/model.ts';
-import { mergeRanges, restaurantRows, restaurantWindow } from './restaurantRows.ts';
+import { mergeRanges, restaurantFirstDay, restaurantRows } from './restaurantRows.ts';
 
 const at = (date: string, time: string) => new Date(`${date}T${time}`).getTime();
 const now = at('2026-10-19', '15:30');
@@ -17,8 +17,8 @@ function event(id: number, visible: boolean, days: [string, EventBooking[]][]): 
 }
 
 describe('restaurantRows', () => {
-  it('spans 14 days from today', () => {
-    expect(restaurantWindow(now)).toEqual({ first: '2026-10-19', last: '2026-11-01' });
+  it('starts today', () => {
+    expect(restaurantFirstDay(now)).toBe('2026-10-19');
   });
 
   it('merges touching and overlapping ranges only', () => {
@@ -28,7 +28,7 @@ describe('restaurantRows', () => {
     ]);
   });
 
-  it('builds rows: window, hours, deduplicated breaks, drafts, order', () => {
+  it('builds rows: from today on, hours, deduplicated breaks, drafts, order', () => {
     const coffee = (d: string) => ({ label: 'Coffee break', startAt: at(d, '10:30'), endAt: at(d, '11:00') });
     const lunch = (d: string) => ({ label: 'Lunch', startAt: at(d, '13:00'), endAt: at(d, '14:00') });
     const rows = restaurantRows(
@@ -43,7 +43,7 @@ describe('restaurantRows', () => {
       ],
       now,
     );
-    expect(rows.map((r) => r.id)).toEqual([1, 2]);
+    expect(rows.map((r) => r.id)).toEqual([1, 2, 3]); // past days are left out, far-away ones are not
     expect(rows[0]!.days).toEqual([
       { date: '2026-10-20', hours: '09:00–18:00', breaks: ['Coffee break 10:30–11:00', 'Lunch 13:00–14:00'], notes: null },
     ]);

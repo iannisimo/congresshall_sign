@@ -1,9 +1,7 @@
-import { addDays, format, startOfDay } from 'date-fns';
+import { format, startOfDay } from 'date-fns';
 import { effectiveDayNotes } from '../../shared/events.ts';
 import type { ScheduledEvent } from '../../shared/model.ts';
 import { toDateValue } from '../../shared/time.ts';
-
-export const RESTAURANT_DAYS = 14;
 
 export interface RestaurantDay {
   /** 'YYYY-MM-DD' */
@@ -39,23 +37,22 @@ export function mergeRanges(ranges: { startAt: number; endAt: number }[]): { sta
   return out;
 }
 
-/** The window [start of the day of `now`, +14 days), as first and last 'YYYY-MM-DD' (inclusive). */
-export function restaurantWindow(now: number): { first: string; last: string } {
-  const start = startOfDay(now);
-  return { first: toDateValue(start.getTime()), last: toDateValue(addDays(start, RESTAURANT_DAYS - 1).getTime()) };
+/** Today as 'YYYY-MM-DD': the print starts there and has no end. */
+export function restaurantFirstDay(now: number): string {
+  return toDateValue(startOfDay(now).getTime());
 }
 
 /**
- * One entry per event with bookings in the window, by first day in it; per entry, one row per day of
- * the window that has bookings. Days without bookings and events without any row are left out.
+ * One entry per event with bookings from today on, by first day; per entry, one row per day from
+ * today on that has bookings. Days without bookings and events without any row are left out.
  */
 export function restaurantRows(events: ScheduledEvent[], now: number): RestaurantEvent[] {
-  const { first, last } = restaurantWindow(now);
+  const first = restaurantFirstDay(now);
   const out: RestaurantEvent[] = [];
   for (const event of events) {
     const days: RestaurantDay[] = [];
     for (const [index, day] of event.days.entries()) {
-      if (day.date < first || day.date > last || day.bookings.length === 0) continue;
+      if (day.date < first || day.bookings.length === 0) continue;
       const seen = new Set<string>();
       const breaks = day.bookings
         .flatMap((b) => b.breaks)

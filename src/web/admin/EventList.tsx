@@ -224,7 +224,7 @@ export default function EventList({
           <>
             <Button variant="secondary" onClick={onPrintRestaurant ?? (() => printSheet(setRestaurantShown))}>
               <Printer className="size-4" />
-              Stampa ristorante (14 gg)
+              Stampa ristorante
             </Button>
             <Button variant="secondary" onClick={() => printDetails(shown)}>
               <Printer className="size-4" />
