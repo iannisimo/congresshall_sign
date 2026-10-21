@@ -266,6 +266,9 @@ export function OrganizerPicker({
           else if (e.key === 'Enter') {
             e.preventDefault();
             options[active]?.pick();
+          } else if (e.key === 'Tab' && !e.shiftKey && q && !create.isPending) {
+            // Tab confirms the highlighted option like Enter, so a new name is saved too; focus still moves on.
+            options[active]?.pick();
           } else if (e.key === 'Escape') setOpen(false);
         }}
       />

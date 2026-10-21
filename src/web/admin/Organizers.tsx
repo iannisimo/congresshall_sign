@@ -159,7 +159,13 @@ export default function Organizers() {
       <div className="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <Card className="overflow-hidden">
           <div className="space-y-2 border-b border-slate-100 p-3">
-            <input className={inputClass} placeholder="Cerca o aggiungi…" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <input className={inputClass} placeholder="Cerca o aggiungi…" value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                // Tab saves the new name too; focus still moves on.
+                if (e.key === 'Tab' && !e.shiftKey && q && !exact && !create.isPending) create.mutate(query.trim());
+              }}
+            />
             {q && !exact && (
               <Button size="sm" variant="ghost" className="w-full justify-start!" busy={create.isPending} onClick={() => create.mutate(query.trim())}>
                 <Plus className="size-4" />
