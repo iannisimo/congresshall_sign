@@ -832,6 +832,11 @@ export default function EventEditor({ mode }: { mode: Mode }) {
   const organizers = useOrganizers();
   const settings = useSettings();
 
+  // Navigating keeps the scroll of the previous page (e.g. the programme, scrolled to a day): a new event starts at the top.
+  useEffect(() => {
+    if (mode === 'new') window.scrollTo(0, 0);
+  }, [mode]);
+
   if (source.isError) return <ErrorNote>{errorMessage(source.error)}</ErrorNote>;
   if ((id !== undefined && source.isPending) || rooms.isPending || organizers.isPending || settings.isPending) return <PageLoading />;
   if (rooms.isError || organizers.isError) return <ErrorNote>{errorMessage(rooms.error ?? organizers.error)}</ErrorNote>;

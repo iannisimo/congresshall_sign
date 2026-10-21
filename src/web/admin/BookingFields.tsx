@@ -32,7 +32,7 @@ export function shiftTime(time: string, minutes: number): string {
   return t === null ? time : toTimeValue(t + minutes * MINUTE);
 }
 
-const BREAK_MINUTES: Record<string, number> = { Break: 15, 'Coffee break': 30, 'Lunch break': 60 };
+const BREAK_MINUTES: Record<string, number> = { Break: 15, 'Coffee break': 30, Lunch: 60 };
 
 /** A sensible slot for a new break: lunch at 13:00 when it fits, otherwise after the last break. */
 function suggestBreak(label: string, breaks: DraftBreak[], eventStart: string, eventEnd: string): DraftBreak {
@@ -46,7 +46,7 @@ function suggestBreak(label: string, breaks: DraftBreak[], eventStart: string, e
   if (end <= start) end += 24 * 60;
   const length = BREAK_MINUTES[label] ?? 30;
   let from: number;
-  if (label === 'Lunch break' && start <= 13 * 60 && 14 * 60 <= end) from = 13 * 60;
+  if (label === 'Lunch' && start <= 13 * 60 && 14 * 60 <= end) from = 13 * 60;
   else {
     const after = breaks.length > 0 ? toMinutes(breaks[breaks.length - 1]!.end) + 90 : start + 90;
     from = Math.ceil(after / 15) * 15;

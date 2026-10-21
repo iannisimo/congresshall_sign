@@ -15,8 +15,12 @@ import { usePrintEvents } from './EventsPrint.tsx';
 import { Badge, Button, buttonClass, Card, ErrorNote, inputClass, PageLoading, useFeedback } from './ui.tsx';
 
 /** Every event ending today or later, live ones included. */
-const useUpcomingEvents = (from: number) =>
-  useQuery({ queryKey: ['events', from, 'open'], queryFn: () => api<ScheduledEvent[]>(`/events?from=${from}`) });
+const useUpcomingEvents = (from: number, enabled: boolean) =>
+  useQuery({ enabled, queryKey: ['events', from, 'open'], queryFn: () => api<ScheduledEvent[]>(`/events?from=${from}`) });
+
+/** Every event that started before `to`; the page keeps those that are over. */
+const usePastEvents = (to: number, enabled: boolean) =>
+  useQuery({ enabled, queryKey: ['events', 0, to, 'past'], queryFn: () => api<ScheduledEvent[]>(`/events?from=0&to=${to}`) });
 
 const fromDateValue = (v: string) => new Date(parseDate(v) ?? 0);
 const dayFormat = new Intl.DateTimeFormat('it-IT', { day: 'numeric' });
@@ -58,7 +62,8 @@ function EventRow({
   event: ScheduledEvent;
   rooms: Room[];
   today: string;
-  onPrintDetails: (events: ScheduledEvent[]) => void;
+  /** Missing in the past events, which can't be printed. */
+  onPrintDetails?: (events: ScheduledEvent[]) => void;
 }) {
   const { confirm, toast } = useFeedback();
   const remove = useMutation({
@@ -103,16 +108,18 @@ function EventRow({
         </div>
       </div>
       <div className="flex gap-1 self-end sm:self-auto">
-        <Link to={edit} className={buttonClass('ghost', 'sm')} title="Modifica">
-          <Pencil className="size-4" />
-          <span className="sm:hidden lg:inline">Modifica</span>
-        </Link>
         <Link to={`/admin/events/${event.id}/clone`} className={buttonClass('ghost', 'sm')} title="Duplica">
           <Copy className="size-4" />
+          <span className="sm:hidden lg:inline">Duplica</span>
         </Link>
-        <Button size="sm" variant="ghost" title="Stampa dettagli" onClick={() => onPrintDetails([event])}>
-          <Printer className="size-4" />
-        </Button>
+        <Link to={edit} className={buttonClass('ghost', 'sm')} title="Modifica">
+          <Pencil className="size-4" />
+        </Link>
+        {onPrintDetails && (
+          <Button size="sm" variant="ghost" title="Stampa dettagli" onClick={() => onPrintDetails([event])}>
+            <Printer className="size-4" />
+          </Button>
+        )}
         <Button
           size="sm"
           variant="ghost"
@@ -134,9 +141,12 @@ function EventRow({
  * (restaurant, details) provide them.
  */
 export default function EventList({
+  past = false,
   onPrintRestaurant,
   onPrintDetails,
 }: {
+  /** Events that are over, most recent first and without the prints. */
+  past?: boolean;
   onPrintRestaurant?: () => void;
   /** Gets the events to print: all those shown, or the one of the row. */
   onPrintDetails?: (events: ScheduledEvent[]) => void;
@@ -145,7 +155,9 @@ export default function EventList({
   const printDetails = onPrintDetails ?? detailsPrinter.print;
   const from = startOfDay(Date.now()).getTime();
   const today = todayValue();
-  const events = useUpcomingEvents(from);
+  const upcoming = useUpcomingEvents(from, !past);
+  const earlier = usePastEvents(from, past);
+  const events = past ? earlier : upcoming;
   const rooms = useRooms();
   const [filter, setFilter] = useState('');
   const [hideDrafts, setHideDrafts] = useState(false);
@@ -154,11 +166,11 @@ export default function EventList({
   const shown = useMemo(() => {
     const term = filter.trim().toLowerCase();
     return (events.data ?? [])
-      .filter((e) => e.endDate >= today)
+      .filter((e) => (past ? e.endDate < today : e.endDate >= today))
       .filter((e) => !hideDrafts || e.visible)
       .filter((e) => !term || e.organizerName.toLowerCase().includes(term) || e.title.toLowerCase().includes(term) || (e.bookingNumber ?? '').toLowerCase().includes(term))
-      .sort((a, b) => a.startDate.localeCompare(b.startDate) || a.id - b.id);
-  }, [events.data, filter, hideDrafts, today]);
+      .sort((a, b) => (past ? b.startDate.localeCompare(a.startDate) || b.id - a.id : a.startDate.localeCompare(b.startDate) || a.id - b.id));
+  }, [events.data, filter, hideDrafts, today, past]);
 
   const groups = useMemo(() => {
     const out: { label: string; events: ScheduledEvent[] }[] = [];
@@ -178,10 +190,10 @@ export default function EventList({
 
   return (
     <div className="space-y-5">
-      {detailsPrinter.sheet}
-      {restaurantShown && <RestaurantPrint events={events.data} now={Date.now()} />}
+      {!past && detailsPrinter.sheet}
+      {!past && restaurantShown && <RestaurantPrint events={events.data} now={Date.now()} />}
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="mr-auto text-xl font-semibold text-slate-900">Eventi</h1>
+        <h1 className="mr-auto text-xl font-semibold text-slate-900">{past ? 'Eventi passati' : 'Eventi'}</h1>
         <input
           type="search"
           className={`${inputClass} max-w-xs`}
@@ -193,17 +205,21 @@ export default function EventList({
           <input type="checkbox" checked={hideDrafts} onChange={(e) => setHideDrafts(e.target.checked)} />
           Nascondi bozze
         </label>
-        <Button variant="secondary" onClick={onPrintRestaurant ?? (() => printSheet(setRestaurantShown))}>
-          <Printer className="size-4" />
-          Stampa ristorante (14 gg)
-        </Button>
-        <Button variant="secondary" onClick={() => printDetails(shown)}>
-          <Printer className="size-4" />
-          Stampa dettagli
-        </Button>
+        {!past && (
+          <>
+            <Button variant="secondary" onClick={onPrintRestaurant ?? (() => printSheet(setRestaurantShown))}>
+              <Printer className="size-4" />
+              Stampa ristorante (14 gg)
+            </Button>
+            <Button variant="secondary" onClick={() => printDetails(shown)}>
+              <Printer className="size-4" />
+              Stampa dettagli
+            </Button>
+          </>
+        )}
       </div>
       {groups.length === 0 ? (
-        <Card className="px-4 py-10 text-center text-slate-500">Nessun evento in programma</Card>
+        <Card className="px-4 py-10 text-center text-slate-500">{past ? 'Nessun evento passato' : 'Nessun evento in programma'}</Card>
       ) : (
         groups.map((group) => (
           <section key={group.label}>
@@ -211,7 +227,7 @@ export default function EventList({
             <Card>
               <ul className="divide-y divide-slate-100">
                 {group.events.map((event) => (
-                  <EventRow key={event.id} event={event} rooms={sortedRooms} today={today} onPrintDetails={printDetails} />
+                  <EventRow key={event.id} event={event} rooms={sortedRooms} today={today} onPrintDetails={past ? undefined : printDetails} />
                 ))}
               </ul>
             </Card>

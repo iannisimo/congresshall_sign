@@ -7,6 +7,7 @@ import {
   createOrganizer,
   deleteLogo,
   deleteOrganizer,
+  deleteOrganizerAndEvents,
   findOrganizerByName,
   getLogo,
   getOrganizer,
@@ -45,6 +46,11 @@ export function organizerRoutes(deps: AppDeps) {
   app.delete('/:id', (c) => {
     const organizer = getOrganizer(db, idParam(c));
     if (!organizer) throw notFound();
+    // `?force=true` removes the events with it.
+    if (c.req.query('force') === 'true') {
+      deleteOrganizerAndEvents(db, organizer.id);
+      return c.body(null, 204);
+    }
     if (organizer.eventCount > 0) {
       throw new ApiError(409, `Non eliminabile: usato da ${organizer.eventCount} eventi`);
     }

@@ -1,7 +1,7 @@
 import { QueryClientProvider, useMutation } from '@tanstack/react-query';
-import { CalendarDays, CalendarRange, DoorOpen, ExternalLink, Images, List, LogOut, Settings as SettingsIcon, Users } from 'lucide-react';
+import { CalendarDays, CalendarRange, DoorOpen, History, ExternalLink, Images, List, LogOut, Settings as SettingsIcon, Users } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router';
+import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { installUpdate, onUpdateWaiting } from '../lib/pwa.ts';
 import { DEFAULT_SETTINGS } from '../../shared/settings.ts';
 import { useThemeColors } from '../sign/hooks.ts';
@@ -20,12 +20,14 @@ import WeekView from './WeekView.tsx';
 import { Button, FeedbackProvider, PageLoading } from './ui.tsx';
 
 function NavItem({ to, icon, children }: { to: string; icon: ReactNode; children: ReactNode }) {
+  const { pathname } = useLocation();
   return (
     <NavLink
       to={to}
       end={to === '/admin'}
       className={({ isActive }) =>
-        `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${isActive ? 'bg-brand-50 text-brand-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
+        // The past events live under /admin/events/ but have their own tab.
+        `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${isActive && !(to === '/admin/events' && pathname.startsWith('/admin/events/past')) ? 'bg-brand-50 text-brand-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
       }
     >
       {icon}
@@ -80,6 +82,9 @@ function Shell({ role, username, children }: { role: Role; username: string; chi
                 </NavItem>
                 <NavItem to="/admin/events" icon={<List className="size-4" />}>
                   Eventi
+                </NavItem>
+                <NavItem to="/admin/events/past" icon={<History className="size-4" />}>
+                  Eventi passati
                 </NavItem>
                 <NavItem to="/admin/organizers"icon={<Users className="size-4" />}>
                   Organizzatori
@@ -146,6 +151,7 @@ function Gate() {
       <Routes>
         <Route index element={<WeekView />} />
         <Route path="events" element={<EventList />} />
+        <Route path="events/past" element={<EventList past />} />
         <Route path="events/new" element={<EventEditor mode="new" />} />
         <Route path="events/:id" element={<EventEditor mode="edit" />} />
         <Route path="events/:id/clone" element={<EventEditor mode="clone" />} />

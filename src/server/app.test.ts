@@ -239,7 +239,7 @@ describe('events', () => {
     const { admin, rooms, org } = await seed(t);
     const input = eventInput(t, org.id, [rooms.a.id], 1, 4);
     const booking = input.days[0]!.bookings[0]!;
-    const lunch = { label: 'Lunch break', startAt: booking.startAt + 2 * HOUR, endAt: booking.startAt + 3 * HOUR };
+    const lunch = { label: 'Lunch', startAt: booking.startAt + 2 * HOUR, endAt: booking.startAt + 3 * HOUR };
     const coffee = { label: 'Coffee break', startAt: booking.startAt + HOUR, endAt: booking.startAt + 1.5 * HOUR };
     booking.breaks = [lunch, coffee];
     const { id } = await json<{ id: number }>(await admin.req('POST', '/api/events', { event: input }));
@@ -407,6 +407,11 @@ describe('organizers and logos', () => {
     await admin.req('POST', '/api/events', { event: { ...eventInput(t, org.id, [rooms.a.id], 1), logoId: id } });
     expect((await admin.req('DELETE', `/api/logos/${id}`)).status).toBe(409);
     expect((await admin.req('DELETE', `/api/organizers/${org.id}`)).status).toBe(409);
+    // Forcing removes the events, the logos and the organizer.
+    expect((await admin.req('DELETE', `/api/organizers/${org.id}?force=true`)).status).toBe(204);
+    expect(await json<unknown[]>(await admin.req('GET', '/api/events?from=0'))).toEqual([]);
+    expect((await t.app.request(`/api/logos/${id}`)).status).toBe(404);
+    expect((await admin.req('GET', '/api/organizers').then(json<{ id: number }[]>)).some((o) => o.id === org.id)).toBe(false);
   });
 
   it('never reuses the id of a deleted logo, since browsers cache logos forever', async () => {

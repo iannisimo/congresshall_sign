@@ -39,6 +39,16 @@ function OrganizerDetail({ organizer, onDeleted }: { organizer: Organizer; onDel
     onError: (error) => toast(errorMessage(error), 'error'),
   });
 
+  const removeAll = useMutation({
+    mutationFn: () => api(`/organizers/${organizer.id}?force=true`, { method: 'DELETE' }),
+    onSuccess: () => {
+      refreshSchedule();
+      toast('Organizzatore ed eventi eliminati');
+      onDeleted();
+    },
+    onError: (error) => toast(errorMessage(error), 'error'),
+  });
+
   return (
     <Card className="space-y-6 p-5">
       <Field label="Nome" error={rename.isError ? errorMessage(rename.error) : undefined}>
@@ -100,6 +110,20 @@ function OrganizerDetail({ organizer, onDeleted }: { organizer: Organizer; onDel
         >
           <Trash2 className="size-4" />
           Elimina organizzatore
+        </Button>
+      </div>
+      <div className="flex justify-end">
+        <Button
+          variant="danger"
+          size="sm"
+          busy={removeAll.isPending}
+          onClick={async () => {
+            const events = organizer.eventCount === 0 ? '' : organizer.eventCount === 1 ? ' e il suo evento' : ` e i suoi ${organizer.eventCount} eventi`;
+            if (await confirm(`Eliminare «${organizer.name}»${events}? L’operazione non si può annullare.`, { confirmLabel: 'Elimina tutto', danger: true })) removeAll.mutate();
+          }}
+        >
+          <Trash2 className="size-4" />
+          Elimina organizzatore ed eventi
         </Button>
       </div>
     </Card>

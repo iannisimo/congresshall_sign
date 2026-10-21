@@ -33,8 +33,13 @@ export function RestaurantPrint({ events, now }: { events: ScheduledEvent[]; now
                   <td className="w-32 py-1 pr-3 font-medium">{dayFormat.format(fromDateValue(day.date)).replace(',', '')}</td>
                   <td className="w-56 py-1 pr-3">{day.hours}</td>
                   <td className="py-1">
-                    {day.breaks.length > 0 ? day.breaks.join(' · ') : '—'}
-                    {day.notes && <div className="whitespace-pre-wrap">{day.notes}</div>}
+                    {day.breaks.length > 0 ? day.breaks.map((b) => <div key={b}>{b}</div>) : '—'}
+                    {day.notes && (
+                      <div className="mt-1">
+                        <div className="font-bold">Note</div>
+                        <div className="whitespace-pre-wrap">{day.notes}</div>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

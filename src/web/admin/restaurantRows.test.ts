@@ -30,7 +30,7 @@ describe('restaurantRows', () => {
 
   it('builds rows: window, hours, deduplicated breaks, drafts, order', () => {
     const coffee = (d: string) => ({ label: 'Coffee break', startAt: at(d, '10:30'), endAt: at(d, '11:00') });
-    const lunch = (d: string) => ({ label: 'Lunch break', startAt: at(d, '13:00'), endAt: at(d, '14:00') });
+    const lunch = (d: string) => ({ label: 'Lunch', startAt: at(d, '13:00'), endAt: at(d, '14:00') });
     const rows = restaurantRows(
       [
         event(2, false, [['2026-10-25', [booking('2026-10-25', '09:00', '13:00'), booking('2026-10-25', '15:00', '18:00')]]]),
@@ -45,7 +45,7 @@ describe('restaurantRows', () => {
     );
     expect(rows.map((r) => r.id)).toEqual([1, 2]);
     expect(rows[0]!.days).toEqual([
-      { date: '2026-10-20', hours: '09:00–18:00', breaks: ['Coffee break 10:30–11:00', 'Lunch break 13:00–14:00'], notes: null },
+      { date: '2026-10-20', hours: '09:00–18:00', breaks: ['Coffee break 10:30–11:00', 'Lunch 13:00–14:00'], notes: null },
     ]);
     expect(rows[1]).toMatchObject({ draft: true });
     expect(rows[1]!.days[0]).toEqual({ date: '2026-10-25', hours: '09:00–13:00, 15:00–18:00', breaks: [], notes: null });

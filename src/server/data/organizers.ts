@@ -1,5 +1,5 @@
 import type { Organizer } from '../../shared/model.ts';
-import { all, get, run, type Db } from '../db/database.ts';
+import { all, get, run, transaction, type Db } from '../db/database.ts';
 
 interface OrganizerRow {
   id: number;
@@ -44,6 +44,14 @@ export function renameOrganizer(db: Db, id: number, name: string): void {
 /** Also deletes its logos. Callers check that no event uses it. */
 export function deleteOrganizer(db: Db, id: number): void {
   run(db, 'DELETE FROM organizers WHERE id = :id', { id });
+}
+
+/** Deletes the organizer, all its events (days, bookings and breaks with them) and its logos. */
+export function deleteOrganizerAndEvents(db: Db, id: number): void {
+  transaction(db, () => {
+    run(db, 'DELETE FROM events WHERE organizer_id = :id', { id });
+    deleteOrganizer(db, id);
+  });
 }
 
 export interface StoredLogo {

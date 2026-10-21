@@ -23,7 +23,7 @@ export interface EventBreak {
 }
 
 /** Labels offered as defaults; any other label is allowed. */
-export const BREAK_PRESETS = ['Break', 'Coffee break', 'Lunch break'] as const;
+export const BREAK_PRESETS = ['Break', 'Coffee break', 'Lunch'] as const;
 
 /**
  * One room occupation on a day of an event: rooms, the period they are held and the pauses within it.
