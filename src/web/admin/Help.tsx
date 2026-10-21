@@ -102,6 +102,14 @@ export default function Help() {
         <p>Quando è confermato rimetti la spunta e salva. Dal Programma puoi anche usare l’icona a occhio per nascondere o mostrare un evento al volo.</p>
       </Topic>
 
+      <Topic title="Bassa priorità: eventi da non mostrare su /big" summary="Per eventi minori che non devono occupare il cartello grande.">
+        <p>
+          Nell’editor spunta <b>Bassa priorità</b>. L’evento continua ad apparire sui cartelli normali, ma il cartello <b>/big</b> lo ignora del tutto, anche
+          mentre è in corso: se è l’unico evento di oggi, /big mostra il carosello come se non ci fosse niente.
+        </p>
+        <p>Lo stato delle sale non cambia: la barra delle sale in fondo mostra sempre la situazione reale.</p>
+      </Topic>
+
       <Topic title="Sovrapposizioni di sale" summary="Quando due eventi sono nella stessa sala alla stessa ora.">
         <p>
           Se due occupazioni di eventi diversi si sovrappongono nella stessa sala, nell’editor compare un riquadro giallo <b>Sovrapposizioni</b> con il giorno

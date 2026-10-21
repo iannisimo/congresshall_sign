@@ -65,6 +65,7 @@ export const eventInputSchema = z
     title: z.string().trim().min(1, { error: 'Inserisci un titolo' }).max(200, { error: 'Massimo 200 caratteri' }),
     subtitle: optionalText(300),
     visible: z.boolean(),
+    lowPriority: z.boolean().default(false),
     receptionNotes: optionalText(4000).default(null),
     /** Internal, in euro cents. */
     costCents: z

@@ -29,6 +29,7 @@ function sampleEvent(): SignEvent {
     releaseAt: startAt + 3 * HOUR,
     breaks: [],
     visible: true,
+    lowPriority: false,
   };
 }
 

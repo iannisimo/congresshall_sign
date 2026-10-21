@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { addDays, differenceInCalendarDays } from 'date-fns';
-import { AlertTriangle, ArrowLeft, Eye, EyeOff, Printer, Trash2 } from 'lucide-react';
+import { AlertTriangle, ArrowDownToLine, ArrowLeft, Eye, EyeOff, Printer, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { findConflicts } from '../../shared/conflicts.ts';
@@ -31,6 +31,7 @@ interface Draft extends DraftMargins {
   title: string;
   subtitle: string;
   visible: boolean;
+  lowPriority: boolean;
   /** Whole event. */
   receptionNotes: string;
   /** Euro amount as typed. */
@@ -77,6 +78,7 @@ function newDraft(search: URLSearchParams): Draft {
     title: '',
     subtitle: '',
     visible: true,
+    lowPriority: false,
     receptionNotes: '',
     cost: '',
     bookingNumber: '',
@@ -104,6 +106,7 @@ function draftFrom(event: ScheduledEvent, changeover: Changeover): Draft {
     title: event.title,
     subtitle: event.subtitle ?? '',
     visible: event.visible,
+    lowPriority: event.lowPriority,
     receptionNotes: event.receptionNotes ?? '',
     cost: centsToInput(event.costCents),
     bookingNumber: event.bookingNumber ?? '',
@@ -187,6 +190,7 @@ function buildInput(
     title: draft.title,
     subtitle: draft.subtitle.trim() || null,
     visible: draft.visible,
+    lowPriority: draft.lowPriority,
     receptionNotes: draft.receptionNotes,
     // An unreadable amount is NaN, which the schema rejects (shown under the field).
     costCents: parseEuros(draft.cost),
@@ -598,6 +602,7 @@ function EditorForm({
           releaseAt: span?.releaseAt ?? firstTimes.endAt,
           breaks: (input.days[sel]?.bookings[0]?.breaks ?? []).map((b) => ({ ...b, label: b.label.trim() || 'Break' })),
           visible: draft.visible,
+          lowPriority: draft.lowPriority,
         }
       : null;
   const titles: Record<Mode, string> = { new: 'Nuovo evento', edit: 'Modifica evento', clone: 'Duplica evento' };
@@ -772,6 +777,14 @@ function EditorForm({
               <span>
                 <span className="font-medium text-slate-900">Visibile sul cartello</span>
                 <span className="block text-xs text-slate-500">Se nascosto è una bozza: non appare e non occupa le sale.</span>
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-center gap-3 rounded-lg bg-slate-50 px-3 py-2.5 text-sm">
+              <input type="checkbox" className="size-4 accent-brand-900" checked={draft.lowPriority} onChange={(e) => update({ lowPriority: e.target.checked })} />
+              <ArrowDownToLine className="size-4 text-slate-500" />
+              <span>
+                <span className="font-medium text-slate-900">Bassa priorità</span>
+                <span className="block text-xs text-slate-500">Appare sui cartelli normali ma non su /big, come se non esistesse.</span>
               </span>
             </label>
             {conflictCount > 0 && (

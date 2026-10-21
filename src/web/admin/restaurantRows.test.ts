@@ -10,7 +10,7 @@ function booking(date: string, from: string, to: string, breaks: EventBooking['b
 }
 function event(id: number, visible: boolean, days: [string, EventBooking[]][]): ScheduledEvent {
   return {
-    id, organizerId: 1, organizerName: `Org ${id}`, logoId: null, title: `Titolo ${id}`, subtitle: null, visible,
+    id, organizerId: 1, organizerName: `Org ${id}`, logoId: null, title: `Titolo ${id}`, subtitle: null, visible, lowPriority: false,
     startDate: days[0]![0], endDate: days[days.length - 1]![0], receptionNotes: null, costCents: null, bookingNumber: null, prepAt: 0, releaseAt: 0,
     days: days.map(([date, bookings]) => ({ date, receptionNotes: null, housekeepingNotes: null, restaurantNotes: null, bookings })),
   };

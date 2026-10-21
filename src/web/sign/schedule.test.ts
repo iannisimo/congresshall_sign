@@ -23,6 +23,7 @@ function event(id: number, start: string, end: string, visible = true, eventId =
     releaseAt: at(end) + HOUR,
     breaks: [],
     visible,
+    lowPriority: false,
   };
 }
 
@@ -98,6 +99,14 @@ describe('buildSignView for the big sign', () => {
 
   it('shows nothing, not tomorrow, when today has no events left', () => {
     expect(buildSignView(events, at('2026-10-17T17:00'), { listed: true })).toEqual({ featuredDay: null, featured: [], comingUp: [] });
+  });
+
+  it('ignores low-priority events, even live ones, but not on the standard sign', () => {
+    const low = { ...event(9, '2026-10-17T09:00', '2026-10-17T12:00'), lowPriority: true }; // running
+    const normal = event(10, '2026-10-17T14:00', '2026-10-17T15:00');
+    expect(buildSignView([low, normal], NOW, { listed: true }).featured.map((e) => e.id)).toEqual([10]);
+    expect(buildSignView([low], NOW, { listed: false })).toEqual({ featuredDay: null, featured: [], comingUp: [] });
+    expect(buildSignView([low, normal], NOW).featured.map((e) => e.id)).toEqual([9, 10]);
   });
 });
 

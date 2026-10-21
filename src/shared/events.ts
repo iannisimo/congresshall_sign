@@ -24,6 +24,7 @@ export function flattenEvent(event: ScheduledEvent): SignEvent[] {
       releaseAt: event.releaseAt,
       breaks: booking.breaks,
       visible: event.visible,
+      lowPriority: event.lowPriority,
     })),
   );
 }
@@ -40,6 +41,7 @@ export function eventToInput(event: ScheduledEvent): EventInput {
     title: event.title,
     subtitle: event.subtitle,
     visible: event.visible,
+    lowPriority: event.lowPriority,
     receptionNotes: event.receptionNotes,
     costCents: event.costCents,
     bookingNumber: event.bookingNumber,

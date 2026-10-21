@@ -293,4 +293,8 @@ export const migrations: string[] = [
   ALTER TABLE events ADD COLUMN booking_number TEXT;
   ALTER TABLE event_days ADD COLUMN restaurant_notes TEXT;
   `,
+  // 13: low-priority events: on the standard sign, but not on /big.
+  `
+  ALTER TABLE events ADD COLUMN low_priority INTEGER NOT NULL DEFAULT 0;
+  `,
 ];

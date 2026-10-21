@@ -38,6 +38,8 @@ become a smart-TV browser. **One person** does the admin work.
   those of the next days. Before 09:00 (`?from=HH:MM` changes it, `/big?from=08:30`) it acts as if there
   were none, apart from events already live; from then on it shows all of today's events that are not over
   yet. With none left it shows the carousel as usual.
+  Events marked **low priority** in the editor are ignored by `/big` altogether, live ones included, as if
+  they did not exist; the standard sign and the room strip are not affected.
 - **SIGN-14** `?header=0` hides the sign's header (logo, clock, date) and `?footer=0` the room strip at the
   bottom (also `false`, `no`, `off`); both are shown by default and combine with `?preset=` and `?mode=`.
   The rest of the screen takes the freed space; with the header hidden, the "last update" note moves to a

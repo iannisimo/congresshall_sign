@@ -143,6 +143,7 @@ export async function importMongo(db: Db, dir: string, now: number): Promise<Imp
           title: text(doc['title']),
           subtitle: text(doc['subtitle']) || null,
           visible: doc['enabled'] !== false,
+          lowPriority: false,
           receptionNotes: null,
           costCents: null,
           bookingNumber: null,

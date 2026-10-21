@@ -20,6 +20,7 @@ function booking(id: number, roomIds: number[], startAt: number, endAt: number, 
     releaseAt: endAt + 1000,
     breaks: [],
     visible,
+    lowPriority: false,
   };
 }
 

@@ -43,7 +43,8 @@ export function buildSignView(events: SignEvent[], now: number, todayOnly?: { li
     const tomorrow = addDays(today, 1).getTime();
     // Before the set time only what is already live counts; from then on, all of what is left of today.
     const shown = (e: SignEvent) => e.endAt > now && e.startAt < tomorrow && (todayOnly.listed || e.startAt <= now);
-    const featured = events.filter((e) => e.visible && shown(e)).sort(byStart);
+    // Low-priority events do not exist for the big sign.
+    const featured = events.filter((e) => e.visible && !e.lowPriority && shown(e)).sort(byStart);
     return { featuredDay: featured.length > 0 ? today : null, featured, comingUp: [] };
   }
   const horizon = addDays(today, 1 + COMING_UP_DAYS).getTime();

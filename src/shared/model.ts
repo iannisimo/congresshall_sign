@@ -67,6 +67,8 @@ export interface ScheduledEvent {
   subtitle: string | null;
   /** Hidden events are drafts: not on the sign and no effect on room status. */
   visible: boolean;
+  /** Shown on the standard sign, but ignored by /big (as if it did not exist). */
+  lowPriority: boolean;
   /** = days[0].date */
   startDate: string;
   /** = the last day's date */
@@ -109,6 +111,7 @@ export interface SignEvent {
   releaseAt: number;
   breaks: EventBreak[];
   visible: boolean;
+  lowPriority: boolean;
 }
 
 export type RoomStatusKind = 'free' | 'occupied' | 'reserved';

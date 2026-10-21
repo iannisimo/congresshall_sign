@@ -11,6 +11,7 @@ interface EventRow {
   title: string;
   subtitle: string | null;
   visible: number;
+  low_priority: number;
   reception_notes: string | null;
   cost_cents: number | null;
   booking_number: string | null;
@@ -110,6 +111,7 @@ function loadEvents(db: Db, ids: number[]): ScheduledEvent[] {
         title: row.title,
         subtitle: row.subtitle,
         visible: row.visible === 1,
+        lowPriority: row.low_priority === 1,
         startDate: row.start_date,
         endDate: row.end_date,
         receptionNotes: row.reception_notes,
@@ -208,6 +210,7 @@ function columns(input: EventInput) {
     title: input.title,
     subtitle: input.subtitle,
     visible: input.visible ? 1 : 0,
+    lowPriority: input.lowPriority ? 1 : 0,
     receptionNotes: input.receptionNotes,
     costCents: input.costCents,
     bookingNumber: input.bookingNumber,
@@ -222,8 +225,8 @@ function columns(input: EventInput) {
 export function insertEvent(db: Db, input: EventInput, now: number): number {
   const { lastInsertRowid: id } = run(
     db,
-    `INSERT INTO events (organizer_id, logo_id, title, subtitle, visible, reception_notes, cost_cents, booking_number, start_date, end_date, prep_at, release_at, created_at, updated_at)
-     VALUES (:organizerId, :logoId, :title, :subtitle, :visible, :receptionNotes, :costCents, :bookingNumber, :startDate, :endDate, :prepAt, :releaseAt, :now, :now)`,
+    `INSERT INTO events (organizer_id, logo_id, title, subtitle, visible, low_priority, reception_notes, cost_cents, booking_number, start_date, end_date, prep_at, release_at, created_at, updated_at)
+     VALUES (:organizerId, :logoId, :title, :subtitle, :visible, :lowPriority, :receptionNotes, :costCents, :bookingNumber, :startDate, :endDate, :prepAt, :releaseAt, :now, :now)`,
     { ...columns(input), now },
   );
   setDays(db, id, input);
@@ -235,7 +238,7 @@ export function updateEvent(db: Db, id: number, input: EventInput, now: number):
   run(
     db,
     `UPDATE events SET organizer_id = :organizerId, logo_id = :logoId, title = :title, subtitle = :subtitle,
-       visible = :visible, reception_notes = :receptionNotes, cost_cents = :costCents, booking_number = :bookingNumber, start_date = :startDate, end_date = :endDate, prep_at = :prepAt, release_at = :releaseAt, updated_at = :now
+       visible = :visible, low_priority = :lowPriority, reception_notes = :receptionNotes, cost_cents = :costCents, booking_number = :bookingNumber, start_date = :startDate, end_date = :endDate, prep_at = :prepAt, release_at = :releaseAt, updated_at = :now
      WHERE id = :id`,
     { ...columns(input), id, now },
   );

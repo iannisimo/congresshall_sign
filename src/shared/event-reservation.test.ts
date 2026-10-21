@@ -23,6 +23,7 @@ const congress: ScheduledEvent = {
   title: 'Congresso',
   subtitle: null,
   visible: true,
+  lowPriority: false,
   startDate: '2026-10-20',
   endDate: '2026-10-22',
   receptionNotes: null,
