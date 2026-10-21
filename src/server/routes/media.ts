@@ -7,6 +7,7 @@ import { pipeline } from 'node:stream/promises';
 import { Hono } from 'hono';
 import sharp from 'sharp';
 import type { MediaKind } from '../../shared/model.ts';
+import { MAX_IMAGE_BYTES, MAX_VIDEO_BYTES } from '../../shared/settings.ts';
 import { mediaPresetCreateSchema, mediaPresetItemsSchema, mediaPresetPatchSchema } from '../../shared/schemas.ts';
 import { requireRole } from '../auth/session.ts';
 import {
@@ -25,8 +26,6 @@ import {
 } from '../data/media.ts';
 import { ApiError, idParam, notFound, readJson, type AppDeps, type AppEnv } from '../http.ts';
 
-const MAX_IMAGE_BYTES = 30 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 500 * 1024 * 1024;
 /** Images are shrunk to fit a Full HD screen. */
 const IMAGE_BOX = { width: 1920, height: 1080 };
 const VIDEO_TYPES: Record<string, string> = { 'video/mp4': 'mp4', 'video/webm': 'webm' };
@@ -119,7 +118,7 @@ export function mediaRoutes(deps: AppDeps) {
         size = await saveBody(c.req.raw.body, upload, kind === 'image' ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES);
       } catch (error) {
         if (error instanceof TooLarge) {
-          throw new ApiError(413, kind === 'image' ? 'Immagine troppo grande (max 30 MB)' : 'Video troppo grande (max 500 MB)');
+          throw new ApiError(413, kind === 'image' ? 'Immagine troppo grande (max 30 MB)' : 'Video troppo grande (max 1 GB)');
         }
         throw error;
       }

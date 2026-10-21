@@ -3,6 +3,7 @@ import { Copy, ExternalLink, Film, GripVertical, Image as ImageIcon, Plus, Trash
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useSearchParams } from 'react-router';
 import type { MediaFit, MediaItem, MediaPreset, Settings } from '../../shared/model.ts';
+import { MAX_IMAGE_BYTES, MAX_VIDEO_BYTES } from '../../shared/settings.ts';
 import { api, errorMessage, HttpError, keys, queryClient, useSettings } from './api.ts';
 import { NumberWithSlider } from './Settings.tsx';
 import { Badge, Button, buttonClass, Card, ErrorNote, Field, inputClass, PageLoading, useFeedback } from './ui.tsx';
@@ -26,6 +27,13 @@ function refresh() {
 /** Uploads with XMLHttpRequest, which (unlike fetch) reports upload progress: videos can be big. */
 function uploadFile(file: File, presetId: number, onProgress: (fraction: number) => void): Promise<MediaItem> {
   return new Promise((resolve, reject) => {
+    // The server cuts the connection of an oversized upload, which the browser reports as an unreachable server.
+    const isImage = file.type.startsWith('image/');
+    const limit = isImage ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
+    if (file.size > limit) {
+      reject(new HttpError(413, { error: `${isImage ? 'Immagine' : 'Video'} troppo grande (${formatSize(file.size)}, max ${formatSize(limit)})` }));
+      return;
+    }
     const request = new XMLHttpRequest();
     request.open('POST', '/api/media');
     request.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
@@ -620,7 +628,7 @@ export default function Media() {
 
       {settings.data && <CarouselSettings settings={settings.data} />}
       <p className="text-xs text-slate-500">
-        Immagini fino a 30 MB, ridimensionate per uno schermo Full HD. Video MP4 (H.264) o WebM fino a 500 MB, riprodotti senza audio:
+        Immagini fino a 30 MB, ridimensionate per uno schermo Full HD. Video MP4 (H.264) o WebM fino a 1 GB, riprodotti senza audio:
         il Raspberry Pi riproduce bene l’H.264 fino al Full HD. Di notte il carosello può lasciare il posto a un orologio
         (Impostazioni → Cartello: tema).
       </p>

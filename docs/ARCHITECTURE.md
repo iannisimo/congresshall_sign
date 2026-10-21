@@ -168,7 +168,7 @@ All under `/api`, JSON unless stated otherwise. 🔓 public · 🔑 admin or sup
 | `PUT /venue-logo`, `DELETE /venue-logo` | 👑 | Upload an SVG (multipart `file`, max 1 MB, no scripts), or go back to the built-in logo |
 | `GET /media` | 🖼️ | The library, newest first |
 | `GET /media/:id` | 🔓 | The file, with Range support (video playback) |
-| `POST /media` | 🖼️ | Raw file as the body, `Content-Type` and `X-File-Name`; streamed to disk. Images (max 30 MB) shrunk to Full HD; MP4/WebM videos (max 500 MB) kept as they are. `X-Preset-Id` adds it, enabled and last, to that preset; otherwise to the default one |
+| `POST /media` | 🖼️ | Raw file as the body, `Content-Type` and `X-File-Name`; streamed to disk. Images (max 30 MB) shrunk to Full HD; MP4/WebM videos (max 1 GB) kept as they are. `X-Preset-Id` adds it, enabled and last, to that preset; otherwise to the default one |
 | `DELETE /media/:id` | 🖼️ | Deletes the file; it leaves every preset |
 | `GET /media-presets` | 🖼️ | Presets with their items, default first, then by `sort_order` |
 | `POST /media-presets` | 🖼️ | `{name, label, copyFrom?}`. Empty, or a copy of another preset's items |

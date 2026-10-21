@@ -22,6 +22,10 @@ export const DEFAULT_SETTINGS: Settings = {
   reservedColor: '#e8b931',
 };
 
+/** Largest carousel uploads, in bytes. */
+export const MAX_IMAGE_BYTES = 30 * 1024 * 1024;
+export const MAX_VIDEO_BYTES = 1024 * 1024 * 1024;
+
 /** Main colours offered in the settings; any other can be typed as hex. */
 export const BRAND_PRESETS = [
   { name: 'Blu', color: '#10508c' },
