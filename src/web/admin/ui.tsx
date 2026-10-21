@@ -69,8 +69,8 @@ export function Field({
   );
 }
 
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-xl bg-white shadow-sm ring-1 ring-slate-900/5 ${className}`}>{children}</div>;
+export function Card({ children, className = '', id }: { children: ReactNode; className?: string; id?: string }) {
+  return <div id={id} className={`rounded-xl bg-white shadow-sm ring-1 ring-slate-900/5 ${className}`}>{children}</div>;
 }
 
 export function Badge({ children, tone = 'slate' }: { children: ReactNode; tone?: 'slate' | 'amber' | 'red' | 'brand' }) {

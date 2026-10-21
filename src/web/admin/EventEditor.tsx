@@ -360,9 +360,9 @@ function ConflictList({
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, id, children }: { title: string; id?: string; children: ReactNode }) {
   return (
-    <Card className="p-5">
+    <Card id={id} className="scroll-mt-20 p-5">
       <h2 className="mb-4 text-sm font-semibold tracking-wide text-slate-500 uppercase">{title}</h2>
       <div className="space-y-5">{children}</div>
     </Card>
@@ -395,6 +395,10 @@ function EditorForm({
   const [search, setSearch] = useSearchParams();
   const [draft, setDraft] = useState(initial);
   const [showErrors, setShowErrors] = useState(false);
+  // A duplicate keeps the organizer and title: what changes are the dates.
+  useEffect(() => {
+    if (mode === 'clone') document.getElementById('dates')?.scrollIntoView({ block: 'start' });
+  }, [mode]);
   const update = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
 
   // The selected day tab lives in the URL (?day=YYYY-MM-DD): default today's tab, else the first.
@@ -643,7 +647,7 @@ function EditorForm({
             </Field>
           </Section>
 
-          <Section title="Date e sale">
+          <Section title="Date e sale" id="dates">
             <div className="grid grid-cols-2 gap-4 sm:max-w-md">
               <Field label="Dal">
                 <input
