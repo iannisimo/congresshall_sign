@@ -54,6 +54,17 @@ describe('flattenEvent', () => {
     ]);
     expect(JSON.stringify(flat)).not.toMatch(/Badge|Banco|Platea|Plenaria|Menu A|PR-77|123450/);
   });
+
+  it('leaves breaks outside the booking hours off the sign', () => {
+    const inside = event.days[0]!.bookings[0]!.breaks[0]!;
+    const breakfast = { label: 'Breakfast', startAt: at('2026-10-24', '07:30'), endAt: at('2026-10-24', '08:30') };
+    const straddling = { label: 'Long', startAt: at('2026-10-24', '12:30'), endAt: at('2026-10-24', '13:30') };
+    const withOutside: ScheduledEvent = {
+      ...event,
+      days: [{ ...event.days[0]!, bookings: [{ ...event.days[0]!.bookings[0]!, breaks: [breakfast, inside, straddling] }] }],
+    };
+    expect(flattenEvent(withOutside)[0]!.breaks).toEqual([inside]);
+  });
 });
 
 describe('effectiveDayNotes', () => {

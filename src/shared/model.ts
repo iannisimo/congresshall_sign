@@ -15,7 +15,10 @@ export interface Room {
   blockedMessage: string | null;
 }
 
-/** A pause inside an event (coffee break, lunch…), shown on the sign while the event is live. */
+/**
+ * A pause of an event (coffee break, lunch…). Inside the booking's hours it is shown on the sign while the
+ * event is live; outside them (breakfast, dinner) it is only printed.
+ */
 export interface EventBreak {
   label: string;
   startAt: number;
