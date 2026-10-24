@@ -110,8 +110,8 @@ function TakeoverForm({ existing, onDone }: { existing: Takeover | null; onDone:
   const [start, setStart] = useState(() => toDateTimeValue(existing?.startAt ?? Math.ceil(Date.now() / (5 * MINUTE)) * 5 * MINUTE));
   const [end, setEnd] = useState(() => toDateTimeValue(existing?.endAt ?? Math.ceil(Date.now() / (5 * MINUTE)) * 5 * MINUTE + HOUR));
   const [fit, setFit] = useState<MediaFit>(existing?.fit ?? 'contain');
-  const [header, setHeader] = useState<Choice>(toChoice(existing?.header ?? null));
-  const [footer, setFooter] = useState<Choice>(toChoice(existing?.footer ?? null));
+  const [header, setHeader] = useState<Choice>(existing ? toChoice(existing.header) : 'show');
+  const [footer, setFooter] = useState<Choice>(existing ? toChoice(existing.footer) : 'hide');
   const [error, setError] = useState<string | null>(null);
   const screens = useQuery({ queryKey: ['takeover-presets'], queryFn: () => api<Screen[]>('/takeovers/presets') });
   // A new notice starts on every screen; the choice waits for the list when it hasn't loaded yet.
