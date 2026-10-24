@@ -316,4 +316,13 @@ export const migrations: string[] = [
   );
   CREATE INDEX takeovers_end ON takeovers(end_at);
   `,
+  // 15: a takeover is shown on the screens of the presets it is linked to; existing ones keep going to all of them.
+  `
+  CREATE TABLE takeover_presets (
+    takeover_id INTEGER NOT NULL REFERENCES takeovers(id) ON DELETE CASCADE,
+    preset_id INTEGER NOT NULL REFERENCES media_presets(id) ON DELETE CASCADE,
+    PRIMARY KEY (takeover_id, preset_id)
+  );
+  INSERT INTO takeover_presets SELECT t.id, p.id FROM takeovers t, media_presets p;
+  `,
 ];

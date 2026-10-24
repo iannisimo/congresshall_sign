@@ -29,6 +29,7 @@ const takeover = (id: number, startAt: number, endAt: number, header: boolean | 
   fit: 'contain',
   header,
   footer,
+  presetIds: [1],
 });
 
 describe('activeTakeover', () => {

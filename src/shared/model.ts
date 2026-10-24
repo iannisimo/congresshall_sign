@@ -228,6 +228,8 @@ export interface Takeover {
   fit: MediaFit;
   header: boolean | null;
   footer: boolean | null;
+  /** The media presets (screens) it is shown on. */
+  presetIds: number[];
 }
 
 /** Everything the sign needs, from GET /api/display. */

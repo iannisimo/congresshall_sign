@@ -49,7 +49,9 @@ export function displayRoutes(deps: AppDeps) {
       rooms: listRooms(deps.db),
       events: signEvents(deps, now),
       overrides: activeOverrides(deps.db, now),
-      takeovers: listTakeovers(deps.db, now).map(({ file: _file, mime: _mime, ...takeover }) => takeover),
+      takeovers: listTakeovers(deps.db, now)
+        .filter((t) => t.presetIds.includes(preset.id))
+        .map(({ file: _file, mime: _mime, ...takeover }) => takeover),
     };
     const body = JSON.stringify(snapshot);
     const etag = `"${createHash('sha1').update(body).digest('base64url')}"`;

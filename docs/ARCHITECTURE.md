@@ -68,6 +68,9 @@ server's time zone (`TZ`, `Europe/Rome` in the container).
   `file` (in `DATA_DIR/takeovers`), `size`, `start_at`, `end_at`, `fit`, `show_header`, `show_footer` (null = follow the
   screen's `?header=` / `?footer=`). Once `end_at` has passed the row and the file are deleted: by a timer in
   `index.ts` every minute, and by every list, image and `/display` request.
+- **takeover_presets**: `takeover_id`, `preset_id` (both cascade). The screens (media presets) a takeover is shown on, at least
+  one; migration 15 links existing takeovers to every preset. `/display?preset=` only lists the takeovers linked to the
+  resolved preset (the default one for a missing or unknown name).
 - **id_sequences**: `name` (`logos` | `media`), `next`. Logos and media are cached forever under their id,
   so a deleted id must never be given out again (SQLite would reuse the highest one): inserts take `next`,
   and triggers keep it ahead of every id used.
@@ -181,7 +184,8 @@ All under `/api`, JSON unless stated otherwise. 🔓 public · 🔑 admin or sup
 | `PUT /media-presets/:id/default` | 🖼️ | Makes it the default preset |
 | `DELETE /media-presets/:id` | 🖼️ | 409 for the default one |
 | `GET /takeovers` | 🔑 | Takeovers not over yet (running and upcoming) |
-| `POST /takeovers` | 🔑 | Multipart `file` (image, max 30 MB, shrunk to Full HD) and `data` (JSON: `name`, `startAt`, `endAt`, `fit`, `header`, `footer`) |
+| `GET /takeovers/presets` | 🔑 | `{id, name, label, isDefault}` of the screens to choose from (`/media-presets` is for the media account) |
+| `POST /takeovers` | 🔑 | Multipart `file` (image, max 30 MB, shrunk to Full HD) and `data` (JSON: `name`, `startAt`, `endAt`, `fit`, `header`, `footer`, `presetIds`) |
 | `PUT /takeovers/:id` | 🔑 | Same JSON; times and look only |
 | `DELETE /takeovers/:id` | 🔑 | Early removal, file included |
 | `GET /takeovers/:id/image` | 🔓 | The image; 404 once the takeover is over |

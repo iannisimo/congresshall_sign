@@ -6,6 +6,7 @@ import { bodyLimit } from 'hono/body-limit';
 import sharp from 'sharp';
 import { takeoverSchema } from '../../shared/schemas.ts';
 import { MAX_IMAGE_BYTES } from '../../shared/settings.ts';
+import { listPresets } from '../data/media.ts';
 import { requireRole } from '../auth/session.ts';
 import {
   deleteTakeover,
@@ -54,6 +55,15 @@ export function takeoverRoutes(deps: AppDeps) {
 
   app.use('*', requireRole('admin', 'superadmin'));
 
+  // The screens an admin can pick (media presets are otherwise for the media account only).
+  app.get('/presets', (c) => c.json(listPresets(db).map(({ id, name, label, isDefault }) => ({ id, name, label, isDefault }))));
+
+  /** The ids must be existing presets. */
+  const checkPresets = (ids: number[]) => {
+    const known = new Set(listPresets(db).map((p) => p.id));
+    if (!ids.every((id) => known.has(id))) throw new ApiError(400, 'Schermo inesistente', { issues: [{ path: 'presetIds', message: 'Schermo inesistente' }] });
+  };
+
   app.get('/', async (c) => {
     await purgeExpiredTakeovers(db, dir, deps.clock());
     return c.json(listTakeovers(db, deps.clock()).map(publicTakeover));
@@ -79,6 +89,7 @@ export function takeoverRoutes(deps: AppDeps) {
         throw new ApiError(400, 'Richiesta non valida');
       }
       const data = parse(takeoverSchema, raw);
+      checkPresets(data.presetIds);
       const now = deps.clock();
       if (data.endAt <= now) throw new ApiError(400, 'La fine è già passata', { issues: [{ path: 'endAt', message: 'La fine è già passata' }] });
 
@@ -107,6 +118,7 @@ export function takeoverRoutes(deps: AppDeps) {
     const takeover = getTakeover(db, idParam(c));
     if (!takeover) throw notFound();
     const data = await readJson(c, takeoverSchema);
+    checkPresets(data.presetIds);
     updateTakeover(db, takeover.id, data);
     return c.json(publicTakeover(getTakeover(db, takeover.id)!));
   });

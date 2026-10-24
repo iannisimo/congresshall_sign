@@ -276,5 +276,6 @@ export const takeoverSchema = z
     fit: mediaFit,
     header: z.boolean().nullable(),
     footer: z.boolean().nullable(),
+    presetIds: z.array(z.number().int().positive()).min(1, { error: 'Scegli almeno uno schermo' }).max(100),
   })
   .refine((t) => t.startAt < t.endAt, { path: ['endAt'], error: 'La fine deve venire dopo l’inizio' });

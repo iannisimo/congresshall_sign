@@ -717,7 +717,7 @@ describe('takeovers', () => {
     const image = await sharp({ create: { width, height: 1500, channels: 3, background: '#cc3333' } }).jpeg().toBuffer();
     const body = new FormData();
     body.set('file', new File([new Uint8Array(image)], 'avviso.jpg', { type: 'image/jpeg' }));
-    body.set('data', JSON.stringify({ name: 'Avviso', fit: 'contain', header: null, footer: null, ...data }));
+    body.set('data', JSON.stringify({ name: 'Avviso', fit: 'contain', header: null, footer: null, presetIds: [1], ...data }));
     return body;
   }
 
@@ -747,7 +747,7 @@ describe('takeovers', () => {
     expect(image.headers.get('content-type')).toBe('image/jpeg');
     expect((await sharp(Buffer.from(await image.arrayBuffer())).metadata()).width).toBe(1920);
 
-    const edited = await admin.req('PUT', `/api/takeovers/${takeover.id}`, { name: 'Nuovo', startAt, endAt: endAt + HOUR, fit: 'cover', header: true, footer: false });
+    const edited = await admin.req('PUT', `/api/takeovers/${takeover.id}`, { name: 'Nuovo', startAt, endAt: endAt + HOUR, fit: 'cover', header: true, footer: false, presetIds: [1] });
     expect(await json(edited)).toMatchObject({ name: 'Nuovo', fit: 'cover', header: true, footer: false, endAt: endAt + HOUR });
 
     t.clock.now = endAt + HOUR; // its time has run out
@@ -755,6 +755,34 @@ describe('takeovers', () => {
     expect((await t.app.request(`/api/takeovers/${takeover.id}/image`)).status).toBe(404);
     expect(await json(await admin.req('GET', '/api/takeovers'))).toEqual([]);
     expect(t.db.prepare('SELECT count(*) AS n FROM takeovers').get()).toEqual({ n: 0 });
+  });
+
+  it('is shown only on the screens (presets) it is linked to', async () => {
+    const t = setup();
+    const admin = t.client();
+    await admin.login();
+    const superadmin = t.client();
+    await superadmin.login('superadmin');
+    const bar = await json<{ id: number }>(await superadmin.req('POST', '/api/media-presets', { name: 'bar', label: 'Bar' }));
+    const screens = await json<{ id: number; name: string }[]>(await admin.req('GET', '/api/takeovers/presets'));
+    expect(screens.map((p) => p.name)).toEqual(['default', 'bar'].filter((n) => screens.some((p) => p.name === n)));
+    const main = screens.find((p) => p.name !== 'bar')!.id;
+    const times = { startAt: t.clock.now, endAt: t.clock.now + HOUR };
+
+    expect((await admin.req('POST', '/api/takeovers', await form({ ...times, presetIds: [] }))).status).toBe(400);
+    expect((await admin.req('POST', '/api/takeovers', await form({ ...times, presetIds: [999] }))).status).toBe(400);
+    const { id } = await json<{ id: number }>(await admin.req('POST', '/api/takeovers', await form({ ...times, presetIds: [bar.id] })));
+
+    const shown = async (query: string) => (await json<DisplaySnapshot>(await t.app.request(`/api/display${query}`))).takeovers.map((x) => x.id);
+    expect(await shown('?preset=bar')).toEqual([id]);
+    expect(await shown('')).toEqual([]); // the default screen
+    await admin.req('PUT', `/api/takeovers/${id}`, { name: 'Avviso', ...times, fit: 'contain', header: null, footer: null, presetIds: [main, bar.id] });
+    expect(await shown('')).toEqual([id]);
+    expect(await shown('?preset=bar')).toEqual([id]);
+
+    // Deleting a preset unlinks it.
+    await superadmin.req('DELETE', `/api/media-presets/${bar.id}`);
+    expect(await json(await admin.req('GET', '/api/takeovers'))).toMatchObject([{ presetIds: [main] }]);
   });
 
   it('can be deleted early', async () => {
