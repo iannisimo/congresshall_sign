@@ -711,3 +711,59 @@ describe('media account', () => {
     expect((await admin.req('GET', '/api/media-presets')).status).toBe(403);
   });
 });
+
+describe('takeovers', () => {
+  async function form(data: object, width = 3000) {
+    const image = await sharp({ create: { width, height: 1500, channels: 3, background: '#cc3333' } }).jpeg().toBuffer();
+    const body = new FormData();
+    body.set('file', new File([new Uint8Array(image)], 'avviso.jpg', { type: 'image/jpeg' }));
+    body.set('data', JSON.stringify({ name: 'Avviso', fit: 'contain', header: null, footer: null, ...data }));
+    return body;
+  }
+
+  it('is scheduled by admins, shown in the snapshot, and deleted with its file once over', async () => {
+    const t = setup();
+    const admin = t.client();
+    await admin.login();
+    const media = t.client();
+    await media.login('media');
+    const startAt = t.clock.now + HOUR;
+    const endAt = t.clock.now + 2 * HOUR;
+
+    expect((await media.req('POST', '/api/takeovers', await form({ startAt, endAt }))).status).toBe(403);
+    expect((await admin.req('POST', '/api/takeovers', await form({ startAt: endAt, endAt: startAt }))).status).toBe(400);
+    expect((await admin.req('POST', '/api/takeovers', await form({ startAt: 1, endAt: 2 }))).status).toBe(400); // already over
+
+    const created = await admin.req('POST', '/api/takeovers', await form({ startAt, endAt, header: false }));
+    expect(created.status).toBe(201);
+    const takeover = await json<{ id: number; header: boolean | null; footer: boolean | null; file?: string }>(created);
+    expect(takeover).toMatchObject({ header: false, footer: null });
+    expect(takeover.file).toBeUndefined();
+
+    // Upcoming ones are in the snapshot too, so the sign switches on time even offline.
+    const snapshot = async () => json<DisplaySnapshot>(await t.app.request('/api/display'));
+    expect((await snapshot()).takeovers.map((x) => x.id)).toEqual([takeover.id]);
+    const image = await t.app.request(`/api/takeovers/${takeover.id}/image`);
+    expect(image.headers.get('content-type')).toBe('image/jpeg');
+    expect((await sharp(Buffer.from(await image.arrayBuffer())).metadata()).width).toBe(1920);
+
+    const edited = await admin.req('PUT', `/api/takeovers/${takeover.id}`, { name: 'Nuovo', startAt, endAt: endAt + HOUR, fit: 'cover', header: true, footer: false });
+    expect(await json(edited)).toMatchObject({ name: 'Nuovo', fit: 'cover', header: true, footer: false, endAt: endAt + HOUR });
+
+    t.clock.now = endAt + HOUR; // its time has run out
+    expect((await snapshot()).takeovers).toEqual([]);
+    expect((await t.app.request(`/api/takeovers/${takeover.id}/image`)).status).toBe(404);
+    expect(await json(await admin.req('GET', '/api/takeovers'))).toEqual([]);
+    expect(t.db.prepare('SELECT count(*) AS n FROM takeovers').get()).toEqual({ n: 0 });
+  });
+
+  it('can be deleted early', async () => {
+    const t = setup();
+    const admin = t.client();
+    await admin.login();
+    const { id } = await json<{ id: number }>(await admin.req('POST', '/api/takeovers', await form({ startAt: t.clock.now, endAt: t.clock.now + HOUR })));
+    expect((await admin.req('DELETE', `/api/takeovers/${id}`)).status).toBe(204);
+    expect((await t.app.request(`/api/takeovers/${id}/image`)).status).toBe(404);
+    expect((await admin.req('DELETE', `/api/takeovers/${id}`)).status).toBe(404);
+  });
+});

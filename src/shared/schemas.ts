@@ -266,3 +266,15 @@ export const loginSchema = z.object({
   username: z.string().trim().min(1).max(64),
   password: z.string().min(1).max(256),
 });
+
+/** Metadata of a takeover (the image travels with it in the multipart upload). Times are epoch ms. */
+export const takeoverSchema = z
+  .object({
+    name: z.string().trim().min(1, { error: 'Dai un nome all’avviso' }).max(100, { error: 'Massimo 100 caratteri' }),
+    startAt: z.number().int(),
+    endAt: z.number().int(),
+    fit: mediaFit,
+    header: z.boolean().nullable(),
+    footer: z.boolean().nullable(),
+  })
+  .refine((t) => t.startAt < t.endAt, { path: ['endAt'], error: 'La fine deve venire dopo l’inizio' });

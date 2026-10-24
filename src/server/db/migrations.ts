@@ -297,4 +297,23 @@ export const migrations: string[] = [
   `
   ALTER TABLE events ADD COLUMN low_priority INTEGER NOT NULL DEFAULT 0;
   `,
+  // 14: takeovers: a still image that replaces the sign between two times. Ephemeral: the row and the file are
+  // deleted once end_at has passed. AUTOINCREMENT because the sign caches the file under its id.
+  `
+  CREATE TABLE takeovers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    mime TEXT NOT NULL,
+    file TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    start_at INTEGER NOT NULL,
+    end_at INTEGER NOT NULL,
+    fit TEXT NOT NULL DEFAULT 'contain',
+    show_header INTEGER,
+    show_footer INTEGER,
+    created_at INTEGER NOT NULL,
+    CHECK (start_at < end_at)
+  );
+  CREATE INDEX takeovers_end ON takeovers(end_at);
+  `,
 ];

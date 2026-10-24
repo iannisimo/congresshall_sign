@@ -10,6 +10,7 @@ import { eventRoutes } from './routes/events.ts';
 import { genericLogoRoutes, logoRoutes, organizerRoutes } from './routes/organizers.ts';
 import { mediaPresetRoutes, mediaRoutes } from './routes/media.ts';
 import { roomRoutes } from './routes/rooms.ts';
+import { takeoverRoutes } from './routes/takeovers.ts';
 import { settingsRoutes, venueLogoRoutes } from './routes/settings.ts';
 import { webRoutes } from './web.ts';
 
@@ -55,7 +56,9 @@ export function createApp(deps: AppDeps, options: { serveWeb?: boolean } = {}) {
   app.use('/api/*', sameOrigin(deps));
   // Uploads have their own, larger limits.
   app.use('/api/*', (c, next) =>
-    /^\/api\/(organizers\/\d+\/logos|venue-logo)$/.test(c.req.path) || (c.req.method === 'POST' && c.req.path === '/api/media')
+    /^\/api\/(organizers\/\d+\/logos|venue-logo)$/.test(c.req.path) ||
+    (c.req.method === 'POST' && c.req.path === '/api/takeovers') ||
+    (c.req.method === 'POST' && c.req.path === '/api/media')
       ? next()
       : jsonLimit(c, next),
   );
@@ -73,6 +76,7 @@ export function createApp(deps: AppDeps, options: { serveWeb?: boolean } = {}) {
   app.route('/api/venue-logo', venueLogoRoutes(deps));
   app.route('/api/media', mediaRoutes(deps));
   app.route('/api/media-presets', mediaPresetRoutes(deps));
+  app.route('/api/takeovers', takeoverRoutes(deps));
   app.all('/api/*', (c) => c.json({ error: 'Non trovato' }, 404));
 
   if (options.serveWeb) app.route('/', webRoutes(deps.config.webDir));

@@ -9,14 +9,15 @@ import { ComingUp } from './ComingUp.tsx';
 import { CARD_HEIGHT, EventCard, HeroCard } from './EventCard.tsx';
 import { Header, StalePill } from './Header.tsx';
 import { useKiosk, useNow, useRemHeight, useSelfUpdate, useSignTheme, useThemeColors } from './hooks.ts';
-import { parseChrome } from './chrome.ts';
-import { Carousel, NightClock, usePrefetchMedia } from './Carousel.tsx';
+import { activeTakeover, parseChrome, takeoverChrome } from './chrome.ts';
+import { Carousel, NightClock, usePrefetchMedia, usePrefetchTakeovers } from './Carousel.tsx';
 import { MarqueeCycle, MarqueeSettings } from './Marquee.tsx';
 import { SectionTitle, Time } from './parts.tsx';
 import { RecoveringBoundary } from './RecoveringBoundary.tsx';
 import { RoomStrip } from './RoomStrip.tsx';
 import { buildSignView, isFromTime, parseFrom } from './schedule.ts';
 import { strings } from './strings.ts';
+import { TakeoverView } from './TakeoverView.tsx';
 import { useSnapshot } from './useSnapshot.ts';
 
 const CARD_GAP = 1;
@@ -127,6 +128,8 @@ function SignScreen({ layout }: { layout: SignLayout }) {
   useThemeColors(settings);
   const media = useMemo(() => snapshot?.media ?? [], [snapshot]);
   usePrefetchMedia(media);
+  const takeovers = useMemo(() => snapshot?.takeovers ?? [], [snapshot]);
+  usePrefetchTakeovers(takeovers);
 
   const rooms = useMemo(() => snapshot?.rooms ?? [], [snapshot]);
   const roomNames = useMemo(() => {
@@ -159,6 +162,25 @@ function SignScreen({ layout }: { layout: SignLayout }) {
   const outdated = offlineFor > settings.offlineAfterHours * HOUR && lastContactAt !== null;
 
   const staleSince = offlineFor > settings.staleAfterMinutes * MINUTE ? lastContactAt : null;
+
+  // A scheduled still image replaces everything else for its duration.
+  const takeover = activeTakeover(takeovers, now);
+  if (takeover) {
+    return (
+      <div className="relative">
+        <TakeoverView
+          src={`/api/takeovers/${takeover.id}/image`}
+          fit={takeover.fit}
+          chrome={takeoverChrome(takeover, chrome)}
+          now={now}
+          rooms={rooms}
+          statuses={statuses}
+          venueLogo={snapshot.venueLogo ?? null}
+        />
+        {outdated && <OutdatedWarning since={lastContactAt!} />}
+      </div>
+    );
+  }
 
   // Nothing planned and media to show: the carousel takes the whole screen above the rooms.
   // The carousel layout shows it anyway, day or night.

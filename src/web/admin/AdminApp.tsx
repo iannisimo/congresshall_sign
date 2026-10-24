@@ -1,5 +1,5 @@
 import { QueryClientProvider, useMutation } from '@tanstack/react-query';
-import { CalendarDays, CalendarRange, CircleHelp, DoorOpen, History, ExternalLink, Images, List, LogOut, Settings as SettingsIcon, Users } from 'lucide-react';
+import { CalendarDays, CalendarRange, CircleHelp, DoorOpen, History, ExternalLink, Images, ImageUp, List, LogOut, Settings as SettingsIcon, Users } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { installUpdate, onUpdateWaiting } from '../lib/pwa.ts';
@@ -17,6 +17,7 @@ import MonthView from './MonthView.tsx';
 import Organizers from './Organizers.tsx';
 import Rooms from './Rooms.tsx';
 import Settings from './Settings.tsx';
+import Takeovers from './Takeovers.tsx';
 import WeekView from './WeekView.tsx';
 import { Button, FeedbackProvider, PageLoading } from './ui.tsx';
 
@@ -90,6 +91,9 @@ function Shell({ role, username, children }: { role: Role; username: string; chi
                 <NavItem to="/admin/organizers"icon={<Users className="size-4" />}>
                   Organizzatori
                 </NavItem>
+                <NavItem to="/admin/takeovers" icon={<ImageUp className="size-4" />}>
+                  Avvisi
+                </NavItem>
                 <NavItem to="/admin/help" icon={<CircleHelp className="size-4" />}>
                   Guida
                 </NavItem>
@@ -161,6 +165,7 @@ function Gate() {
         <Route path="events/:id/clone" element={<EventEditor mode="clone" />} />
         <Route path="month" element={<MonthView />} />
         <Route path="organizers" element={<Organizers />} />
+        <Route path="takeovers" element={<Takeovers />} />
         <Route path="help" element={<Help />} />
         {superadmin && <Route path="rooms" element={<Rooms />} />}
         {superadmin && <Route path="settings" element={<Settings />} />}

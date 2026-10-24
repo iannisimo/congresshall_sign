@@ -5,10 +5,12 @@ import type { DisplaySnapshot, SignEvent } from '../../shared/model.ts';
 import { displayWindow } from '../../shared/time.ts';
 import { listEvents } from '../data/events.ts';
 import { getMedia, presetByNameOrDefault } from '../data/media.ts';
+import { listTakeovers, purgeExpiredTakeovers } from '../data/takeovers.ts';
 import { activeOverrides } from '../data/overrides.ts';
 import { listRooms } from '../data/rooms.ts';
 import { getSettings, getVenueLogo } from '../data/settings.ts';
 import type { AppDeps, AppEnv } from '../http.ts';
+import { takeoverDir } from './takeovers.ts';
 
 /** Bookings of visible events overlapping the window. The sign is public: flattening leaves the staff notes out. */
 function signEvents(deps: AppDeps, now: number): SignEvent[] {
@@ -25,8 +27,9 @@ function signEvents(deps: AppDeps, now: number): SignEvent[] {
 export function displayRoutes(deps: AppDeps) {
   const app = new Hono<AppEnv>();
 
-  app.get('/display', (c) => {
+  app.get('/display', async (c) => {
     const now = deps.clock();
+    await purgeExpiredTakeovers(deps.db, takeoverDir(deps.config.dataDir), now);
     const settings = getSettings(deps.db);
     const preset = presetByNameOrDefault(deps.db, c.req.query('preset'));
     const snapshot: DisplaySnapshot = {
@@ -46,6 +49,7 @@ export function displayRoutes(deps: AppDeps) {
       rooms: listRooms(deps.db),
       events: signEvents(deps, now),
       overrides: activeOverrides(deps.db, now),
+      takeovers: listTakeovers(deps.db, now).map(({ file: _file, mime: _mime, ...takeover }) => takeover),
     };
     const body = JSON.stringify(snapshot);
     const etag = `"${createHash('sha1').update(body).digest('base64url')}"`;

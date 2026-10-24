@@ -64,6 +64,10 @@ server's time zone (`TZ`, `Europe/Rome` in the container).
   (exactly one row, enforced by a partial unique index).
 - **media_preset_items**: `preset_id`, `media_id` (both cascade), `position`, `enabled`, `fit?` (null = the
   preset's fit). Primary key `(preset_id, media_id)`.
+- **takeovers**: ephemeral still images that replace the sign. `id` (AUTOINCREMENT, never reused), `name`, `mime`,
+  `file` (in `DATA_DIR/takeovers`), `size`, `start_at`, `end_at`, `fit`, `show_header`, `show_footer` (null = follow the
+  screen's `?header=` / `?footer=`). Once `end_at` has passed the row and the file are deleted: by a timer in
+  `index.ts` every minute, and by every list, image and `/display` request.
 - **id_sequences**: `name` (`logos` | `media`), `next`. Logos and media are cached forever under their id,
   so a deleted id must never be given out again (SQLite would reuse the highest one): inserts take `next`,
   and triggers keep it ahead of every id used.
@@ -176,6 +180,11 @@ All under `/api`, JSON unless stated otherwise. 🔓 public · 🔑 admin or sup
 | `PUT /media-presets/:id/items` | 🖼️ | `{items: {mediaId, enabled, fit}[]}`: the whole ordered list (add, remove, reorder, switch in one call) |
 | `PUT /media-presets/:id/default` | 🖼️ | Makes it the default preset |
 | `DELETE /media-presets/:id` | 🖼️ | 409 for the default one |
+| `GET /takeovers` | 🔑 | Takeovers not over yet (running and upcoming) |
+| `POST /takeovers` | 🔑 | Multipart `file` (image, max 30 MB, shrunk to Full HD) and `data` (JSON: `name`, `startAt`, `endAt`, `fit`, `header`, `footer`) |
+| `PUT /takeovers/:id` | 🔑 | Same JSON; times and look only |
+| `DELETE /takeovers/:id` | 🔑 | Early removal, file included |
+| `GET /takeovers/:id/image` | 🔓 | The image; 404 once the takeover is over |
 | `GET /settings` | 👤 | Sign settings (the admin preview uses them too) |
 | `PUT /settings` | 👑 | Every key of `Settings` (`src/shared/model.ts`) |
 | `PUT /settings/carousel` | 🖼️ | `{carouselImageSeconds, carouselFit}` only |
@@ -239,6 +248,11 @@ each booking) unless `allowConflicts` is true (ADMIN-7). The admin area runs the
   `FitText` (same file) is the multi-line version used by `HeroCard`: the text wraps within a set number
   of lines at the largest size, shrinks in steps down to a minimum, and past that scrolls upwards the same
   way, at its own speed (`marqueeVerticalSpeed`).
+- Takeovers: `snapshot.takeovers` lists those not over yet, upcoming included, so the sign switches by its corrected
+  clock even offline (the service worker keeps the images, downloaded ahead). `activeTakeover` and `takeoverChrome`
+  (`web/sign/chrome.ts`) pick the one on screen (latest start wins) and resolve header/footer: its own choice, else
+  the URL's. `TakeoverView` draws it; the admin page `/admin/takeovers` ("Avvisi", admin and superadmin) uses the
+  same component, scaled, as the live demo next to the form.
 - Carousel (SIGN-11): `Carousel` in `src/web/sign/Carousel.tsx`, using the duration and fit of
   `snapshot.mediaPreset`; `/carousel` names the preset in its "no media" message when it isn't the default.
   The sign downloads every item of its preset in the background so the service worker caches it whole; videos then play from the cache with range requests,

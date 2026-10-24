@@ -79,6 +79,12 @@ export default defineConfig(({ command }) => {
               },
             },
             {
+              // Takeover images: scheduled ahead, so the sign downloads them early; ids are never reused.
+              urlPattern: ({ url }) => /^\/api\/takeovers\/\d+\/image$/.test(url.pathname),
+              handler: 'CacheFirst',
+              options: { cacheName: 'takeovers', expiration: { maxEntries: 10 }, cacheableResponse: { statuses: [200] } },
+            },
+            {
               // Logos never change once uploaded.
               urlPattern: ({ url }) => url.pathname.startsWith('/api/logos/'),
               handler: 'CacheFirst',

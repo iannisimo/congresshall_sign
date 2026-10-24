@@ -216,6 +216,20 @@ export interface MediaPreset {
   }[];
 }
 
+/**
+ * A still image that replaces the sign between `startAt` and `endAt` (GET /api/takeovers/:id/image). `header` and
+ * `footer` say whether to show the header and the room strip meanwhile; null follows the screen's own URL.
+ */
+export interface Takeover {
+  id: number;
+  name: string;
+  startAt: number;
+  endAt: number;
+  fit: MediaFit;
+  header: boolean | null;
+  footer: boolean | null;
+}
+
 /** Everything the sign needs, from GET /api/display. */
 export interface DisplaySnapshot {
   version: string;
@@ -229,6 +243,8 @@ export interface DisplaySnapshot {
   rooms: Room[];
   events: SignEvent[];
   overrides: Override[];
+  /** Takeovers not over yet, upcoming ones included, so the sign switches on time even offline. */
+  takeovers: Takeover[];
 }
 
 export interface Conflict {

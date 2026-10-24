@@ -121,3 +121,12 @@ export function usePrefetchMedia(items: { id: number }[]): void {
     };
   }, [key]);
 }
+
+/** Downloads the takeover images ahead of time so the service worker has them when their time comes, offline too. */
+export function usePrefetchTakeovers(items: { id: number }[]): void {
+  const key = items.map((t) => t.id).join(',');
+  useEffect(() => {
+    if (!navigator.serviceWorker?.controller) return;
+    for (const { id } of items) void fetch(`/api/takeovers/${id}/image`).then((r) => r.blob()).catch(() => undefined);
+  }, [key]);
+}
