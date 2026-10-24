@@ -114,10 +114,10 @@ function TakeoverForm({ existing, onDone }: { existing: Takeover | null; onDone:
   const [footer, setFooter] = useState<Choice>(existing ? toChoice(existing.footer) : 'hide');
   const [error, setError] = useState<string | null>(null);
   const screens = useQuery({ queryKey: ['takeover-presets'], queryFn: () => api<Screen[]>('/takeovers/presets') });
-  // A new notice starts on every screen; the choice waits for the list when it hasn't loaded yet.
-  const [picked, setPicked] = useState<number[] | null>(existing?.presetIds ?? null);
-  const presetIds = picked ?? screens.data?.map((p) => p.id) ?? [];
-  const toggle = (id: number) => setPicked(presetIds.includes(id) ? presetIds.filter((p) => p !== id) : [...presetIds, id]);
+  // A new notice starts on no screen: the admin picks them.
+  const [presetIds, setPresetIds] = useState<number[]>(existing?.presetIds ?? []);
+  const toggle = (id: number) => setPresetIds((ids) => (ids.includes(id) ? ids.filter((p) => p !== id) : [...ids, id]));
+  const allPicked = !!screens.data?.length && screens.data.every((p) => presetIds.includes(p.id));
 
   useEffect(() => {
     if (!file) return setPreview(null);
@@ -186,7 +186,14 @@ function TakeoverForm({ existing, onDone }: { existing: Takeover | null; onDone:
             </Field>
           </div>
           <Field label="Schermi" hint="I preset dei media: ogni schermo usa il suo (?preset=…) o quello predefinito." error={screens.data && presetIds.length === 0 ? 'Scegli almeno uno schermo' : undefined}>
-            <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
+              <button
+                type="button"
+                className="text-sm font-medium text-brand-700 hover:underline"
+                onClick={() => setPresetIds(allPicked ? [] : (screens.data ?? []).map((p) => p.id))}
+              >
+                {allPicked ? 'Deseleziona tutti' : 'Seleziona tutti'}
+              </button>
               {screens.data?.map((p) => (
                 <label key={p.id} className="flex items-center gap-2 text-sm text-slate-800">
                   <input type="checkbox" checked={presetIds.includes(p.id)} onChange={() => toggle(p.id)} className="size-4 rounded border-slate-300 text-brand-600" />
