@@ -109,7 +109,7 @@ function TakeoverForm({ existing, onDone }: { existing: Takeover | null; onDone:
   const [name, setName] = useState(existing?.name ?? '');
   const [start, setStart] = useState(() => toDateTimeValue(existing?.startAt ?? Math.ceil(Date.now() / (5 * MINUTE)) * 5 * MINUTE));
   const [end, setEnd] = useState(() => toDateTimeValue(existing?.endAt ?? Math.ceil(Date.now() / (5 * MINUTE)) * 5 * MINUTE + HOUR));
-  const [fit, setFit] = useState<MediaFit>(existing?.fit ?? 'contain');
+  const [fit, setFit] = useState<MediaFit>(existing?.fit ?? 'cover');
   const [header, setHeader] = useState<Choice>(existing ? toChoice(existing.header) : 'show');
   const [footer, setFooter] = useState<Choice>(existing ? toChoice(existing.footer) : 'hide');
   const [error, setError] = useState<string | null>(null);
